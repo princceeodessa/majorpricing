@@ -415,6 +415,65 @@ const setupHomeBanners = () => {
     });
 };
 
+const setupCategoryRails = () => {
+    document.querySelectorAll('[data-category-rail]').forEach((railRoot) => {
+        if (!(railRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        const viewport = railRoot.querySelector('[data-category-rail-track]');
+        const prev = railRoot.querySelector('[data-category-rail-prev]');
+        const next = railRoot.querySelector('[data-category-rail-next]');
+
+        if (!(viewport instanceof HTMLElement)) {
+            return;
+        }
+
+        const syncState = () => {
+            const maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+            const atStart = viewport.scrollLeft <= 6;
+            const atEnd = viewport.scrollLeft >= maxScroll - 6;
+            const isStatic = maxScroll <= 6;
+
+            railRoot.classList.toggle('is-static', isStatic);
+
+            if (prev instanceof HTMLButtonElement) {
+                prev.disabled = isStatic || atStart;
+            }
+
+            if (next instanceof HTMLButtonElement) {
+                next.disabled = isStatic || atEnd;
+            }
+        };
+
+        const scrollTrack = (direction) => {
+            const distance = Math.max(280, viewport.clientWidth * 0.78);
+
+            viewport.scrollBy({
+                left: distance * direction,
+                behavior: 'smooth',
+            });
+        };
+
+        if (prev instanceof HTMLButtonElement) {
+            prev.addEventListener('click', () => {
+                scrollTrack(-1);
+            });
+        }
+
+        if (next instanceof HTMLButtonElement) {
+            next.addEventListener('click', () => {
+                scrollTrack(1);
+            });
+        }
+
+        viewport.addEventListener('scroll', syncState, { passive: true });
+        window.addEventListener('resize', syncState);
+        window.setTimeout(syncState, 80);
+        syncState();
+    });
+};
+
 const setupInfiniteFeeds = () => {
     document.querySelectorAll('[data-infinite-feed]').forEach((feedRoot) => {
         if (!(feedRoot instanceof HTMLElement)) {
@@ -547,5 +606,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupQuantityControls();
     setupProductGalleries();
     setupHomeBanners();
+    setupCategoryRails();
     setupInfiniteFeeds();
 });

@@ -51,18 +51,42 @@ class CatalogController extends Controller
             ->with('children')
             ->get();
 
+        $catalogCategoryIds = $rootCategories
+            ->flatMap(fn (Category $category) => $category->children->pluck('id')->push($category->id))
+            ->unique()
+            ->values();
+
         $productCounts = Product::query()
             ->selectRaw('category_id, COUNT(*) as aggregate')
+            ->whereIn('category_id', $catalogCategoryIds)
             ->groupBy('category_id')
             ->pluck('aggregate', 'category_id');
 
-        $rootCategories->each(function (Category $category) use ($productCounts): void {
+        $categoryPreviewProducts = Product::query()
+            ->select(['category_id', 'title', 'image_path', 'sort_order'])
+            ->whereIn('category_id', $catalogCategoryIds)
+            ->orderByRaw('image_path is null')
+            ->orderBy('sort_order')
+            ->orderBy('title')
+            ->get()
+            ->groupBy('category_id')
+            ->map(fn ($products) => $products->first());
+
+        $rootCategories->each(function (Category $category) use ($productCounts, $categoryPreviewProducts): void {
             $categoryIds = $category->children->pluck('id')->push($category->id);
+            $previewCandidates = $categoryIds
+                ->map(fn (int $categoryId) => $categoryPreviewProducts->get($categoryId))
+                ->filter();
+
+            $previewProduct = $previewCandidates->first(fn ($product): bool => filled($product->image_path))
+                ?? $previewCandidates->first();
 
             $category->setAttribute(
                 'catalog_products_count',
                 $categoryIds->sum(fn (int $categoryId): int => (int) ($productCounts[$categoryId] ?? 0)),
             );
+            $category->setAttribute('catalog_preview_image', $previewProduct?->image_path);
+            $category->setAttribute('catalog_preview_title', $previewProduct?->title);
         });
 
         $featuredProducts = Product::query()

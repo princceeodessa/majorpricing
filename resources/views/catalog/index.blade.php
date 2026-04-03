@@ -4,7 +4,6 @@
 
 @section('content')
     @php($profile = auth()->user()->priceProfile)
-    @php($categoryAccents = ['#d11117', '#c81e1e', '#b91c1c', '#991b1b', '#be123c', '#7f1d1d'])
     @php($primaryBannerCategory = $rootCategories->first())
     @php($secondaryBannerCategory = $rootCategories->skip(1)->first() ?? $primaryBannerCategory)
     @php($tertiaryBannerCategory = $rootCategories->skip(2)->first() ?? $secondaryBannerCategory)
@@ -150,22 +149,52 @@
                     <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Ключевые категории</h2>
                 </div>
                 <p class="max-w-xl text-sm leading-6 text-slate-600">
-                    Категории организованы по листам прайса и раскладываются по секциям, чтобы каталог был похож на плотную B2B-витрину.
+                    Быстрый вход в основные направления каталога с наглядными превью товаров внутри каждой линии.
                 </p>
             </div>
 
-            <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div class="catalog-category-showcase mt-5" data-category-rail>
+                <button type="button" class="catalog-category-showcase__arrow is-left" data-category-rail-prev aria-label="Прокрутить категории влево">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M14.5 5 8 12l6.5 7" />
+                    </svg>
+                </button>
+
+                <div class="catalog-category-showcase__viewport" data-category-rail-track>
+                    <div class="catalog-category-showcase__track">
                 @foreach ($rootCategories as $index => $category)
-                    <a
-                        href="{{ route('categories.show', $category) }}"
-                        class="category-tile reveal-card"
-                        style="animation-delay: {{ $index * 70 }}ms; --card-accent: {{ $categoryAccents[$index % count($categoryAccents)] }};"
-                    >
-                        <span class="soft-badge bg-white/20 text-white">{{ $category->children->count() }} секц.</span>
-                        <h3 class="mt-12 max-w-[12rem] font-['IBM_Plex_Sans'] text-2xl font-semibold leading-tight text-white">{{ $category->name }}</h3>
-                        <p class="mt-4 text-sm text-white/85">{{ $category->catalog_products_count }} товаров в этом направлении</p>
-                    </a>
+                        @php($previewImage = $category->catalog_preview_image ? asset($category->catalog_preview_image) : null)
+                        <a
+                            href="{{ route('categories.show', $category) }}"
+                            class="catalog-category-card reveal-card"
+                            style="animation-delay: {{ $index * 70 }}ms;"
+                        >
+                            <div class="catalog-category-card__head">
+                                <h3 class="catalog-category-card__title">{{ $category->name }}</h3>
+                                <span class="catalog-category-card__badge">{{ $category->children->count() }} секц.</span>
+                            </div>
+
+                            <p class="catalog-category-card__meta">{{ $category->catalog_products_count }} товаров в направлении</p>
+
+                            <div class="catalog-category-card__visual">
+                                @if ($previewImage)
+                                    <img src="{{ $previewImage }}" alt="{{ $category->catalog_preview_title ?? $category->name }}" class="catalog-category-card__image">
+                                @else
+                                    <div class="catalog-category-card__mark">
+                                        {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($category->name, 0, 2)) }}
+                                    </div>
+                                @endif
+                            </div>
+                        </a>
                 @endforeach
+                    </div>
+                </div>
+
+                <button type="button" class="catalog-category-showcase__arrow is-right" data-category-rail-next aria-label="Прокрутить категории вправо">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m9.5 5 6.5 7-6.5 7" />
+                    </svg>
+                </button>
             </div>
         </section>
     @endif
