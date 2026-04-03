@@ -13,7 +13,7 @@ class CatalogInfiniteScrollTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_catalog_index_returns_html_chunks_for_infinite_scroll(): void
+    public function test_category_index_returns_html_chunks_for_infinite_scroll(): void
     {
         $profile = PriceProfile::query()->create([
             'name' => 'Базовый прайс',
@@ -24,8 +24,8 @@ class CatalogInfiniteScrollTest extends TestCase
         ]);
 
         $user = User::factory()->create([
-            'login' => 'infinite-index',
-            'email' => 'infinite-index@example.com',
+            'login' => 'infinite-list',
+            'email' => 'infinite-list@example.com',
             'password' => 'secret12345',
             'price_profile_id' => $profile->id,
         ]);
@@ -37,7 +37,7 @@ class CatalogInfiniteScrollTest extends TestCase
             'accent_color' => '#f97316',
         ]);
 
-        foreach (range(1, 19) as $number) {
+        foreach (range(1, 25) as $number) {
             Product::query()->create([
                 'category_id' => $category->id,
                 'title' => sprintf('Товар %02d', $number),
@@ -49,14 +49,17 @@ class CatalogInfiniteScrollTest extends TestCase
 
         $response = $this
             ->actingAs($user)
-            ->getJson(route('catalog.index', ['page' => 2]));
+            ->getJson(route('categories.show', [
+                'category' => $category,
+                'page' => 2,
+            ]));
 
         $response->assertOk();
         $response->assertJson([
             'hasMorePages' => false,
             'nextPageUrl' => null,
         ]);
-        $this->assertStringContainsString('Товар 19', $response->json('html'));
+        $this->assertStringContainsString('Товар 25', $response->json('html'));
         $this->assertStringNotContainsString('Товар 01', $response->json('html'));
     }
 

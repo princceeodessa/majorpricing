@@ -66,6 +66,7 @@ class DatabaseSeeder extends Seeder
                 'password' => 'MajorDemo123!',
                 'price_profile_id' => $profiles['base-price']->id,
                 'is_active' => true,
+                'is_manager' => true,
             ],
         );
 
@@ -79,6 +80,7 @@ class DatabaseSeeder extends Seeder
                 'password' => 'MajorDemo123!',
                 'price_profile_id' => $profiles['partner-price']->id,
                 'is_active' => true,
+                'is_manager' => false,
             ],
         );
 
@@ -92,6 +94,7 @@ class DatabaseSeeder extends Seeder
                 'password' => 'MajorDemo123!',
                 'price_profile_id' => $profiles['vip-price']->id,
                 'is_active' => true,
+                'is_manager' => false,
             ],
         );
 

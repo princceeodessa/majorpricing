@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\ManagerUserController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
@@ -16,8 +17,11 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::middleware('auth')->group(function (): void {
-    Route::get('/', [CatalogController::class, 'index'])->name('catalog.index');
+    Route::get('/', [AccountController::class, 'show'])->name('catalog.index');
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
+    Route::post('/account/users', [ManagerUserController::class, 'store'])
+        ->middleware('manager')
+        ->name('manager.users.store');
     Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
     Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
     Route::post('/products/{product:slug}/cart', [CartController::class, 'store'])->name('cart.store');

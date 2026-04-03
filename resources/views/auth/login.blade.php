@@ -1,16 +1,16 @@
 @extends('layouts.app')
 
-@section('title', 'Вход в каталог')
+@section('title', 'Авторизация MAJOR')
 
 @section('content')
     <div class="catalog-auth-grid grid min-h-[calc(100vh-3rem)] items-center gap-8 py-8 lg:grid-cols-[1.05fr_0.95fr]">
         <section class="surface-card hero-panel reveal-card catalog-auth-hero" style="--card-accent: #d11117;">
-            <span class="soft-badge">Закрытый B2B-каталог</span>
+            <span class="soft-badge">Закрытая авторизация</span>
             <h1 class="mt-6 max-w-3xl font-['IBM_Plex_Sans'] text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl">
-                Каталог товаров с персональными ценами и доступом только по авторизации.
+                Доступ в систему выдается только менеджером и работает без регистрации.
             </h1>
             <p class="mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-                Сайт работает только для выданных пользователей. Регистрация отключена: каждому клиенту или менеджеру назначается свой доступ и своя ценовая колонка.
+                Пользователь получает логин, пароль и назначенный прайс-профиль вручную. Самостоятельная регистрация на сайте отключена.
             </p>
 
             <div class="mt-8 grid gap-3 sm:grid-cols-3">
@@ -19,12 +19,12 @@
                     <strong>Private only</strong>
                 </div>
                 <div class="stat-card">
-                    <span>Прайс</span>
-                    <strong>По профилю</strong>
+                    <span>Доступ</span>
+                    <strong>Только по логину</strong>
                 </div>
                 <div class="stat-card">
-                    <span>Каталог</span>
-                    <strong>Готов к работе</strong>
+                    <span>Управление</span>
+                    <strong>Через менеджера</strong>
                 </div>
             </div>
         </section>
@@ -34,7 +34,7 @@
                 <span class="soft-badge">Авторизация</span>
                 <h2 class="mt-5 font-['IBM_Plex_Sans'] text-[2.1rem] font-semibold text-slate-950 sm:text-[2.35rem]">Вход в кабинет</h2>
                 <p class="mt-3 text-base leading-7 text-slate-600">
-                    Введите логин или email и пароль. После входа откроется закрытая витрина с товарами и персональной ценой.
+                    Введите логин или email и пароль. После входа откроется закрытая система доступа.
                 </p>
 
                 @if (app()->environment('local'))
@@ -82,7 +82,7 @@
                     Запомнить вход на этом устройстве
                 </label>
 
-                <button type="submit" class="action-button w-full">Открыть каталог</button>
+                <button type="submit" class="action-button w-full">Войти</button>
             </form>
 
             @if (app()->environment('local'))

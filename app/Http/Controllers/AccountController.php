@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
+use App\Models\PriceProfile;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
@@ -11,36 +12,37 @@ class AccountController extends Controller
     public function show(Request $request): View
     {
         $user = $request->user()->load('priceProfile');
-
-        $recentOrders = $user->orders()
-            ->with('items')
-            ->take(4)
+        $priceProfiles = PriceProfile::query()
+            ->orderBy('column_index')
             ->get();
 
-        $favoriteItems = $user->favoriteItems()
-            ->with(['product.category', 'product.prices'])
-            ->latest()
-            ->take(3)
-            ->get();
+        $managedUsers = collect();
+        $managementStats = [
+            'totalUsers' => 0,
+            'activeUsers' => 0,
+            'disabledUsers' => 0,
+            'profilesCount' => $priceProfiles->count(),
+        ];
 
-        $cartItems = $user->cartItems()
-            ->with(['product.category', 'product.prices'])
-            ->latest()
-            ->take(3)
-            ->get();
+        if ($user->isManager()) {
+            $managedUsers = User::query()
+                ->with('priceProfile')
+                ->orderByDesc('id')
+                ->get();
+
+            $managementStats = [
+                'totalUsers' => $managedUsers->count(),
+                'activeUsers' => $managedUsers->where('is_active', true)->count(),
+                'disabledUsers' => $managedUsers->where('is_active', false)->count(),
+                'profilesCount' => $priceProfiles->count(),
+            ];
+        }
 
         return view('account.show', [
             'profile' => $user->priceProfile,
-            'recentOrders' => $recentOrders,
-            'favoriteItems' => $favoriteItems,
-            'cartItems' => $cartItems,
-            'accountStats' => [
-                'rootCategories' => Category::query()->whereNull('parent_id')->count(),
-                'ordersCount' => $user->orders()->count(),
-                'favoritesCount' => $user->favoriteItems()->count(),
-                'cartQuantity' => (int) $user->cartItems()->sum('quantity'),
-                'totalSpent' => (float) $user->orders()->sum('total_amount'),
-            ],
+            'priceProfiles' => $priceProfiles,
+            'managedUsers' => $managedUsers,
+            'managementStats' => $managementStats,
         ]);
     }
 }

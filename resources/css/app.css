@@ -3936,6 +3936,192 @@
         }
     }
 
+    .catalog-category-showcase {
+        position: relative;
+        padding-inline: 1.8rem;
+    }
+
+    .catalog-category-showcase__viewport {
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
+    }
+
+    .catalog-category-showcase__viewport::-webkit-scrollbar {
+        display: none;
+    }
+
+    .catalog-category-showcase__track {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: clamp(220px, 16vw, 282px);
+        gap: 1rem;
+        padding: 0.2rem 0;
+    }
+
+    .catalog-category-card {
+        display: grid;
+        grid-template-rows: auto auto minmax(126px, 1fr);
+        align-content: start;
+        min-height: 262px;
+        padding: 1.2rem 1.15rem 1rem;
+        border-radius: 1.75rem;
+        border: 1px solid rgba(232, 234, 239, 0.96);
+        background:
+            radial-gradient(circle at 100% 100%, rgba(209, 17, 23, 0.07), transparent 38%),
+            linear-gradient(180deg, #f7f8fb 0%, #f2f4f8 100%);
+        box-shadow: 0 24px 40px -34px rgba(17, 18, 22, 0.2);
+        scroll-snap-align: start;
+        transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .catalog-category-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(209, 17, 23, 0.16);
+        box-shadow: 0 30px 52px -36px rgba(209, 17, 23, 0.2);
+    }
+
+    .catalog-category-card__head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.7rem;
+    }
+
+    .catalog-category-card__title {
+        max-width: 11ch;
+        font-family: var(--font-display);
+        font-size: 1.65rem;
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: -0.04em;
+        color: #1b1f28;
+    }
+
+    .catalog-category-card__badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2rem;
+        padding: 0 0.8rem;
+        border-radius: 999px;
+        border: 1px solid rgba(221, 224, 229, 0.96);
+        background: rgba(255, 255, 255, 0.8);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        color: #7a818f;
+    }
+
+    .catalog-category-card__meta {
+        margin-top: 0.7rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        line-height: 1.45;
+        color: #707887;
+    }
+
+    .catalog-category-card__visual {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        min-height: 148px;
+        margin-top: 0.9rem;
+        overflow: hidden;
+    }
+
+    .catalog-category-card__visual::after {
+        position: absolute;
+        left: 12%;
+        right: 12%;
+        bottom: 0;
+        height: 14px;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(17, 18, 22, 0.14), transparent 72%);
+        filter: blur(10px);
+        content: '';
+    }
+
+    .catalog-category-card__image {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 188px;
+        max-height: 150px;
+        object-fit: contain;
+        object-position: center bottom;
+        filter: drop-shadow(0 18px 24px rgba(17, 18, 22, 0.12));
+    }
+
+    .catalog-category-card__mark {
+        position: relative;
+        z-index: 1;
+        display: inline-grid;
+        width: 7rem;
+        height: 7rem;
+        place-items: center;
+        border-radius: 1.6rem;
+        background: linear-gradient(180deg, #ffffff 0%, #eef1f6 100%);
+        box-shadow: 0 22px 38px -30px rgba(17, 18, 22, 0.2);
+        font-family: var(--font-display);
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1b1f28;
+    }
+
+    .catalog-category-showcase__arrow {
+        position: absolute;
+        top: 50%;
+        z-index: 2;
+        display: inline-grid;
+        width: 3rem;
+        height: 3rem;
+        place-items: center;
+        border-radius: 999px;
+        border: 1px solid rgba(231, 233, 238, 0.98);
+        background: rgba(255, 255, 255, 0.96);
+        color: #1b1f28;
+        box-shadow: 0 18px 34px -28px rgba(17, 18, 22, 0.18);
+        transform: translateY(-50%);
+        transition: transform 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .catalog-category-showcase__arrow.is-left {
+        left: 0;
+    }
+
+    .catalog-category-showcase__arrow.is-right {
+        right: 0;
+    }
+
+    .catalog-category-showcase__arrow svg {
+        width: 1.15rem;
+        height: 1.15rem;
+        stroke: currentColor;
+        stroke-width: 1.9;
+        fill: none;
+    }
+
+    .catalog-category-showcase__arrow:hover:not(:disabled) {
+        transform: translateY(-50%) scale(1.04);
+        border-color: rgba(209, 17, 23, 0.18);
+        box-shadow: 0 22px 38px -28px rgba(209, 17, 23, 0.18);
+    }
+
+    .catalog-category-showcase__arrow:disabled {
+        opacity: 0.42;
+        cursor: default;
+    }
+
+    .catalog-category-showcase.is-static .catalog-category-showcase__arrow {
+        opacity: 0;
+        pointer-events: none;
+    }
+
     .catalog-home-banners__meta--compact {
         justify-content: flex-end;
     }
@@ -4018,8 +4204,288 @@
     }
 
     @media (max-width: 960px) {
+        .catalog-category-showcase {
+            padding-inline: 0;
+        }
+
+        .catalog-category-showcase__track {
+            grid-auto-columns: minmax(240px, 72vw);
+        }
+
+        .catalog-category-showcase__arrow {
+            display: none;
+        }
+
         .catalog-home-banners__meta--compact {
             justify-content: center;
+        }
+    }
+
+    .catalog-simple-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.15rem;
+        border-radius: 28px;
+    }
+
+    .catalog-simple-header__meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.7rem;
+        min-width: 0;
+    }
+
+    .catalog-simple-header__badge {
+        border-color: rgba(209, 17, 23, 0.14);
+        background: rgba(255, 249, 249, 0.92);
+        color: #b40d12;
+    }
+
+    .access-dashboard-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.06fr) minmax(400px, 0.94fr);
+        gap: var(--catalog-section-gap);
+        align-items: stretch;
+    }
+
+    .access-dashboard-hero,
+    .access-user-create,
+    .access-user-card,
+    .access-only-panel {
+        padding: clamp(1.4rem, 1.9vw, 2rem);
+        border: 1px solid rgba(228, 230, 235, 0.94);
+        background:
+            radial-gradient(circle at 100% 0%, rgba(209, 17, 23, 0.08), transparent 32%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 249, 251, 0.94));
+        box-shadow: 0 30px 68px -52px rgba(17, 18, 22, 0.18);
+    }
+
+    .access-dashboard-hero {
+        display: grid;
+        gap: 1.5rem;
+        align-content: start;
+    }
+
+    .access-dashboard-hero__title,
+    .access-user-create__title,
+    .access-only-panel__title {
+        margin-top: 0.85rem;
+        font-family: var(--font-display);
+        font-size: clamp(2rem, 3.4vw, 3.2rem);
+        font-weight: 700;
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+        color: #111216;
+    }
+
+    .access-dashboard-hero__text,
+    .access-user-create__text,
+    .access-only-panel__text {
+        font-size: 1rem;
+        line-height: 1.75;
+        color: #646b79;
+    }
+
+    .access-dashboard-stats,
+    .access-only-panel__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem;
+    }
+
+    .access-user-create {
+        display: grid;
+        gap: 1.25rem;
+        align-content: start;
+    }
+
+    .access-user-create__form {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .access-user-create__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.9rem;
+    }
+
+    .access-field {
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .access-field--full {
+        grid-column: 1 / -1;
+    }
+
+    .access-field span {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #8b909c;
+    }
+
+    .access-field input,
+    .access-field select {
+        min-height: 3.25rem;
+        border-radius: 1.2rem;
+        border: 1px solid rgba(226, 228, 234, 0.96);
+        background: rgba(255, 255, 255, 0.96);
+        padding: 0 1rem;
+        font-size: 0.96rem;
+        color: #111216;
+        outline: none;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .access-field input::placeholder {
+        color: #a0a6b2;
+    }
+
+    .access-field input:focus,
+    .access-field select:focus {
+        border-color: rgba(209, 17, 23, 0.28);
+        box-shadow: 0 0 0 4px rgba(209, 17, 23, 0.08);
+    }
+
+    .access-checkbox {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.7rem;
+        min-height: 3rem;
+        padding: 0.85rem 1rem;
+        border-radius: 1.2rem;
+        border: 1px solid rgba(226, 228, 234, 0.96);
+        background: rgba(255, 255, 255, 0.88);
+        font-size: 0.95rem;
+        color: #555d6b;
+    }
+
+    .access-checkbox input {
+        width: 1rem;
+        height: 1rem;
+        accent-color: #d11117;
+    }
+
+    .access-user-create__submit {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .access-users-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .access-user-card {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .access-user-card__head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.8rem;
+    }
+
+    .access-user-card__head h3 {
+        margin-top: 0.8rem;
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1.1;
+        color: #111216;
+    }
+
+    .access-user-card__role {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2rem;
+        padding: 0 0.9rem;
+        border-radius: 999px;
+        background: rgba(17, 18, 22, 0.92);
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+    }
+
+    .access-user-card__meta {
+        display: grid;
+        gap: 0.8rem;
+    }
+
+    .access-user-card__meta > div {
+        display: grid;
+        gap: 0.28rem;
+        padding: 0.95rem 1rem;
+        border-radius: 1.2rem;
+        border: 1px solid rgba(226, 228, 234, 0.94);
+        background: rgba(255, 255, 255, 0.86);
+    }
+
+    .access-user-card__meta span {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #8b909c;
+    }
+
+    .access-user-card__meta strong {
+        font-size: 0.97rem;
+        font-weight: 700;
+        line-height: 1.55;
+        color: #111216;
+    }
+
+    .access-only-panel {
+        display: grid;
+        gap: 1.4rem;
+        max-width: 980px;
+        margin-inline: auto;
+    }
+
+    .access-only-panel__notice {
+        padding: 1rem 1.15rem;
+        border-radius: 1.3rem;
+        border: 1px solid rgba(226, 228, 234, 0.94);
+        background: rgba(255, 255, 255, 0.88);
+        font-size: 0.96rem;
+        line-height: 1.7;
+        color: #5c6472;
+    }
+
+    @media (max-width: 1180px) {
+        .access-dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .catalog-simple-header,
+        .access-dashboard-stats,
+        .access-only-panel__grid,
+        .access-user-create__grid {
+            grid-template-columns: 1fr;
+        }
+
+        .catalog-simple-header {
+            display: grid;
+        }
+
+        .catalog-simple-header__meta {
+            display: grid;
+            justify-content: stretch;
         }
     }
 }

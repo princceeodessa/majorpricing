@@ -1,213 +1,181 @@
 @extends('layouts.app')
 
-@section('title', 'Личный кабинет MAJOR')
+@section('title', 'Авторизация MAJOR')
 
 @section('content')
-    <section class="catalog-account-grid">
-        <div class="surface-card reveal-card catalog-account-hero">
-            <span class="soft-badge">Личный кабинет</span>
-            <h1 class="catalog-account-hero__title">
-                {{ auth()->user()->company ?? auth()->user()->name }}
-            </h1>
-            <p class="catalog-account-hero__text">
-                Отдельный рабочий экран с вашим прайс-профилем, быстрыми действиями, историей заказов и персональными подборками по каталогу.
+    @php($user = auth()->user())
+
+    @if ($user->isManager())
+        <section class="access-dashboard-grid">
+            <div class="surface-card access-dashboard-hero">
+                <span class="soft-badge">Менеджерский доступ</span>
+                <h1 class="access-dashboard-hero__title">Управление пользователями и выдачей доступа.</h1>
+                <p class="access-dashboard-hero__text">
+                    Система работает как закрытая авторизация без регистрации. Менеджер вручную создает логины, назначает прайс-профиль и управляет активностью пользователей.
+                </p>
+
+                <div class="access-dashboard-stats">
+                    <div class="stat-card">
+                        <span>Всего пользователей</span>
+                        <strong>{{ $managementStats['totalUsers'] }}</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span>Активных</span>
+                        <strong>{{ $managementStats['activeUsers'] }}</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span>Отключено</span>
+                        <strong>{{ $managementStats['disabledUsers'] }}</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span>Прайс-профилей</span>
+                        <strong>{{ $managementStats['profilesCount'] }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="surface-card access-user-create">
+                <div>
+                    <span class="soft-badge">Новый пользователь</span>
+                    <h2 class="access-user-create__title">Добавление доступа</h2>
+                    <p class="access-user-create__text">
+                        Создайте логин, пароль и назначьте прайс-профиль. Регистрация для клиента по-прежнему отключена.
+                    </p>
+                </div>
+
+                <form action="{{ route('manager.users.store') }}" method="POST" class="access-user-create__form">
+                    @csrf
+
+                    <div class="access-user-create__grid">
+                        <label class="access-field">
+                            <span>Имя</span>
+                            <input type="text" name="name" value="{{ old('name') }}" placeholder="Например: Иван Петров">
+                        </label>
+
+                        <label class="access-field">
+                            <span>Компания</span>
+                            <input type="text" name="company" value="{{ old('company') }}" placeholder="Например: ООО Партнер">
+                        </label>
+
+                        <label class="access-field">
+                            <span>Логин</span>
+                            <input type="text" name="login" value="{{ old('login') }}" placeholder="partner_01">
+                        </label>
+
+                        <label class="access-field">
+                            <span>Email</span>
+                            <input type="email" name="email" value="{{ old('email') }}" placeholder="partner@example.com">
+                        </label>
+
+                        <label class="access-field">
+                            <span>Пароль</span>
+                            <input type="password" name="password" placeholder="Минимум 8 символов">
+                        </label>
+
+                        <label class="access-field">
+                            <span>Подтверждение пароля</span>
+                            <input type="password" name="password_confirmation" placeholder="Повторите пароль">
+                        </label>
+
+                        <label class="access-field access-field--full">
+                            <span>Прайс-профиль</span>
+                            <select name="price_profile_id">
+                                <option value="">По умолчанию</option>
+                                @foreach ($priceProfiles as $priceProfile)
+                                    <option value="{{ $priceProfile->id }}" @selected((string) old('price_profile_id') === (string) $priceProfile->id)>
+                                        {{ $priceProfile->name }} · {{ $priceProfile->price_label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
+
+                    <label class="access-checkbox">
+                        <input type="checkbox" name="is_active" value="1" @checked(old('is_active', '1') === '1')>
+                        Пользователь активен сразу после создания
+                    </label>
+
+                    <button type="submit" class="action-button access-user-create__submit">Добавить пользователя</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="mt-10">
+            <div class="catalog-section-head">
+                <div>
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Доступы</p>
+                    <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Все пользователи</h2>
+                </div>
+                <p class="max-w-xl text-sm leading-6 text-slate-600">
+                    Список созданных пользователей с логином, компанией, статусом и назначенным прайс-профилем.
+                </p>
+            </div>
+
+            <div class="access-users-grid mt-5">
+                @foreach ($managedUsers as $managedUser)
+                    <article class="surface-card access-user-card">
+                        <div class="access-user-card__head">
+                            <div>
+                                <span class="soft-badge">{{ $managedUser->is_active ? 'Активен' : 'Отключен' }}</span>
+                                <h3>{{ $managedUser->name }}</h3>
+                            </div>
+                            @if ($managedUser->is_manager)
+                                <strong class="access-user-card__role">Менеджер</strong>
+                            @endif
+                        </div>
+
+                        <div class="access-user-card__meta">
+                            <div>
+                                <span>Компания</span>
+                                <strong>{{ $managedUser->company ?: 'Не указана' }}</strong>
+                            </div>
+                            <div>
+                                <span>Логин</span>
+                                <strong>{{ $managedUser->login }}</strong>
+                            </div>
+                            <div>
+                                <span>Email</span>
+                                <strong>{{ $managedUser->email }}</strong>
+                            </div>
+                            <div>
+                                <span>Прайс-профиль</span>
+                                <strong>{{ $managedUser->priceProfile?->name ?? 'Не назначен' }}</strong>
+                            </div>
+                        </div>
+                    </article>
+                @endforeach
+            </div>
+        </section>
+    @else
+        <section class="surface-card access-only-panel">
+            <span class="soft-badge">Авторизация</span>
+            <h1 class="access-only-panel__title">Доступ подтвержден.</h1>
+            <p class="access-only-panel__text">
+                Для вашего аккаунта включен вход в закрытую систему. Регистрация отключена, а все доступы создаются менеджером вручную.
             </p>
 
-            <div class="catalog-account-hero__meta">
-                <div class="catalog-account-meta-card">
+            <div class="access-only-panel__grid">
+                <div class="stat-card">
+                    <span>Компания</span>
+                    <strong>{{ $user->company ?: 'Не указана' }}</strong>
+                </div>
+                <div class="stat-card">
                     <span>Логин</span>
-                    <strong>{{ auth()->user()->login }}</strong>
+                    <strong>{{ $user->login }}</strong>
                 </div>
-                <div class="catalog-account-meta-card">
+                <div class="stat-card">
                     <span>Email</span>
-                    <strong>{{ auth()->user()->email }}</strong>
-                </div>
-                <div class="catalog-account-meta-card">
-                    <span>Доступ</span>
-                    <strong>Закрытый кабинет</strong>
-                </div>
-            </div>
-
-            <div class="catalog-account-hero__actions">
-                <a href="{{ route('catalog.index') }}" class="action-button">Перейти в каталог</a>
-                <a href="{{ route('favorites.index') }}" class="catalog-home-banner__ghost">Избранное</a>
-                <a href="{{ route('cart.index') }}" class="catalog-home-banner__ghost">Корзина</a>
-            </div>
-        </div>
-
-        <aside class="surface-card reveal-card catalog-account-sidebar">
-            <span class="soft-badge">Ваш профиль</span>
-
-            <div class="catalog-account-sidebar__stack">
-                <div class="stat-card">
-                    <span>Профиль цен</span>
-                    <strong>{{ $profile?->name ?? 'Базовый прайс' }}</strong>
+                    <strong>{{ $user->email }}</strong>
                 </div>
                 <div class="stat-card">
-                    <span>Колонка прайса</span>
-                    <strong>{{ $profile?->price_label ?? 'Цена 1' }}</strong>
-                </div>
-                <div class="stat-card">
-                    <span>Категорий</span>
-                    <strong>{{ $accountStats['rootCategories'] }}</strong>
+                    <span>Прайс-профиль</span>
+                    <strong>{{ $profile?->name ?? 'Не назначен' }}</strong>
                 </div>
             </div>
 
-            <div class="catalog-account-sidebar__summary">
-                <div class="catalog-account-kpi">
-                    <span>Заказов</span>
-                    <strong>{{ $accountStats['ordersCount'] }}</strong>
-                </div>
-                <div class="catalog-account-kpi">
-                    <span>Избранное</span>
-                    <strong>{{ $accountStats['favoritesCount'] }}</strong>
-                </div>
-                <div class="catalog-account-kpi">
-                    <span>Товаров в корзине</span>
-                    <strong>{{ $accountStats['cartQuantity'] }}</strong>
-                </div>
-                <div class="catalog-account-kpi">
-                    <span>Сумма заказов</span>
-                    <strong>{{ number_format($accountStats['totalSpent'], 0, ',', ' ') }} ₽</strong>
-                </div>
+            <div class="access-only-panel__notice">
+                Если нужно изменить данные, восстановить пароль или назначить другой прайс-профиль, это делает менеджер со своей панели.
             </div>
-
-            <div class="catalog-home-links">
-                <a href="{{ route('orders.index') }}" class="catalog-home-link">
-                    <span>История заказов</span>
-                    <strong>{{ $headerOrdersCount ?? 0 }}</strong>
-                </a>
-                <a href="{{ route('favorites.index') }}" class="catalog-home-link">
-                    <span>Избранные товары</span>
-                    <strong>{{ $headerFavoritesCount ?? 0 }}</strong>
-                </a>
-                <a href="{{ route('cart.index') }}" class="catalog-home-link">
-                    <span>Текущая корзина</span>
-                    <strong>{{ $headerCartCount ?? 0 }}</strong>
-                </a>
-            </div>
-        </aside>
-    </section>
-
-    <section class="catalog-account-section mt-10">
-        <div class="catalog-section-head">
-            <div>
-                <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Заказы</p>
-                <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Последние продажи</h2>
-            </div>
-            <p class="max-w-xl text-sm leading-6 text-slate-600">
-                Последние оформленные заказы по вашему кабинету. Здесь удобно быстро проверить статус и сумму без перехода в общую историю.
-            </p>
-        </div>
-
-        <div class="catalog-account-orders mt-5">
-            @forelse ($recentOrders as $order)
-                <article class="surface-card reveal-card catalog-account-order">
-                    <div class="catalog-account-order__head">
-                        <div>
-                            <span class="soft-badge">Заказ</span>
-                            <h3>{{ $order->number }}</h3>
-                        </div>
-                        <div class="catalog-account-order__status">
-                            <span>{{ $order->status }}</span>
-                            <strong>{{ number_format((float) $order->total_amount, 2, ',', ' ') }} ₽</strong>
-                        </div>
-                    </div>
-
-                    <div class="catalog-account-order__meta">
-                        <span>{{ optional($order->placed_at)->format('d.m.Y H:i') ?? 'Не указано' }}</span>
-                        <span>{{ $order->items_count }} поз.</span>
-                        <span>Оплата: {{ $order->payment_status }}</span>
-                    </div>
-
-                    @if ($order->items->isNotEmpty())
-                        <div class="catalog-account-order__items">
-                            @foreach ($order->items->take(3) as $item)
-                                <div class="catalog-account-order__item">
-                                    <strong>{{ $item->product_title }}</strong>
-                                    <span>{{ $item->quantity }} шт. • {{ number_format((float) $item->line_total, 2, ',', ' ') }} ₽</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-                </article>
-            @empty
-                <div class="surface-card p-8 text-center text-slate-600">
-                    Заказов пока нет. После оформления они появятся здесь.
-                </div>
-            @endforelse
-        </div>
-    </section>
-
-    <section class="catalog-account-columns mt-10">
-        <div class="surface-card reveal-card catalog-account-panel">
-            <div class="catalog-section-head">
-                <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Подборка</p>
-                    <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Избранное</h2>
-                </div>
-            </div>
-
-            <div class="catalog-account-products">
-                @forelse ($favoriteItems as $favoriteItem)
-                    @php($product = $favoriteItem->product)
-                    @php($price = $product?->priceForProfile($profile))
-
-                    @if ($product)
-                        <a href="{{ route('products.show', $product) }}" class="catalog-account-product">
-                            <div class="catalog-account-product__media">
-                                @if ($product->image_path)
-                                    <img src="{{ asset('storage/' . $product->image_path) }}" alt="{{ $product->title }}">
-                                @else
-                                    <span>{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($product->title, 0, 2)) }}</span>
-                                @endif
-                            </div>
-                            <div class="catalog-account-product__body">
-                                <span>{{ $product->category?->name ?? 'Каталог' }}</span>
-                                <strong>{{ $product->title }}</strong>
-                                <small>{{ $price?->display_value ?? $product->price_preview ?? 'Цена по запросу' }} ₽</small>
-                            </div>
-                        </a>
-                    @endif
-                @empty
-                    <div class="catalog-account-empty">Пока нет избранных товаров.</div>
-                @endforelse
-            </div>
-        </div>
-
-        <div class="surface-card reveal-card catalog-account-panel">
-            <div class="catalog-section-head">
-                <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Текущая работа</p>
-                    <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Корзина</h2>
-                </div>
-            </div>
-
-            <div class="catalog-account-products">
-                @forelse ($cartItems as $cartItem)
-                    @php($product = $cartItem->product)
-                    @php($price = $product?->priceForProfile($profile))
-
-                    @if ($product)
-                        <a href="{{ route('products.show', $product) }}" class="catalog-account-product">
-                            <div class="catalog-account-product__media">
-                                @if ($product->image_path)
-                                    <img src="{{ asset('storage/' . $product->image_path) }}" alt="{{ $product->title }}">
-                                @else
-                                    <span>{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($product->title, 0, 2)) }}</span>
-                                @endif
-                            </div>
-                            <div class="catalog-account-product__body">
-                                <span>{{ $product->category?->name ?? 'Каталог' }}</span>
-                                <strong>{{ $product->title }}</strong>
-                                <small>{{ $cartItem->quantity }} шт. • {{ $price?->display_value ?? $product->price_preview ?? 'Цена по запросу' }} ₽</small>
-                            </div>
-                        </a>
-                    @endif
-                @empty
-                    <div class="catalog-account-empty">Корзина пуста. Добавьте товары из каталога.</div>
-                @endforelse
-            </div>
-        </div>
-    </section>
+        </section>
+    @endif
 @endsection

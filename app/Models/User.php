@@ -20,6 +20,7 @@ use Illuminate\Notifications\Notifiable;
     'password',
     'price_profile_id',
     'is_active',
+    'is_manager',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -47,6 +48,11 @@ class User extends Authenticatable
         return $this->hasMany(Order::class)->latest('placed_at');
     }
 
+    public function isManager(): bool
+    {
+        return (bool) $this->is_manager;
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -57,6 +63,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'is_active' => 'boolean',
+            'is_manager' => 'boolean',
             'password' => 'hashed',
         ];
     }

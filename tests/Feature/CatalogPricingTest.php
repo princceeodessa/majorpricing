@@ -14,7 +14,7 @@ class CatalogPricingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_catalog_uses_price_for_authenticated_user_profile(): void
+    public function test_category_uses_price_for_authenticated_user_profile(): void
     {
         $baseProfile = PriceProfile::query()->create([
             'name' => 'Базовый прайс',
@@ -73,7 +73,7 @@ class CatalogPricingTest extends TestCase
             'min_amount' => 624.75,
         ]);
 
-        $response = $this->actingAs($user)->get('/');
+        $response = $this->actingAs($user)->get(route('categories.show', $category));
 
         $response->assertOk();
         $response->assertSeeText('Партнерский прайс');

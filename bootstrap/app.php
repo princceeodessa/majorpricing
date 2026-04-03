@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureIntegrationToken;
+use App\Http\Middleware\EnsureManager;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/');
         $middleware->alias([
             'integration.token' => EnsureIntegrationToken::class,
+            'manager' => EnsureManager::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
