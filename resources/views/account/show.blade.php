@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Личный кабинет MAJPR')
+@section('title', 'Личный кабинет MAJOR')
 
 @section('content')
     <section class="catalog-account-grid">

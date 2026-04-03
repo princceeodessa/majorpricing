@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'История заказов - MAJPR')
+@section('title', 'История заказов - MAJOR')
 
 @section('content')
     <section class="surface-card reveal-card catalog-page-hero p-6 sm:p-8">

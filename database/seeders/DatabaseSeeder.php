@@ -60,7 +60,7 @@ class DatabaseSeeder extends Seeder
             ['login' => 'manager'],
             [
                 'name' => 'Каталог Менеджер',
-                'company' => 'MAJPR',
+                'company' => 'MAJOR',
                 'email' => 'manager@major.local',
                 'email_verified_at' => now(),
                 'password' => 'MajorDemo123!',

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Каталог MAJPR')
+@section('title', 'Каталог MAJOR')
 
 @section('content')
     @php($profile = auth()->user()->priceProfile)
@@ -10,7 +10,7 @@
     @php($tertiaryBannerCategory = $rootCategories->skip(2)->first() ?? $secondaryBannerCategory)
     @php($bannerSlides = [
         [
-            'eyebrow' => 'Логистика MAJPR',
+            'eyebrow' => 'Логистика MAJOR',
             'title' => 'Доставка по Удмуртии и в ближайшие города России —',
             'accent' => 'БЕСПЛАТНО',
             'description' => 'Закрытый B2B-кабинет помогает быстро подтверждать заявку, видеть свою цену и работать с актуальным каталогом без лишних переписок по каждому артикулу.',

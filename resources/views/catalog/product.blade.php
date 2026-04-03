@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $product->title.' - MAJPR')
+@section('title', $product->title.' - MAJOR')
 
 @section('content')
     @php
@@ -14,7 +14,7 @@
             $product->measurement_value ? str_replace("\n", ' / ', $product->measurement_value) : null,
         ])->filter(fn ($value) => filled($value))->unique()->values()->take(4);
         $stageMetaFallback = $product->source_sheet ?: ($product->measurement_value ? str_replace("\n", ' / ', $product->measurement_value) : 'Позиция каталога');
-        $gallerySlides = ($galleryFacts->isNotEmpty() ? $galleryFacts : collect([$rootCategory?->name ?? $category?->name ?? 'MAJPR']))
+        $gallerySlides = ($galleryFacts->isNotEmpty() ? $galleryFacts : collect([$rootCategory?->name ?? $category?->name ?? 'MAJOR']))
             ->values()
             ->map(fn ($fact) => [
                 'thumb' => \Illuminate\Support\Str::limit($fact, 12),

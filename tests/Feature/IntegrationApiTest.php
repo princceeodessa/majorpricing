@@ -73,7 +73,7 @@ class IntegrationApiTest extends TestCase
         $user = User::factory()->create([
             'login' => 'integration-user',
             'email' => 'integration-user@example.com',
-            'company' => 'MAJPR LLC',
+            'company' => 'MAJOR LLC',
         ]);
 
         $category = Category::query()->create([
@@ -121,7 +121,7 @@ class IntegrationApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.number', 'ORD-20260402-00001');
-        $response->assertJsonPath('data.customer.company', 'MAJPR LLC');
+        $response->assertJsonPath('data.customer.company', 'MAJOR LLC');
         $response->assertJsonPath('data.items.0.product_slug', 'profil-a5');
     }
 

@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>@yield('title', 'MAJPR Catalog')</title>
+        <title>@yield('title', 'MAJOR Catalog')</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=ibm-plex-sans:400,500,600,700|manrope:400,500,600,700,800" rel="stylesheet" />
@@ -22,8 +22,8 @@
                 <header class="catalog-container catalog-site-header py-4">
                     <div class="catalog-header-shell">
                         <div class="catalog-header-toolbar">
-                            <a href="{{ route('catalog.index') }}" class="catalog-header-logo" aria-label="MAJPR">
-                                <span>MAJPR</span>
+                            <a href="{{ route('catalog.index') }}" class="catalog-header-logo" aria-label="MAJOR">
+                                <span>MAJOR</span>
                             </a>
 
                             <a href="{{ route('catalog.index') }}" class="catalog-header-catalog-trigger {{ request()->routeIs('catalog.*', 'categories.*', 'products.*') ? 'is-active' : '' }}">
