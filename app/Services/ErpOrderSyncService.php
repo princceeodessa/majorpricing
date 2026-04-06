@@ -87,10 +87,14 @@ class ErpOrderSyncService
             ],
             'customer' => [
                 'id' => $order->user?->id,
-                'name' => $order->user?->name,
-                'company' => $order->user?->company,
+                'name' => $order->customer_name ?? $order->user?->name,
+                'company' => $order->customer_company ?? $order->user?->company,
                 'login' => $order->user?->login,
-                'email' => $order->user?->email,
+                'email' => $order->customer_email ?? $order->user?->email,
+                'contact_person' => $order->customer_contact_person,
+                'phone' => $order->customer_phone,
+                'telegram' => $order->customer_telegram,
+                'delivery_address' => $order->customer_delivery_address,
                 'price_profile' => $order->user?->priceProfile?->name,
             ],
             'items' => $order->items->map(fn (OrderItem $item): array => [
@@ -109,4 +113,3 @@ class ErpOrderSyncService
         ];
     }
 }
-

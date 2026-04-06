@@ -30,6 +30,7 @@ class CartController extends Controller
         return view('cart.index', [
             'cartItems' => $cartItems,
             'summary' => $summary,
+            'user' => $request->user(),
         ]);
     }
 
@@ -78,7 +79,14 @@ class CartController extends Controller
     public function checkout(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'company' => ['nullable', 'string', 'max:255'],
             'comment' => ['nullable', 'string', 'max:1500'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:64'],
+            'telegram' => ['nullable', 'string', 'max:255'],
+            'delivery_address' => ['nullable', 'string', 'max:1500'],
+            'save_profile' => ['nullable', 'boolean'],
         ]);
 
         $user = $request->user();
@@ -90,7 +98,28 @@ class CartController extends Controller
             return redirect()->route('cart.index')->with('status', 'Корзина пока пуста.');
         }
 
-        $order = DB::transaction(function () use ($user, $validated, $cartItems, $summary): Order {
+        $contactSnapshot = [
+            'customer_name' => filled($validated['name'] ?? null) ? trim($validated['name']) : $user->name,
+            'customer_company' => filled($validated['company'] ?? null) ? trim($validated['company']) : $user->company,
+            'customer_email' => $user->email,
+            'customer_phone' => filled($validated['phone'] ?? null) ? trim($validated['phone']) : $user->phone,
+            'customer_contact_person' => filled($validated['contact_person'] ?? null) ? trim($validated['contact_person']) : ($user->contact_person ?: $user->name),
+            'customer_telegram' => filled($validated['telegram'] ?? null) ? trim($validated['telegram']) : $user->telegram,
+            'customer_delivery_address' => filled($validated['delivery_address'] ?? null) ? trim($validated['delivery_address']) : $user->delivery_address,
+        ];
+
+        if ($request->boolean('save_profile', true)) {
+            $user->forceFill([
+                'name' => $contactSnapshot['customer_name'],
+                'company' => $contactSnapshot['customer_company'],
+                'contact_person' => $contactSnapshot['customer_contact_person'],
+                'phone' => $contactSnapshot['customer_phone'],
+                'telegram' => $contactSnapshot['customer_telegram'],
+                'delivery_address' => $contactSnapshot['customer_delivery_address'],
+            ])->save();
+        }
+
+        $order = DB::transaction(function () use ($user, $validated, $cartItems, $summary, $contactSnapshot): Order {
             $order = Order::query()->create([
                 'user_id' => $user->id,
                 'status' => 'new',
@@ -99,6 +128,13 @@ class CartController extends Controller
                 'subtotal_amount' => $summary['total_amount'],
                 'total_amount' => $summary['total_amount'],
                 'price_profile_name' => $user->priceProfile?->name,
+                'customer_name' => $contactSnapshot['customer_name'],
+                'customer_company' => $contactSnapshot['customer_company'],
+                'customer_email' => $contactSnapshot['customer_email'],
+                'customer_phone' => $contactSnapshot['customer_phone'],
+                'customer_contact_person' => $contactSnapshot['customer_contact_person'],
+                'customer_telegram' => $contactSnapshot['customer_telegram'],
+                'customer_delivery_address' => $contactSnapshot['customer_delivery_address'],
                 'comment' => filled($validated['comment'] ?? null) ? trim($validated['comment']) : null,
                 'placed_at' => now(),
             ]);
@@ -134,7 +170,9 @@ class CartController extends Controller
 
         $this->erpOrderSyncService->push($order);
 
-        return redirect()->route('orders.index')->with('status', 'Заказ '.$order->number.' создан и отправлен в историю.');
+        return redirect()
+            ->route('orders.index')
+            ->with('status', 'Заказ '.$order->number.' создан и отправлен в историю.');
     }
 
     /**

@@ -29,7 +29,15 @@ class Order extends Model
         'subtotal_amount',
         'total_amount',
         'price_profile_name',
+        'customer_name',
+        'customer_company',
+        'customer_email',
+        'customer_phone',
+        'customer_contact_person',
+        'customer_telegram',
+        'customer_delivery_address',
         'comment',
+        'manager_comment',
         'placed_at',
     ];
 

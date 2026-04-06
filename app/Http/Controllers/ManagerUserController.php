@@ -15,6 +15,10 @@ class ManagerUserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'company' => ['nullable', 'string', 'max:255'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:64'],
+            'telegram' => ['nullable', 'string', 'max:255'],
+            'delivery_address' => ['nullable', 'string', 'max:1500'],
             'login' => ['required', 'string', 'max:255', 'alpha_dash', Rule::unique(User::class, 'login')],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
@@ -39,8 +43,12 @@ class ManagerUserController extends Controller
             ?? PriceProfile::query()->orderBy('column_index')->value('id');
 
         User::query()->create([
-            'name' => $validated['name'],
-            'company' => $validated['company'] ?: null,
+            'name' => trim($validated['name']),
+            'company' => filled($validated['company'] ?? null) ? trim($validated['company']) : null,
+            'contact_person' => filled($validated['contact_person'] ?? null) ? trim($validated['contact_person']) : null,
+            'phone' => filled($validated['phone'] ?? null) ? trim($validated['phone']) : null,
+            'telegram' => filled($validated['telegram'] ?? null) ? trim($validated['telegram']) : null,
+            'delivery_address' => filled($validated['delivery_address'] ?? null) ? trim($validated['delivery_address']) : null,
             'login' => $validated['login'],
             'email' => $validated['email'],
             'password' => $validated['password'],

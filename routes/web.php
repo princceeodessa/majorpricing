@@ -19,6 +19,7 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware('auth')->group(function (): void {
     Route::get('/', [CatalogController::class, 'index'])->name('catalog.index');
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
+    Route::patch('/account', [AccountController::class, 'update'])->name('account.update');
     Route::post('/account/users', [ManagerUserController::class, 'store'])
         ->middleware('manager')
         ->name('manager.users.store');
@@ -33,5 +34,6 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
     Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::patch('/orders/{order}', [OrderController::class, 'update'])->middleware('manager')->name('orders.update');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });

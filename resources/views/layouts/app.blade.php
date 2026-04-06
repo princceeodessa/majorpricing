@@ -51,11 +51,12 @@
                 <header class="catalog-container catalog-site-header py-4">
                     <div class="catalog-header-shell">
                         <div class="catalog-header-toolbar">
-                            <a href="{{ route('catalog.index') }}" class="catalog-header-logo" aria-label="MAJOR">
-                                <img src="{{ asset('brand/major-logo-wide.svg') }}" alt="MAJOR" class="catalog-header-logo__image">
-                            </a>
+                            <div class="catalog-header-brand">
+                                <a href="{{ route('catalog.index') }}" class="catalog-header-logo" aria-label="MAJOR">
+                                    <img src="{{ asset('brand/major-logo-wide.svg') }}" alt="MAJOR" class="catalog-header-logo__image">
+                                </a>
 
-                            <details class="catalog-header-catalog-menu">
+                                <details class="catalog-header-catalog-menu">
                                 <summary class="catalog-header-catalog-trigger {{ request()->routeIs('catalog.*', 'categories.*', 'products.*') ? 'is-active' : '' }}">
                                     <svg viewBox="0 0 24 24" aria-hidden="true">
                                         <path d="M4 6.5h8M4 12h16M4 17.5h10" />
@@ -85,7 +86,8 @@
                                         <p class="catalog-header-catalog-dropdown__empty">Категории появятся после наполнения каталога.</p>
                                     @endif
                                 </div>
-                            </details>
+                                </details>
+                            </div>
 
                             <form action="{{ route('catalog.index') }}" method="GET" class="catalog-header-searchbar">
                                 <input

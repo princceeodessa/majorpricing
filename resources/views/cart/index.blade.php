@@ -7,9 +7,10 @@
         <div class="catalog-page-head">
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Корзина</p>
-                <h1 class="mt-2 font-['IBM_Plex_Sans'] text-4xl font-semibold tracking-tight text-slate-950">Текущий заказ</h1>
+                <h1 class="mt-2 font-['IBM_Plex_Sans'] text-4xl font-semibold tracking-tight text-slate-950">Оформление заказа</h1>
                 <p class="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-                    Здесь собираются позиции из закрытого каталога. После подтверждения корзина превращается в заказ и уходит в историю.
+                    Проверьте позиции, оставьте контакты для связи с менеджером и отправьте заявку в работу.
+                    Данные можно заполнить прямо здесь или сохранить в профиле для следующих заказов.
                 </p>
             </div>
 
@@ -40,7 +41,7 @@
         <div class="surface-card mt-6 p-12 text-center">
             <h2 class="font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Корзина пока пуста</h2>
             <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-                Добавьте товары из карточек каталога, и здесь появится рабочая подборка для отправки в заказ.
+                Добавьте товары из каталога, и здесь появится подборка для отправки менеджеру.
             </p>
             <a href="{{ route('catalog.index') }}" class="catalog-buy-button mx-auto mt-6 w-fit">Вернуться в каталог</a>
         </div>
@@ -73,7 +74,7 @@
                                     <p class="catalog-cart-item__meta">
                                         {{ $product?->source_sheet ?? 'Закрытый каталог' }}
                                         @if ($product?->measurement_value)
-                                            · {{ \Illuminate\Support\Str::limit(str_replace("\n", ' / ', $product->measurement_value), 42) }}
+                                            · {{ \Illuminate\Support\Str::limit(str_replace("\n", ' / ', $product->measurement_value), 48) }}
                                         @endif
                                     </p>
                                 </div>
@@ -125,10 +126,10 @@
                     @csrf
 
                     <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Оформление</p>
-                        <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold tracking-tight text-slate-950">Подтвердить заказ</h2>
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Связь с менеджером</p>
+                        <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold tracking-tight text-slate-950">Приобрести и отправить заявку</h2>
                         <p class="mt-3 text-sm leading-6 text-slate-600">
-                            После подтверждения корзина очистится, а заказ появится в истории кабинета.
+                            Менеджер получит состав корзины, ваши контакты и комментарий по заказу. После отправки заказ появится в истории.
                         </p>
                     </div>
 
@@ -163,20 +164,93 @@
                         </div>
                     </div>
 
+                    <div class="catalog-checkout-fields">
+                        <label class="access-field">
+                            <span>Имя</span>
+                            <input
+                                type="text"
+                                name="name"
+                                value="{{ old('name', $user->name) }}"
+                                placeholder="Ваше имя"
+                                class="catalog-clean-input"
+                            >
+                        </label>
+
+                        <label class="access-field">
+                            <span>Компания</span>
+                            <input
+                                type="text"
+                                name="company"
+                                value="{{ old('company', $user->company) }}"
+                                placeholder="Название компании"
+                                class="catalog-clean-input"
+                            >
+                        </label>
+
+                        <label class="access-field">
+                            <span>Контактное лицо</span>
+                            <input
+                                type="text"
+                                name="contact_person"
+                                value="{{ old('contact_person', $user->contact_person ?: $user->name) }}"
+                                placeholder="К кому обращаться по заказу"
+                                class="catalog-clean-input"
+                            >
+                        </label>
+
+                        <label class="access-field">
+                            <span>Телефон</span>
+                            <input
+                                type="text"
+                                name="phone"
+                                value="{{ old('phone', $user->phone) }}"
+                                placeholder="+7 999 000-00-00"
+                                class="catalog-clean-input"
+                            >
+                        </label>
+
+                        <label class="access-field">
+                            <span>Telegram</span>
+                            <input
+                                type="text"
+                                name="telegram"
+                                value="{{ old('telegram', $user->telegram) }}"
+                                placeholder="@major_client"
+                                class="catalog-clean-input"
+                            >
+                        </label>
+
+                        <label class="access-field access-field--full">
+                            <span>Адрес / доставка</span>
+                            <input
+                                type="text"
+                                name="delivery_address"
+                                value="{{ old('delivery_address', $user->delivery_address) }}"
+                                placeholder="Город, адрес, объект"
+                                class="catalog-clean-input"
+                            >
+                        </label>
+                    </div>
+
                     <div class="space-y-2">
                         <label for="comment" class="catalog-filter-title">Комментарий к заказу</label>
                         <textarea
                             id="comment"
                             name="comment"
                             rows="4"
-                            placeholder="Например: отгрузка по объекту, резерв до даты, комментарий менеджеру"
+                            placeholder="Например: удобное время звонка, резерв, комментарий по объекту"
                             class="catalog-clean-input min-h-[120px] resize-y"
                         >{{ old('comment') }}</textarea>
                     </div>
 
-                    <button type="submit" class="catalog-buy-button w-full justify-center">Оформить заказ</button>
+                    <label class="access-checkbox">
+                        <input type="checkbox" name="save_profile" value="1" @checked(old('save_profile', '1') === '1')>
+                        Сохранить эти данные в профиле и использовать в следующих заказах
+                    </label>
 
-                    <a href="{{ route('orders.index') }}" class="catalog-reset-button w-full justify-center">Открыть историю заказов</a>
+                    <button type="submit" class="catalog-buy-button w-full justify-center">Приобрести и отправить менеджеру</button>
+
+                    <a href="{{ route('account.show') }}" class="catalog-reset-button w-full justify-center">Открыть профиль</a>
                 </form>
             </aside>
         </section>

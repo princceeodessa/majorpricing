@@ -8,10 +8,10 @@
             <div class="catalog-section-head">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Навигация</p>
-                    <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Ключевые категории</h2>
+                    <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Основные категории</h2>
                 </div>
                 <p class="max-w-xl text-sm leading-6 text-slate-600">
-                    Быстрый вход в основные направления каталога с наглядными превью товаров внутри каждой линии.
+                    Быстрый вход в основные направления каталога с реальными превью товаров, а не с пустыми заглушками.
                 </p>
             </div>
 
@@ -26,26 +26,32 @@
                     <div class="catalog-category-showcase__track">
                         @foreach ($rootCategories as $index => $category)
                             @php($previewImage = $category->catalog_preview_image ? asset($category->catalog_preview_image) : null)
+
                             <a
                                 href="{{ route('categories.show', $category) }}"
                                 class="catalog-category-card reveal-card"
-                                style="animation-delay: {{ $index * 70 }}ms;"
+                                style="animation-delay: {{ $index * 70 }}ms; --category-accent: {{ $category->accent_color ?? '#d11117' }};"
                             >
-                                <div class="catalog-category-card__head">
+                                <div class="catalog-category-card__copy">
+                                    <div class="catalog-category-card__head">
+                                        <span class="catalog-category-card__badge">{{ $category->children->count() }} секц.</span>
+                                        <span class="catalog-category-card__open">Открыть</span>
+                                    </div>
+
                                     <h3 class="catalog-category-card__title">{{ $category->name }}</h3>
-                                    <span class="catalog-category-card__badge">{{ $category->children->count() }} секц.</span>
+                                    <p class="catalog-category-card__meta">{{ $category->catalog_products_count }} товаров в направлении</p>
                                 </div>
 
-                                <p class="catalog-category-card__meta">{{ $category->catalog_products_count }} товаров в направлении</p>
-
                                 <div class="catalog-category-card__visual">
-                                    @if ($previewImage)
-                                        <img src="{{ $previewImage }}" alt="{{ $category->catalog_preview_title ?? $category->name }}" class="catalog-category-card__image">
-                                    @else
-                                        <div class="catalog-category-card__mark">
-                                            {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($category->name, 0, 2)) }}
-                                        </div>
-                                    @endif
+                                    <div class="catalog-category-card__media">
+                                        @if ($previewImage)
+                                            <img src="{{ $previewImage }}" alt="{{ $category->catalog_preview_title ?? $category->name }}" class="catalog-category-card__image">
+                                        @else
+                                            <div class="catalog-category-card__mark">
+                                                {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($category->name, 0, 2)) }}
+                                            </div>
+                                        @endif
+                                    </div>
                                 </div>
                             </a>
                         @endforeach

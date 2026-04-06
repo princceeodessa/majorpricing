@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Авторизация MAJOR')
+@section('title', 'Кабинет MAJOR')
 
 @section('content')
     @php($user = auth()->user())
@@ -8,15 +8,15 @@
     @if ($user->isManager())
         <section class="access-dashboard-grid">
             <div class="surface-card access-dashboard-hero">
-                <span class="soft-badge">Менеджерский доступ</span>
-                <h1 class="access-dashboard-hero__title">Управление пользователями и выдачей доступа.</h1>
+                <span class="soft-badge">Менеджерский кабинет</span>
+                <h1 class="access-dashboard-hero__title">Клиенты, контакты и работа с заказами в одном месте.</h1>
                 <p class="access-dashboard-hero__text">
-                    Система работает как закрытая авторизация без регистрации. Менеджер вручную создает логины, назначает прайс-профиль и управляет активностью пользователей.
+                    Здесь менеджер создает доступы, видит контактные данные клиентов и забирает заказы в работу. Все, что клиент укажет в профиле или при оформлении корзины, появится в менеджерском кабинете и в карточке заказа.
                 </p>
 
                 <div class="access-dashboard-stats">
                     <div class="stat-card">
-                        <span>Всего пользователей</span>
+                        <span>Пользователей</span>
                         <strong>{{ $managementStats['totalUsers'] }}</strong>
                     </div>
                     <div class="stat-card">
@@ -24,22 +24,26 @@
                         <strong>{{ $managementStats['activeUsers'] }}</strong>
                     </div>
                     <div class="stat-card">
-                        <span>Отключено</span>
-                        <strong>{{ $managementStats['disabledUsers'] }}</strong>
+                        <span>Новых заказов</span>
+                        <strong>{{ $managementStats['newOrders'] }}</strong>
                     </div>
                     <div class="stat-card">
-                        <span>Прайс-профилей</span>
-                        <strong>{{ $managementStats['profilesCount'] }}</strong>
+                        <span>В работе</span>
+                        <strong>{{ $managementStats['processingOrders'] }}</strong>
                     </div>
+                </div>
+
+                <div class="catalog-account-hero__actions">
+                    <a href="{{ route('orders.index') }}" class="action-button">Открыть заказы клиентов</a>
                 </div>
             </div>
 
             <div class="surface-card access-user-create">
                 <div>
-                    <span class="soft-badge">Новый пользователь</span>
-                    <h2 class="access-user-create__title">Добавление доступа</h2>
+                    <span class="soft-badge">Новый доступ</span>
+                    <h2 class="access-user-create__title">Добавление пользователя</h2>
                     <p class="access-user-create__text">
-                        Создайте логин, пароль и назначьте прайс-профиль. Регистрация для клиента по-прежнему отключена.
+                        Создайте логин, назначьте прайс-профиль и при необходимости сразу внесите контакты клиента, чтобы менеджеру не пришлось уточнять их позже.
                     </p>
                 </div>
 
@@ -49,12 +53,27 @@
                     <div class="access-user-create__grid">
                         <label class="access-field">
                             <span>Имя</span>
-                            <input type="text" name="name" value="{{ old('name') }}" placeholder="Например: Иван Петров">
+                            <input type="text" name="name" value="{{ old('name') }}" placeholder="Иван Петров">
                         </label>
 
                         <label class="access-field">
                             <span>Компания</span>
-                            <input type="text" name="company" value="{{ old('company') }}" placeholder="Например: ООО Партнер">
+                            <input type="text" name="company" value="{{ old('company') }}" placeholder="ООО Партнер">
+                        </label>
+
+                        <label class="access-field">
+                            <span>Контактное лицо</span>
+                            <input type="text" name="contact_person" value="{{ old('contact_person') }}" placeholder="Менеджер закупки">
+                        </label>
+
+                        <label class="access-field">
+                            <span>Телефон</span>
+                            <input type="text" name="phone" value="{{ old('phone') }}" placeholder="+7 999 000-00-00">
+                        </label>
+
+                        <label class="access-field">
+                            <span>Telegram</span>
+                            <input type="text" name="telegram" value="{{ old('telegram') }}" placeholder="@major_client">
                         </label>
 
                         <label class="access-field">
@@ -75,6 +94,11 @@
                         <label class="access-field">
                             <span>Подтверждение пароля</span>
                             <input type="password" name="password_confirmation" placeholder="Повторите пароль">
+                        </label>
+
+                        <label class="access-field access-field--full">
+                            <span>Адрес / комментарий к доставке</span>
+                            <input type="text" name="delivery_address" value="{{ old('delivery_address') }}" placeholder="Город, улица, объект, удобное время связи">
                         </label>
 
                         <label class="access-field access-field--full">
@@ -103,11 +127,11 @@
         <section class="mt-10">
             <div class="catalog-section-head">
                 <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Доступы</p>
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Клиенты</p>
                     <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Все пользователи</h2>
                 </div>
                 <p class="max-w-xl text-sm leading-6 text-slate-600">
-                    Список созданных пользователей с логином, компанией, статусом и назначенным прайс-профилем.
+                    Список клиентов с текущими контактами и назначенными профилями. Эти данные менеджер увидит и в заказах.
                 </p>
             </div>
 
@@ -138,8 +162,24 @@
                                 <strong>{{ $managedUser->email }}</strong>
                             </div>
                             <div>
+                                <span>Телефон</span>
+                                <strong>{{ $managedUser->phone ?: 'Не указан' }}</strong>
+                            </div>
+                            <div>
+                                <span>Контакт</span>
+                                <strong>{{ $managedUser->contact_person ?: 'Не указан' }}</strong>
+                            </div>
+                            <div>
+                                <span>Telegram</span>
+                                <strong>{{ $managedUser->telegram ?: 'Не указан' }}</strong>
+                            </div>
+                            <div class="access-field--full">
                                 <span>Прайс-профиль</span>
                                 <strong>{{ $managedUser->priceProfile?->name ?? 'Не назначен' }}</strong>
+                            </div>
+                            <div class="access-field--full">
+                                <span>Адрес / доставка</span>
+                                <strong>{{ $managedUser->delivery_address ?: 'Не указан' }}</strong>
                             </div>
                         </div>
                     </article>
@@ -151,7 +191,7 @@
             <span class="soft-badge">Авторизация</span>
             <h1 class="access-only-panel__title">Доступ подтвержден.</h1>
             <p class="access-only-panel__text">
-                Для вашего аккаунта включен вход в закрытую систему. Регистрация отключена, а все доступы создаются менеджером вручную.
+                Профиль закрыт для самостоятельной регистрации. Ниже можно заполнить контакты и адрес, чтобы менеджер видел их в кабинете и автоматически получал при оформлении заказа.
             </p>
 
             <div class="access-only-panel__grid">
@@ -172,10 +212,59 @@
                     <strong>{{ $profile?->name ?? 'Не назначен' }}</strong>
                 </div>
             </div>
+        </section>
 
-            <div class="access-only-panel__notice">
-                Если нужно изменить данные, восстановить пароль или назначить другой прайс-профиль, это делает менеджер со своей панели.
+        <section class="surface-card mt-8 catalog-account-panel">
+            <div class="catalog-page-head">
+                <div>
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Контакты для менеджера</p>
+                    <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Профиль клиента</h2>
+                    <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                        Эти данные автоматически подставятся в корзине при оформлении заказа. Их же увидит менеджер в списке пользователей и в карточке заказа.
+                    </p>
+                </div>
+
+                <a href="{{ route('orders.index') }}" class="ghost-button">История заказов</a>
             </div>
+
+            <form action="{{ route('account.update') }}" method="POST" class="access-user-create__form mt-8">
+                @csrf
+                @method('PATCH')
+
+                <div class="access-user-create__grid">
+                    <label class="access-field">
+                        <span>Имя</span>
+                        <input type="text" name="name" value="{{ old('name', $user->name) }}" placeholder="Ваше имя">
+                    </label>
+
+                    <label class="access-field">
+                        <span>Компания</span>
+                        <input type="text" name="company" value="{{ old('company', $user->company) }}" placeholder="Название компании">
+                    </label>
+
+                    <label class="access-field">
+                        <span>Контактное лицо</span>
+                        <input type="text" name="contact_person" value="{{ old('contact_person', $user->contact_person) }}" placeholder="К кому обращаться по заказу">
+                    </label>
+
+                    <label class="access-field">
+                        <span>Телефон</span>
+                        <input type="text" name="phone" value="{{ old('phone', $user->phone) }}" placeholder="+7 999 000-00-00">
+                    </label>
+
+                    <label class="access-field access-field--full">
+                        <span>Telegram / мессенджер</span>
+                        <input type="text" name="telegram" value="{{ old('telegram', $user->telegram) }}" placeholder="@major_client">
+                    </label>
+
+                    <label class="access-field access-field--full">
+                        <span>Адрес / комментарий для доставки</span>
+                        <input type="text" name="delivery_address" value="{{ old('delivery_address', $user->delivery_address) }}" placeholder="Город, адрес, объект, удобное время связи">
+                    </label>
+                </div>
+
+                <button type="submit" class="action-button access-user-create__submit">Сохранить профиль</button>
+            </form>
         </section>
     @endif
 @endsection

@@ -39,6 +39,10 @@ class ManagerUserManagementTest extends TestCase
         $response = $this->actingAs($manager)->post(route('manager.users.store'), [
             'name' => 'Новый клиент',
             'company' => 'ООО Новый клиент',
+            'contact_person' => 'Алексей',
+            'phone' => '+7 999 111-22-33',
+            'telegram' => '@newclient',
+            'delivery_address' => 'Саратов, объект 5',
             'login' => 'new_client',
             'email' => 'new-client@example.com',
             'password' => 'StrongPass123',
@@ -54,6 +58,10 @@ class ManagerUserManagementTest extends TestCase
         $this->assertDatabaseHas('users', [
             'name' => 'Новый клиент',
             'company' => 'ООО Новый клиент',
+            'contact_person' => 'Алексей',
+            'phone' => '+7 999 111-22-33',
+            'telegram' => '@newclient',
+            'delivery_address' => 'Саратов, объект 5',
             'login' => 'new_client',
             'email' => 'new-client@example.com',
             'price_profile_id' => $partnerProfile->id,
