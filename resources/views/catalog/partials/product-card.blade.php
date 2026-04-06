@@ -5,7 +5,6 @@
     $detailLine = $product->description
         ? \Illuminate\Support\Str::limit(str_replace("\n", ' / ', $product->description), 108)
         : ($product->measurement_value ? \Illuminate\Support\Str::limit(str_replace("\n", ' / ', $product->measurement_value), 78) : 'Подробная спецификация открывается внутри карточки.');
-    $visualCaption = $product->source_sheet ?: ($product->measurement_value ? str_replace("\n", ' / ', $product->measurement_value) : 'Позиция каталога');
     $visualMark = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($product->title, 0, 2));
     $imageUrl = $product->image_path ? asset($product->image_path) : null;
     $productAccents = ['#d11117', '#c81e1e', '#b91c1c', '#991b1b', '#be123c', '#7f1d1d'];
@@ -24,15 +23,20 @@
 
     <a href="{{ route('products.show', $product) }}" class="catalog-product-card__visual-link">
         <div class="catalog-product-card__visual">
-            <span class="catalog-product-card__badge">{{ \Illuminate\Support\Str::limit($rootCategory?->name ?? $product->category?->name ?? 'Каталог', 18) }}</span>
-            @if ($imageUrl)
-                <div class="catalog-product-card__image-wrap">
-                    <img src="{{ $imageUrl }}" alt="{{ $product->title }}" class="catalog-product-card__image">
-                </div>
-            @else
+            <div class="catalog-product-card__image-wrap {{ $imageUrl ? '' : 'is-placeholder' }}">
+                @if ($imageUrl)
+                    <img
+                        src="{{ $imageUrl }}"
+                        alt="{{ $product->title }}"
+                        class="catalog-product-card__image"
+                        loading="lazy"
+                        decoding="async"
+                        onerror="this.onerror=null; this.closest('.catalog-product-card__image-wrap').classList.add('is-fallback');"
+                    >
+                @endif
+
                 <div class="catalog-product-card__mark">{{ $visualMark }}</div>
-            @endif
-            <p class="catalog-product-card__caption">{{ \Illuminate\Support\Str::limit($visualCaption, 34) }}</p>
+            </div>
         </div>
     </a>
 

@@ -1,9 +1,38 @@
 <!DOCTYPE html>
 <html lang="ru">
     <head>
+        @php
+            $metaTitle = trim($__env->yieldContent('title', 'MAJOR'));
+            $metaDescription = trim($__env->yieldContent('meta_description', 'Закрытый B2B-каталог MAJOR с персональными ценами, актуальным каталогом и быстрым оформлением заказов для партнеров.'));
+            $metaImage = trim($__env->yieldContent('meta_image', asset('brand/major-link-badge.jpg')));
+            $metaUrl = url()->current();
+        @endphp
+
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>@yield('title', 'MAJOR Catalog')</title>
+        <title>{{ $metaTitle }}</title>
+        <meta name="description" content="{{ $metaDescription }}">
+        <meta name="theme-color" content="#d60000">
+
+        <link rel="canonical" href="{{ $metaUrl }}">
+        <link rel="icon" type="image/svg+xml" sizes="any" href="{{ asset('brand/major-favicon.svg') }}">
+        <link rel="icon" type="image/png" sizes="768x768" href="{{ asset('brand/major-favicon.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('brand/major-favicon.png') }}">
+        <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+
+        <meta property="og:type" content="website">
+        <meta property="og:locale" content="ru_RU">
+        <meta property="og:site_name" content="MAJOR">
+        <meta property="og:title" content="{{ $metaTitle }}">
+        <meta property="og:description" content="{{ $metaDescription }}">
+        <meta property="og:url" content="{{ $metaUrl }}">
+        <meta property="og:image" content="{{ $metaImage }}">
+        <meta property="og:image:alt" content="MAJOR">
+
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{{ $metaTitle }}">
+        <meta name="twitter:description" content="{{ $metaDescription }}">
+        <meta name="twitter:image" content="{{ $metaImage }}">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=ibm-plex-sans:400,500,600,700|manrope:400,500,600,700,800" rel="stylesheet" />
@@ -23,7 +52,7 @@
                     <div class="catalog-header-shell">
                         <div class="catalog-header-toolbar">
                             <a href="{{ route('catalog.index') }}" class="catalog-header-logo" aria-label="MAJOR">
-                                <span>MAJOR</span>
+                                <img src="{{ asset('brand/major-logo-wide.svg') }}" alt="MAJOR" class="catalog-header-logo__image">
                             </a>
 
                             <details class="catalog-header-catalog-menu">
