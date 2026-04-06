@@ -15,10 +15,6 @@
 
             <div class="mt-8 grid gap-3 sm:grid-cols-3">
                 <div class="stat-card">
-                    <span>Формат</span>
-                    <strong>Private only</strong>
-                </div>
-                <div class="stat-card">
                     <span>Доступ</span>
                     <strong>Только по логину</strong>
                 </div>
@@ -38,10 +34,6 @@
                 </p>
 
                 @if (app()->environment('local'))
-                    <div class="mt-5 rounded-[24px] border border-slate-200 bg-slate-50/90 p-4 text-sm leading-6 text-slate-700">
-                        Для входа используйте логин <span class="font-semibold text-slate-950">manager</span>, <span class="font-semibold text-slate-950">partner</span> или <span class="font-semibold text-slate-950">vip</span>.
-                        Пароль для всех демо-пользователей: <span class="font-semibold text-slate-950">MajorDemo123!</span>
-                    </div>
                 @endif
             </div>
 
@@ -86,14 +78,6 @@
             </form>
 
             @if (app()->environment('local'))
-                <div class="mt-9 rounded-[30px] border border-slate-200 bg-slate-50/90 p-6">
-                    <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Демо-доступ</p>
-                    <div class="mt-4 space-y-2 text-base text-slate-700">
-                        <p><span class="font-semibold text-slate-950">manager</span> / <span class="font-semibold text-slate-950">MajorDemo123!</span></p>
-                        <p><span class="font-semibold text-slate-950">partner</span> / <span class="font-semibold text-slate-950">MajorDemo123!</span></p>
-                        <p><span class="font-semibold text-slate-950">vip</span> / <span class="font-semibold text-slate-950">MajorDemo123!</span></p>
-                    </div>
-                </div>
             @endif
         </section>
     </div>
