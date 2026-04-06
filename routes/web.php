@@ -17,7 +17,7 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::middleware('auth')->group(function (): void {
-    Route::get('/', [AccountController::class, 'show'])->name('catalog.index');
+    Route::get('/', [CatalogController::class, 'index'])->name('catalog.index');
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
     Route::post('/account/users', [ManagerUserController::class, 'store'])
         ->middleware('manager')

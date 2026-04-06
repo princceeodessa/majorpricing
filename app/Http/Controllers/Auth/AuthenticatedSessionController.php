@@ -43,7 +43,11 @@ class AuthenticatedSessionController extends Controller
         Auth::login($user, (bool) ($credentials['remember'] ?? false));
         $request->session()->regenerate();
 
-        return redirect()->intended(route('catalog.index'));
+        $defaultRoute = $user->isManager()
+            ? route('account.show')
+            : route('catalog.index');
+
+        return redirect()->intended($defaultRoute);
     }
 
     public function destroy(Request $request): RedirectResponse

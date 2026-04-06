@@ -19,9 +19,47 @@
             @if (auth()->check())
                 <header class="catalog-container catalog-site-header py-4">
                     <div class="catalog-simple-header surface-card">
-                        <a href="{{ route('catalog.index') }}" class="catalog-header-logo" aria-label="MAJOR">
-                            <span>MAJOR</span>
-                        </a>
+                        <div class="catalog-simple-header__primary">
+                            <a href="{{ route('catalog.index') }}" class="catalog-header-logo" aria-label="MAJOR">
+                                <span>MAJOR</span>
+                            </a>
+
+                            <nav class="catalog-simple-header__nav" aria-label="Основная навигация">
+                                <a
+                                    href="{{ route('catalog.index') }}"
+                                    class="catalog-simple-header__link {{ request()->routeIs('catalog.index', 'categories.*', 'products.*') ? 'is-active' : '' }}"
+                                >
+                                    Каталог
+                                </a>
+                                <a
+                                    href="{{ route('account.show') }}"
+                                    class="catalog-simple-header__link {{ request()->routeIs('account.show', 'manager.users.*') ? 'is-active' : '' }}"
+                                >
+                                    Кабинет
+                                </a>
+                                <a
+                                    href="{{ route('favorites.index') }}"
+                                    class="catalog-simple-header__link {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}"
+                                >
+                                    Избранное
+                                    <span>{{ $headerFavoritesCount ?? 0 }}</span>
+                                </a>
+                                <a
+                                    href="{{ route('cart.index') }}"
+                                    class="catalog-simple-header__link {{ request()->routeIs('cart.*') ? 'is-active' : '' }}"
+                                >
+                                    Корзина
+                                    <span>{{ $headerCartCount ?? 0 }}</span>
+                                </a>
+                                <a
+                                    href="{{ route('orders.index') }}"
+                                    class="catalog-simple-header__link {{ request()->routeIs('orders.*') ? 'is-active' : '' }}"
+                                >
+                                    Заказы
+                                    <span>{{ $headerOrdersCount ?? 0 }}</span>
+                                </a>
+                            </nav>
+                        </div>
 
                         <div class="catalog-simple-header__meta">
                             <span class="soft-badge catalog-simple-header__badge">
