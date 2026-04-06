@@ -474,6 +474,41 @@ const setupCategoryRails = () => {
     });
 };
 
+const setupCatalogMenus = () => {
+    const menus = Array.from(document.querySelectorAll('.catalog-header-catalog-menu'))
+        .filter((menu) => menu instanceof HTMLElement);
+
+    if (menus.length === 0) {
+        return;
+    }
+
+    document.addEventListener('click', (event) => {
+        menus.forEach((menu) => {
+            if (!(menu instanceof HTMLDetailsElement)) {
+                return;
+            }
+
+            if (event.target instanceof Node && menu.contains(event.target)) {
+                return;
+            }
+
+            menu.removeAttribute('open');
+        });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') {
+            return;
+        }
+
+        menus.forEach((menu) => {
+            if (menu instanceof HTMLDetailsElement) {
+                menu.removeAttribute('open');
+            }
+        });
+    });
+};
+
 const setupInfiniteFeeds = () => {
     document.querySelectorAll('[data-infinite-feed]').forEach((feedRoot) => {
         if (!(feedRoot instanceof HTMLElement)) {
@@ -606,6 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupQuantityControls();
     setupProductGalleries();
     setupHomeBanners();
+    setupCatalogMenus();
     setupCategoryRails();
     setupInfiniteFeeds();
 });

@@ -26,13 +26,37 @@
                                 <span>MAJOR</span>
                             </a>
 
-                            <a href="{{ route('catalog.index') }}" class="catalog-header-catalog-trigger {{ request()->routeIs('catalog.*', 'categories.*', 'products.*') ? 'is-active' : '' }}">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M4 6.5h8M4 12h16M4 17.5h10" />
-                                    <path d="M17 5l3 3-3 3" />
-                                </svg>
-                                <span>Каталог</span>
-                            </a>
+                            <details class="catalog-header-catalog-menu">
+                                <summary class="catalog-header-catalog-trigger {{ request()->routeIs('catalog.*', 'categories.*', 'products.*') ? 'is-active' : '' }}">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M4 6.5h8M4 12h16M4 17.5h10" />
+                                        <path d="M17 5l3 3-3 3" />
+                                    </svg>
+                                    <span>Каталог</span>
+                                </summary>
+
+                                <div class="catalog-header-catalog-dropdown">
+                                    <a href="{{ route('catalog.index') }}" class="catalog-header-catalog-dropdown__all">
+                                        Весь каталог
+                                    </a>
+
+                                    @if (($navCategories ?? collect())->isNotEmpty())
+                                        <div class="catalog-header-catalog-dropdown__grid">
+                                            @foreach ($navCategories as $navCategory)
+                                                @php($isActiveCategory = request()->routeIs('categories.show') && $routeCategory && ($routeCategory->id === $navCategory->id || $routeCategory->parent_id === $navCategory->id))
+                                                <a
+                                                    href="{{ route('categories.show', $navCategory) }}"
+                                                    class="catalog-header-catalog-dropdown__link {{ $isActiveCategory ? 'is-active' : '' }}"
+                                                >
+                                                    {{ $navCategory->name }}
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <p class="catalog-header-catalog-dropdown__empty">Категории появятся после наполнения каталога.</p>
+                                    @endif
+                                </div>
+                            </details>
 
                             <form action="{{ route('catalog.index') }}" method="GET" class="catalog-header-searchbar">
                                 <input
@@ -89,21 +113,6 @@
                                 </form>
                             </div>
                         </div>
-
-                        @if (($navCategories ?? collect())->isNotEmpty())
-                            <div class="catalog-header-subline">
-                                <div class="catalog-header-menu-wrap">
-                                    <nav class="catalog-header-menu" aria-label="Навигация по категориям">
-                                        @foreach ($navCategories as $navCategory)
-                                            @php($isActiveCategory = request()->routeIs('categories.show') && $routeCategory && ($routeCategory->id === $navCategory->id || $routeCategory->parent_id === $navCategory->id))
-                                            <a href="{{ route('categories.show', $navCategory) }}" class="catalog-header-menu-link {{ $isActiveCategory ? 'is-active' : '' }}">
-                                                {{ $navCategory->name }}
-                                            </a>
-                                        @endforeach
-                                    </nav>
-                                </div>
-                            </div>
-                        @endif
                     </div>
                 </header>
             @endif

@@ -3,130 +3,8 @@
 @section('title', 'Каталог MAJOR')
 
 @section('content')
-    @php($profile = auth()->user()->priceProfile)
-    @php($primaryBannerCategory = $rootCategories->first())
-    @php($secondaryBannerCategory = $rootCategories->skip(1)->first() ?? $primaryBannerCategory)
-    @php($tertiaryBannerCategory = $rootCategories->skip(2)->first() ?? $secondaryBannerCategory)
-    @php($bannerSlides = [
-        [
-            'eyebrow' => 'Логистика MAJOR',
-            'title' => 'Доставка по Удмуртии и в ближайшие города России —',
-            'accent' => 'БЕСПЛАТНО',
-            'description' => 'Закрытый B2B-кабинет помогает быстро подтверждать заявку, видеть свою цену и работать с актуальным каталогом без лишних переписок по каждому артикулу.',
-            'action_label' => 'Открыть каталог',
-            'action_url' => route('catalog.index'),
-            'secondary_label' => 'Смотреть профили',
-            'secondary_url' => $primaryBannerCategory ? route('categories.show', $primaryBannerCategory) : route('catalog.index'),
-            'figure' => '24/7',
-            'figure_caption' => 'поддержка менеджера',
-            'panel_label' => 'Отгрузка',
-            'panel_text' => 'По согласованному графику для салонов, монтажных команд и дилеров.',
-            'points' => ['Без доплаты по Удмуртии', 'Ближайшие города России', 'Подтверждение в рабочем кабинете'],
-            'tone' => 'delivery',
-        ],
-        [
-            'eyebrow' => 'Единая витрина',
-            'title' => 'Профили, карнизы и инструмент',
-            'accent' => 'В ОДНОМ КАБИНЕТЕ',
-            'description' => 'Быстрый поиск по линейке, избранное, корзина, история продаж и подбор похожих товаров внутри карточек без переходов между системами.',
-            'action_label' => 'Перейти к товарам',
-            'action_url' => route('catalog.index'),
-            'secondary_label' => 'Категории каталога',
-            'secondary_url' => $tertiaryBannerCategory ? route('categories.show', $tertiaryBannerCategory) : route('catalog.index'),
-            'figure' => number_format($totalProducts, 0, ',', ' '),
-            'figure_caption' => 'товаров в базе',
-            'panel_label' => 'Каталог',
-            'panel_text' => 'Навигация по категориям, разделам и свежим позициям на одном экране.',
-            'points' => ["{$rootCategories->count()} категорий", "{$totalSections} разделов", "{$totalProducts} товаров"],
-            'tone' => 'catalog',
-        ],
-    ])
-
-    <section class="catalog-home-grid catalog-home-grid--solo">
-        <div class="surface-card reveal-card catalog-home-banners" data-home-banners data-home-banner-interval="6800">
-            <div class="catalog-home-banners__viewport">
-                @foreach ($bannerSlides as $slide)
-                    <article
-                        class="catalog-home-banner catalog-home-banner--{{ $slide['tone'] }} {{ $loop->first ? 'is-active' : '' }}"
-                        data-home-banner-slide
-                        aria-hidden="{{ $loop->first ? 'false' : 'true' }}"
-                    >
-                        <div class="catalog-home-banner__copy">
-                            <span class="soft-badge catalog-home-banner__badge">{{ $slide['eyebrow'] }}</span>
-                            <h1 class="catalog-home-banner__title">
-                                {{ $slide['title'] }}
-                                <span>{{ $slide['accent'] }}</span>
-                            </h1>
-                            <p class="catalog-home-banner__description">{{ $slide['description'] }}</p>
-
-                            <div class="catalog-home-banner__actions">
-                                <a href="{{ $slide['action_url'] }}" class="action-button">{{ $slide['action_label'] }}</a>
-                                <a href="{{ $slide['secondary_url'] }}" class="catalog-home-banner__ghost">
-                                    {{ $slide['secondary_label'] }}
-                                </a>
-                            </div>
-                        </div>
-
-                        <div class="catalog-home-banner__visual" aria-hidden="true">
-                            <div class="catalog-home-banner__figure">
-                                <span>{{ $slide['panel_label'] }}</span>
-                                <strong>{{ $slide['figure'] }}</strong>
-                                <small>{{ $slide['figure_caption'] }}</small>
-                            </div>
-
-                            <div class="catalog-home-banner__panel">
-                                <span>{{ $slide['panel_label'] }}</span>
-                                <p>{{ $slide['panel_text'] }}</p>
-                            </div>
-
-                            <div class="catalog-home-banner__list">
-                                @foreach ($slide['points'] as $point)
-                                    <span>{{ $point }}</span>
-                                @endforeach
-                            </div>
-                        </div>
-                    </article>
-                @endforeach
-            </div>
-
-            <div class="catalog-home-banners__footer">
-                <div class="catalog-home-banners__progress">
-                    <span data-home-banner-progress></span>
-                </div>
-
-                <div class="catalog-home-banners__meta catalog-home-banners__meta--compact">
-                    <div class="catalog-home-banners__controls">
-                        <button type="button" class="catalog-home-banners__arrow" data-home-banner-prev aria-label="Предыдущий баннер">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M14.5 5 8 12l6.5 7" />
-                            </svg>
-                        </button>
-
-                        <div class="catalog-home-banners__dots" role="tablist" aria-label="Навигация по баннерам">
-                            @foreach ($bannerSlides as $index => $slide)
-                                <button
-                                    type="button"
-                                    class="catalog-home-banners__dot {{ $loop->first ? 'is-active' : '' }}"
-                                    data-home-banner-dot="{{ $index }}"
-                                    aria-label="Баннер {{ $index + 1 }}"
-                                    aria-pressed="{{ $loop->first ? 'true' : 'false' }}"
-                                ></button>
-                            @endforeach
-                        </div>
-
-                        <button type="button" class="catalog-home-banners__arrow" data-home-banner-next aria-label="Следующий баннер">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="m9.5 5 6.5 7-6.5 7" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     @if ($rootCategories->isNotEmpty())
-        <section class="mt-10">
+        <section>
             <div class="catalog-section-head">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Навигация</p>
@@ -146,31 +24,31 @@
 
                 <div class="catalog-category-showcase__viewport" data-category-rail-track>
                     <div class="catalog-category-showcase__track">
-                @foreach ($rootCategories as $index => $category)
-                        @php($previewImage = $category->catalog_preview_image ? asset($category->catalog_preview_image) : null)
-                        <a
-                            href="{{ route('categories.show', $category) }}"
-                            class="catalog-category-card reveal-card"
-                            style="animation-delay: {{ $index * 70 }}ms;"
-                        >
-                            <div class="catalog-category-card__head">
-                                <h3 class="catalog-category-card__title">{{ $category->name }}</h3>
-                                <span class="catalog-category-card__badge">{{ $category->children->count() }} секц.</span>
-                            </div>
+                        @foreach ($rootCategories as $index => $category)
+                            @php($previewImage = $category->catalog_preview_image ? asset($category->catalog_preview_image) : null)
+                            <a
+                                href="{{ route('categories.show', $category) }}"
+                                class="catalog-category-card reveal-card"
+                                style="animation-delay: {{ $index * 70 }}ms;"
+                            >
+                                <div class="catalog-category-card__head">
+                                    <h3 class="catalog-category-card__title">{{ $category->name }}</h3>
+                                    <span class="catalog-category-card__badge">{{ $category->children->count() }} секц.</span>
+                                </div>
 
-                            <p class="catalog-category-card__meta">{{ $category->catalog_products_count }} товаров в направлении</p>
+                                <p class="catalog-category-card__meta">{{ $category->catalog_products_count }} товаров в направлении</p>
 
-                            <div class="catalog-category-card__visual">
-                                @if ($previewImage)
-                                    <img src="{{ $previewImage }}" alt="{{ $category->catalog_preview_title ?? $category->name }}" class="catalog-category-card__image">
-                                @else
-                                    <div class="catalog-category-card__mark">
-                                        {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($category->name, 0, 2)) }}
-                                    </div>
-                                @endif
-                            </div>
-                        </a>
-                @endforeach
+                                <div class="catalog-category-card__visual">
+                                    @if ($previewImage)
+                                        <img src="{{ $previewImage }}" alt="{{ $category->catalog_preview_title ?? $category->name }}" class="catalog-category-card__image">
+                                    @else
+                                        <div class="catalog-category-card__mark">
+                                            {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($category->name, 0, 2)) }}
+                                        </div>
+                                    @endif
+                                </div>
+                            </a>
+                        @endforeach
                     </div>
                 </div>
 
