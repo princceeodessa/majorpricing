@@ -3057,6 +3057,11 @@
         margin-left: auto;
     }
 
+    .catalog-header-actions__logout {
+        display: inline-flex;
+        align-items: center;
+    }
+
     .catalog-header-subline {
         gap: clamp(0.85rem, 1.1vw, 1.2rem);
     }
@@ -4284,6 +4289,16 @@
 
         .catalog-home-banners__meta--compact {
             justify-content: center;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .catalog-header-actions__logout {
+            width: 100%;
+        }
+
+        .catalog-header-actions__logout .catalog-header-exit {
+            width: 100%;
         }
     }
 

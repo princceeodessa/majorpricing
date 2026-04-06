@@ -82,12 +82,17 @@
                                     </span>
                                     <span class="catalog-header-icon-link__label">Корзина</span>
                                 </a>
+
+                                <form action="{{ route('logout') }}" method="POST" class="catalog-header-actions__logout">
+                                    @csrf
+                                    <button type="submit" class="catalog-header-exit">Выйти</button>
+                                </form>
                             </div>
                         </div>
 
-                        <div class="catalog-header-subline">
-                            <div class="catalog-header-menu-wrap">
-                                @if (($navCategories ?? collect())->isNotEmpty())
+                        @if (($navCategories ?? collect())->isNotEmpty())
+                            <div class="catalog-header-subline">
+                                <div class="catalog-header-menu-wrap">
                                     <nav class="catalog-header-menu" aria-label="Навигация по категориям">
                                         @foreach ($navCategories as $navCategory)
                                             @php($isActiveCategory = request()->routeIs('categories.show') && $routeCategory && ($routeCategory->id === $navCategory->id || $routeCategory->parent_id === $navCategory->id))
@@ -96,36 +101,9 @@
                                             </a>
                                         @endforeach
                                     </nav>
-                                @endif
+                                </div>
                             </div>
-
-                            <div class="catalog-header-account">
-                                <a href="{{ route('orders.index') }}" class="catalog-header-meta-pill {{ request()->routeIs('orders.*') ? 'is-active' : '' }}">
-                                    <span>Заказы</span>
-                                    <strong>{{ $headerOrdersCount ?? 0 }}</strong>
-                                </a>
-                                <a href="{{ route('account.show') }}" class="catalog-header-meta-pill {{ request()->routeIs('account.*') ? 'is-active' : '' }}">
-                                    <span>Кабинет</span>
-                                    <strong>{{ auth()->user()->isManager() ? 'Менеджер' : 'Пользователь' }}</strong>
-                                </a>
-                                <div class="catalog-header-meta-pill">
-                                    <span>Логин</span>
-                                    <strong>{{ auth()->user()->login }}</strong>
-                                </div>
-                                <div class="catalog-header-meta-pill">
-                                    <span>Прайс</span>
-                                    <strong>{{ auth()->user()->priceProfile?->name ?? 'Базовый прайс' }}</strong>
-                                </div>
-                                <div class="catalog-header-meta-pill">
-                                    <span>Компания</span>
-                                    <strong>{{ auth()->user()->company ?? auth()->user()->name }}</strong>
-                                </div>
-                                <form action="{{ route('logout') }}" method="POST">
-                                    @csrf
-                                    <button type="submit" class="catalog-header-exit">Выйти</button>
-                                </form>
-                            </div>
-                        </div>
+                        @endif
                     </div>
                 </header>
             @endif
