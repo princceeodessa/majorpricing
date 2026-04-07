@@ -17,6 +17,8 @@ class Product extends Model
         'title',
         'name',
         'slug',
+        'one_c_id',
+        'vendor_code',
         'measurement_label',
         'measurement_value',
         'description',

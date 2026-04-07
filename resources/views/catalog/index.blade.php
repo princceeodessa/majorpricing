@@ -3,16 +3,57 @@
 @section('title', 'Каталог MAJOR')
 
 @section('content')
+    <section class="catalog-spotlight" data-home-banners data-home-banner-interval="7600">
+        <button type="button" class="catalog-spotlight__arrow is-left" data-home-banner-prev aria-label="Предыдущий баннер">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 5 8 12l6.5 7" />
+            </svg>
+        </button>
+
+        <div class="catalog-spotlight__viewport">
+            <article class="catalog-spotlight__slide is-active" data-home-banner-slide aria-hidden="false">
+                <img
+                    src="{{ asset('brand/major-banner-delivery.png') }}"
+                    alt="Доставка по городу"
+                    class="catalog-spotlight__image"
+                    loading="eager"
+                    decoding="async"
+                >
+            </article>
+
+            <article class="catalog-spotlight__slide" data-home-banner-slide aria-hidden="true">
+                <img
+                    src="{{ asset('brand/major-banner-catalog.png') }}"
+                    alt="Комплектующие для натяжных потолков"
+                    class="catalog-spotlight__image"
+                    loading="lazy"
+                    decoding="async"
+                >
+            </article>
+        </div>
+
+        <button type="button" class="catalog-spotlight__arrow is-right" data-home-banner-next aria-label="Следующий баннер">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m9.5 5 6.5 7-6.5 7" />
+            </svg>
+        </button>
+
+        <div class="catalog-spotlight__footer">
+            <div class="catalog-spotlight__progress">
+                <span data-home-banner-progress></span>
+            </div>
+
+            <div class="catalog-spotlight__dots">
+                <button type="button" class="catalog-spotlight__dot is-active" data-home-banner-dot="0" aria-label="Баннер 1" aria-pressed="true"></button>
+                <button type="button" class="catalog-spotlight__dot" data-home-banner-dot="1" aria-label="Баннер 2" aria-pressed="false"></button>
+            </div>
+        </div>
+    </section>
+
     @if ($rootCategories->isNotEmpty())
-        <section>
-            <div class="catalog-section-head">
-                <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Навигация</p>
-                    <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Основные категории</h2>
-                </div>
-                <p class="max-w-xl text-sm leading-6 text-slate-600">
-                    Быстрый вход в основные направления каталога с реальными превью товаров, а не с пустыми заглушками.
-                </p>
+        <section class="mt-8">
+            <div class="catalog-section-head catalog-section-head--clean">
+                <h2 class="catalog-section-title">Основные категории</h2>
             </div>
 
             <div class="catalog-category-showcase mt-5" data-category-rail>
@@ -35,11 +76,10 @@
                                 <div class="catalog-category-card__copy">
                                     <div class="catalog-category-card__head">
                                         <span class="catalog-category-card__badge">{{ $category->children->count() }} секц.</span>
-                                        <span class="catalog-category-card__open">Открыть</span>
                                     </div>
 
                                     <h3 class="catalog-category-card__title">{{ $category->name }}</h3>
-                                    <p class="catalog-category-card__meta">{{ $category->catalog_products_count }} товаров в направлении</p>
+                                    <p class="catalog-category-card__meta">{{ $category->catalog_products_count }} товаров в наличии</p>
                                 </div>
 
                                 <div class="catalog-category-card__visual">
@@ -69,14 +109,8 @@
 
     @if ($featuredProducts->isNotEmpty())
         <section class="mt-10">
-            <div class="catalog-section-head">
-                <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Срез каталога</p>
-                    <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Свежие позиции</h2>
-                </div>
-                <p class="max-w-xl text-sm leading-6 text-slate-600">
-                    Последние добавленные позиции каталога. Их удобно использовать как быстрый обзор актуального наполнения.
-                </p>
+            <div class="catalog-section-head catalog-section-head--clean">
+                <h2 class="catalog-section-title">Новинки</h2>
             </div>
 
             <div class="catalog-grid mt-5">
@@ -88,21 +122,8 @@
     @endif
 
     <section class="mt-10">
-        <div class="catalog-section-head">
-            <div>
-                <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Товары</p>
-                <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Каталог товаров</h2>
-            </div>
-
-            <p class="max-w-xl text-sm leading-6 text-slate-600">
-                @if (request('q'))
-                    Результаты по запросу «{{ request('q') }}».
-                @elseif ($selectedCategory)
-                    Показаны товары из категории «{{ $selectedCategory->name }}».
-                @else
-                    Полная выборка товаров для текущего профиля доступа.
-                @endif
-            </p>
+        <div class="catalog-section-head catalog-section-head--clean">
+            <h2 class="catalog-section-title">Каталог товаров</h2>
         </div>
 
         @if ($products->isEmpty())

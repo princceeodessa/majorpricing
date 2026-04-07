@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(fn (Request $request) => route('login'));
         $middleware->redirectUsersTo('/');
+        $middleware->validateCsrfTokens(except: [
+            '1c/exchange',
+            '1c_exchange.php',
+        ]);
         $middleware->alias([
             'integration.token' => EnsureIntegrationToken::class,
             'manager' => EnsureManager::class,

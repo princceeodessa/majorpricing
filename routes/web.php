@@ -7,6 +7,7 @@ use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\OneCExchangeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +16,9 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
 });
+
+Route::match(['GET', 'POST'], '/1c/exchange', OneCExchangeController::class)->name('onec.exchange');
+Route::match(['GET', 'POST'], '/1c_exchange.php', OneCExchangeController::class);
 
 Route::middleware('auth')->group(function (): void {
     Route::get('/', [CatalogController::class, 'index'])->name('catalog.index');

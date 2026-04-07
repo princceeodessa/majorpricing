@@ -49,63 +49,66 @@
                 @php($routeCategory = request()->route('category'))
 
                 <header class="catalog-container catalog-site-header py-4">
-                    <div class="catalog-header-shell">
-                        <div class="catalog-header-toolbar">
+                    <div class="catalog-header-shell catalog-header-shell--figma">
+                        <div class="catalog-header-top">
                             <div class="catalog-header-brand">
                                 <a href="{{ route('catalog.index') }}" class="catalog-header-logo" aria-label="MAJOR">
                                     <img src="{{ asset('brand/major-logo-wide.svg') }}" alt="MAJOR" class="catalog-header-logo__image">
                                 </a>
 
                                 <details class="catalog-header-catalog-menu">
-                                <summary class="catalog-header-catalog-trigger {{ request()->routeIs('catalog.*', 'categories.*', 'products.*') ? 'is-active' : '' }}">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M4 6.5h8M4 12h16M4 17.5h10" />
-                                        <path d="M17 5l3 3-3 3" />
-                                    </svg>
-                                    <span>Каталог</span>
-                                </summary>
+                                    <summary class="catalog-header-catalog-trigger {{ request()->routeIs('catalog.*', 'categories.*', 'products.*') ? 'is-active' : '' }}">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <rect x="4" y="4" width="6" height="6" rx="1.5" />
+                                            <rect x="14" y="4" width="6" height="6" rx="1.5" />
+                                            <rect x="4" y="14" width="6" height="6" rx="1.5" />
+                                            <rect x="14" y="14" width="6" height="6" rx="1.5" />
+                                        </svg>
+                                        <span>Каталог</span>
+                                    </summary>
 
-                                <div class="catalog-header-catalog-dropdown">
-                                    <a href="{{ route('catalog.index') }}" class="catalog-header-catalog-dropdown__all">
-                                        Весь каталог
-                                    </a>
+                                    <div class="catalog-header-catalog-dropdown">
+                                        <a href="{{ route('catalog.index') }}" class="catalog-header-catalog-dropdown__all">
+                                            Весь каталог
+                                        </a>
 
-                                    @if (($navCategories ?? collect())->isNotEmpty())
-                                        <div class="catalog-header-catalog-dropdown__grid">
-                                            @foreach ($navCategories as $navCategory)
-                                                @php($isActiveCategory = request()->routeIs('categories.show') && $routeCategory && ($routeCategory->id === $navCategory->id || $routeCategory->parent_id === $navCategory->id))
-                                                <a
-                                                    href="{{ route('categories.show', $navCategory) }}"
-                                                    class="catalog-header-catalog-dropdown__link {{ $isActiveCategory ? 'is-active' : '' }}"
-                                                >
-                                                    {{ $navCategory->name }}
-                                                </a>
-                                            @endforeach
-                                        </div>
-                                    @else
-                                        <p class="catalog-header-catalog-dropdown__empty">Категории появятся после наполнения каталога.</p>
-                                    @endif
-                                </div>
+                                        @if (($navCategories ?? collect())->isNotEmpty())
+                                            <div class="catalog-header-catalog-dropdown__grid">
+                                                @foreach ($navCategories as $navCategory)
+                                                    @php($isActiveCategory = request()->routeIs('categories.show') && $routeCategory && ($routeCategory->id === $navCategory->id || $routeCategory->parent_id === $navCategory->id))
+                                                    <a
+                                                        href="{{ route('categories.show', $navCategory) }}"
+                                                        class="catalog-header-catalog-dropdown__link {{ $isActiveCategory ? 'is-active' : '' }}"
+                                                    >
+                                                        {{ $navCategory->name }}
+                                                    </a>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <p class="catalog-header-catalog-dropdown__empty">Категории появятся после наполнения каталога.</p>
+                                        @endif
+                                    </div>
                                 </details>
                             </div>
 
-                            <form action="{{ route('catalog.index') }}" method="GET" class="catalog-header-searchbar">
+                            <form action="{{ route('catalog.index') }}" method="GET" class="catalog-header-searchbar catalog-header-searchbar--figma">
+                                <span class="catalog-header-search-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <circle cx="11" cy="11" r="6.5" />
+                                        <path d="M16 16l4.5 4.5" />
+                                    </svg>
+                                </span>
                                 <input
                                     type="text"
                                     name="q"
                                     value="{{ request('q') }}"
-                                    placeholder="Искать в каталоге"
+                                    placeholder="Поиск"
                                     class="catalog-header-search-field"
                                 >
-                                <button type="submit" class="catalog-header-search-submit" aria-label="Найти">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <circle cx="11" cy="11" r="6.5" />
-                                        <path d="M16 16l4.5 4.5" />
-                                    </svg>
-                                </button>
+                                <button type="submit" class="catalog-header-search-submit" aria-label="Искать">Искать</button>
                             </form>
 
-                            <div class="catalog-header-actions">
+                            <div class="catalog-header-actions catalog-header-actions--figma">
                                 <a href="{{ route('account.show') }}" class="catalog-header-icon-link {{ request()->routeIs('account.*') ? 'is-active' : '' }}">
                                     <span class="catalog-header-icon-link__icon">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -126,6 +129,17 @@
                                     <span class="catalog-header-icon-link__label">Избранное</span>
                                 </a>
 
+                                <a href="{{ route('orders.index') }}" class="catalog-header-icon-link {{ request()->routeIs('orders.*') ? 'is-active' : '' }}">
+                                    <span class="catalog-header-icon-link__icon">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <rect x="5" y="4.5" width="14" height="15" rx="2.3" />
+                                            <path d="M8 9.5h8M8 13h8M8 16.5h5" />
+                                        </svg>
+                                        <strong class="catalog-header-icon-link__badge">{{ $headerOrdersCount ?? 0 }}</strong>
+                                    </span>
+                                    <span class="catalog-header-icon-link__label">Заказы</span>
+                                </a>
+
                                 <a href="{{ route('cart.index') }}" class="catalog-header-icon-link {{ request()->routeIs('cart.*') ? 'is-active' : '' }}">
                                     <span class="catalog-header-icon-link__icon">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -142,6 +156,21 @@
                                     @csrf
                                     <button type="submit" class="catalog-header-exit">Выйти</button>
                                 </form>
+                            </div>
+                        </div>
+
+                        <div class="catalog-header-bottom">
+                            <nav class="catalog-header-shortcuts" aria-label="Дополнительная навигация">
+                                <a href="{{ route('catalog.index') }}">Акции</a>
+                                <a href="{{ route('catalog.index') }}">О компании</a>
+                                <a href="{{ route('catalog.index') }}">Услуги</a>
+                                <a href="{{ route('catalog.index') }}">Доставка и оплата</a>
+                                <a href="{{ route('catalog.index') }}">Контакты</a>
+                            </nav>
+
+                            <div class="catalog-header-bottom-meta">
+                                <a href="{{ route('account.show') }}" class="catalog-header-b2b-link">Покупать как юрлицо</a>
+                                <a href="{{ route('orders.index') }}" class="catalog-header-manager-link">Связь с менеджером</a>
                             </div>
                         </div>
                     </div>

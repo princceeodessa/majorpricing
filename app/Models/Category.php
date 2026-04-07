@@ -16,6 +16,7 @@ class Category extends Model
         'parent_id',
         'name',
         'slug',
+        'one_c_id',
         'description',
         'source_sheet',
         'sort_order',
