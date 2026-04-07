@@ -35,6 +35,7 @@
 
                 <div class="catalog-account-hero__actions">
                     <a href="{{ route('orders.index') }}" class="action-button">Открыть заказы клиентов</a>
+                    <a href="{{ route('manager.onec.show') }}" class="ghost-button">Диагностика 1С</a>
                 </div>
             </div>
 
