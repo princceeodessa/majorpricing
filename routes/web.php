@@ -31,6 +31,9 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/manager/1c', [OneCDiagnosticsController::class, 'show'])
         ->middleware('manager')
         ->name('manager.onec.show');
+    Route::post('/manager/1c/catalog/import', [OneCDiagnosticsController::class, 'importCatalog'])
+        ->middleware('manager')
+        ->name('manager.onec.catalog.import');
     Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
     Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
     Route::post('/products/{product:slug}/cart', [CartController::class, 'store'])->name('cart.store');

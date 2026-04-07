@@ -7,8 +7,10 @@ use App\Models\OneCPriceType;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Services\OneC\OneCCatalogExchangeService;
 
 class OneCDiagnosticsController extends Controller
 {
@@ -35,6 +37,24 @@ class OneCDiagnosticsController extends Controller
             ->take(20)
             ->values();
 
+        $catalogPackages = $recentFiles
+            ->where('type', 'catalog')
+            ->groupBy('session_key')
+            ->map(function ($files, string $sessionKey): array {
+                $sortedFiles = collect($files)->sortByDesc('modified_timestamp')->values();
+
+                return [
+                    'session_key' => $sessionKey,
+                    'modified_timestamp' => $sortedFiles->first()['modified_timestamp'] ?? 0,
+                    'modified_at' => $sortedFiles->first()['modified_at'] ?? null,
+                    'files' => $sortedFiles->pluck('filename')->values()->all(),
+                    'has_import' => $sortedFiles->contains(fn (array $file): bool => $file['filename'] === 'import.xml'),
+                    'has_offers' => $sortedFiles->contains(fn (array $file): bool => $file['filename'] === 'offers.xml'),
+                ];
+            })
+            ->sortByDesc('modified_timestamp')
+            ->values();
+
         return view('manager.onec.show', [
             'exchangeUrl' => route('onec.exchange'),
             'fallbackExchangeUrl' => url('/1c_exchange.php'),
@@ -53,6 +73,7 @@ class OneCDiagnosticsController extends Controller
                 'orders_with_document' => Order::query()->whereNotNull('one_c_document_id')->count(),
             ],
             'recentFiles' => $recentFiles,
+            'catalogPackages' => $catalogPackages,
             'recentProducts' => Product::query()
                 ->whereNotNull('one_c_id')
                 ->latest('updated_at')
@@ -63,6 +84,37 @@ class OneCDiagnosticsController extends Controller
                 ->take(8)
                 ->get(['id', 'number', 'status', 'payment_status', 'one_c_document_id', 'one_c_exported_at', 'updated_at']),
         ]);
+    }
+
+    public function importCatalog(Request $request, OneCCatalogExchangeService $catalogExchangeService): RedirectResponse
+    {
+        $validated = $request->validate([
+            'session_key' => ['required', 'string'],
+        ]);
+
+        $sessionKey = trim($validated['session_key']);
+        $uploadDir = trim((string) config('integrations.one_c.upload_dir', 'one-c-exchange'), '/');
+        $files = collect(Storage::disk('local')->allFiles($uploadDir))
+            ->filter(fn (string $path): bool => str_contains($path, '/'.$sessionKey.'/catalog/'))
+            ->values();
+
+        if ($files->isEmpty()) {
+            return redirect()
+                ->route('manager.onec.show')
+                ->with('status', 'Пакет каталога не найден. Сначала выполните выгрузку товаров из 1С.');
+        }
+
+        $result = $catalogExchangeService->import($sessionKey);
+
+        return redirect()
+            ->route('manager.onec.show')
+            ->with('status', sprintf(
+                'Каталог 1С импортирован вручную. Категорий: %d, товаров: %d, цен: %d, изображений: %d.',
+                $result['categories'],
+                $result['products'],
+                $result['prices'],
+                $result['images'],
+            ));
     }
 
     private function humanFileSize(int $bytes): string

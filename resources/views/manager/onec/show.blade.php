@@ -28,6 +28,13 @@
                     <span class="soft-badge">Подключение</span>
                     <h2 class="mt-4 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Параметры обмена</h2>
                 </div>
+                @if ($catalogPackages->isNotEmpty())
+                    <form action="{{ route('manager.onec.catalog.import') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="session_key" value="{{ $catalogPackages->first()['session_key'] }}">
+                        <button type="submit" class="action-button">Импортировать последний каталог</button>
+                    </form>
+                @endif
             </div>
 
             <div class="mt-6 grid gap-4">
@@ -100,6 +107,47 @@
 
     <section class="mt-8 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <div class="surface-card p-8">
+            <span class="soft-badge">Каталог 1С</span>
+            <h2 class="mt-4 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Пакеты для импорта товаров</h2>
+
+            @if ($catalogPackages->isEmpty())
+                <div class="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50/70 p-6 text-sm text-slate-500">
+                    Каталожных пакетов от 1С пока нет. После выгрузки товаров здесь появится последний `session_key`, и можно будет запустить ручной импорт на сайт.
+                </div>
+            @else
+                <div class="mt-6 space-y-3">
+                    @foreach ($catalogPackages as $package)
+                        <article class="rounded-[1.5rem] border border-slate-200/80 bg-white p-5">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h3 class="text-base font-semibold text-slate-950">Пакет {{ $package['session_key'] }}</h3>
+                                    <p class="mt-2 text-sm text-slate-600">
+                                        Обновлён: {{ $package['modified_at'] ?: '—' }}
+                                    </p>
+                                    <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                                        @foreach ($package['files'] as $filename)
+                                            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">{{ $filename }}</span>
+                                        @endforeach
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-wrap gap-3">
+                                    <span class="soft-badge {{ $package['has_import'] ? '' : 'opacity-60' }}">import.xml</span>
+                                    <span class="soft-badge {{ $package['has_offers'] ? '' : 'opacity-60' }}">offers.xml</span>
+                                    <form action="{{ route('manager.onec.catalog.import') }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="session_key" value="{{ $package['session_key'] }}">
+                                        <button type="submit" class="ghost-button">Импортировать</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        <div class="surface-card p-8">
             <span class="soft-badge">Последние файлы</span>
             <h2 class="mt-4 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Пакеты обмена</h2>
 
@@ -135,16 +183,17 @@
             @endif
         </div>
 
-        <div class="surface-card p-8">
+        <div class="surface-card p-8 xl:col-span-2">
             <span class="soft-badge">Как тестировать</span>
             <h2 class="mt-4 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Быстрый сценарий</h2>
             <ol class="mt-6 space-y-4 text-sm leading-7 text-slate-700">
                 <li>1. В менеджерском кабинете создайте обычного тестового клиента. Отдельный админ для обмена не нужен.</li>
                 <li>2. В 1С запустите полную выгрузку товаров и цен на сайт.</li>
-                <li>3. Проверьте на этой странице, что выросли счётчики категорий, товаров и типов цен, а ниже появились файлы `import.xml` и `offers.xml`.</li>
-                <li>4. Войдите под тестовым клиентом, добавьте товар в корзину и оформите тестовый заказ с контактами.</li>
-                <li>5. Запустите обмен заказами в 1С. После успешной выгрузки число `Заказов выгружено` должно увеличиться.</li>
-                <li>6. Если 1С вернёт статусы обратно, у заказов появится номер документа 1С и обновится статус.</li>
+                <li>3. Если 1С прислала файлы, но товары на сайт не появились, нажмите `Импортировать последний каталог` или кнопку `Импортировать` напротив нужного пакета.</li>
+                <li>4. Проверьте на этой странице, что выросли счётчики категорий, товаров и типов цен, а ниже появились файлы `import.xml` и `offers.xml`.</li>
+                <li>5. Войдите под тестовым клиентом, добавьте товар в корзину и оформите тестовый заказ с контактами.</li>
+                <li>6. Запустите обмен заказами в 1С. После успешной выгрузки число `Заказов выгружено` должно увеличиться.</li>
+                <li>7. Если 1С вернёт статусы обратно, у заказов появится номер документа 1С и обновится статус.</li>
             </ol>
         </div>
     </section>
