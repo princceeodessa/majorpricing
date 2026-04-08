@@ -29,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
             $shared = once(function (): array {
                 $navCategories = collect();
                 $headerCartCount = 0;
+                $cartProductQuantities = [];
                 $headerFavoritesCount = 0;
                 $headerOrdersCount = 0;
                 $favoriteProductIds = [];
@@ -42,9 +43,15 @@ class AppServiceProvider extends ServiceProvider
 
                 if (auth()->check()) {
                     if (Schema::hasTable('cart_items')) {
-                        $headerCartCount = (int) CartItem::query()
+                        $cartItems = CartItem::query()
                             ->where('user_id', auth()->id())
-                            ->sum('quantity');
+                            ->get(['product_id', 'quantity']);
+
+                        $headerCartCount = (int) $cartItems->sum('quantity');
+                        $cartProductQuantities = $cartItems
+                            ->pluck('quantity', 'product_id')
+                            ->map(fn ($quantity): int => (int) $quantity)
+                            ->all();
                     }
 
                     if (Schema::hasTable('favorite_items')) {
@@ -68,6 +75,7 @@ class AppServiceProvider extends ServiceProvider
                 return [
                     'navCategories' => $navCategories,
                     'headerCartCount' => $headerCartCount,
+                    'cartProductQuantities' => $cartProductQuantities,
                     'headerFavoritesCount' => $headerFavoritesCount,
                     'headerOrdersCount' => $headerOrdersCount,
                     'favoriteProductIds' => $favoriteProductIds,

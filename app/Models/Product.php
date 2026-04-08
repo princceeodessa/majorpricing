@@ -80,15 +80,12 @@ class Product extends Model
         });
     }
 
-    public function priceForProfile(?PriceProfile $profile): ?ProductPrice
+    public function priceForProfile(): ?ProductPrice
     {
         $prices = $this->relationLoaded('prices')
             ? $this->prices
             : $this->prices()->orderBy('column_index')->get();
 
-        $requestedColumn = max(1, (int) ($profile?->column_index ?? 1));
-
-        return $prices->firstWhere('column_index', $requestedColumn)
-            ?? $prices->sortBy('column_index')->first();
+        return $prices->sortBy('column_index')->first();
     }
 }

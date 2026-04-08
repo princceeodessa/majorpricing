@@ -6,10 +6,10 @@ use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\PriceProfile;
 use App\Models\Product;
 use App\Models\ProductPrice;
 use App\Models\User;
+use App\Models\UserAddress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -186,7 +186,7 @@ class IntegrationApiTest extends TestCase
             'column_index' => 2,
             'label' => 'Цена дилера',
         ]);
-        $this->assertSame(1320.0, (float) $product->fresh()->price_from);
+        $this->assertSame(1490.0, (float) $product->fresh()->price_from);
     }
 
     public function test_checkout_pushes_order_to_erp_when_endpoint_is_configured(): void
@@ -201,16 +201,20 @@ class IntegrationApiTest extends TestCase
             ], 200),
         ]);
 
-        $profile = PriceProfile::query()->create([
-            'name' => 'Базовый прайс',
-            'slug' => 'base-price',
-            'column_index' => 1,
-            'price_label' => 'Цена 1',
-            'is_default' => true,
+        $user = User::factory()->create([
+            'name' => 'Тестовый клиент',
+            'company' => 'ООО MAJOR',
+            'contact_person' => 'Иван',
+            'phone' => '+7 999 123-45-67',
+            'telegram' => '@majorclient',
         ]);
 
-        $user = User::factory()->create([
-            'price_profile_id' => $profile->id,
+        $address = UserAddress::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Основной склад',
+            'address' => 'Саратов, ул. Тестовая, 7',
+            'is_default' => true,
+            'sort_order' => 0,
         ]);
 
         $category = Category::query()->create([
@@ -244,6 +248,7 @@ class IntegrationApiTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)->post(route('cart.checkout'), [
+            'user_address_id' => $address->id,
             'comment' => 'Срочно в работу',
         ]);
 
@@ -297,9 +302,10 @@ class IntegrationApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.payment_status', 'paid');
-        $response->assertJsonPath('data.status', 'processing');
+        $response->assertJsonPath('data.status', 'accepted');
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
+            'status' => 'accepted',
             'payment_status' => 'paid',
             'payment_method' => 'bank-card',
             'payment_reference' => 'trn-123456',

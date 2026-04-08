@@ -11,6 +11,7 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\OneCExchangeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\UserAddressController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function (): void {
@@ -25,6 +26,9 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/', [CatalogController::class, 'index'])->name('catalog.index');
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
     Route::patch('/account', [AccountController::class, 'update'])->name('account.update');
+    Route::post('/account/addresses', [UserAddressController::class, 'store'])->name('account.addresses.store');
+    Route::patch('/account/addresses/{userAddress}/default', [UserAddressController::class, 'makeDefault'])->name('account.addresses.default');
+    Route::delete('/account/addresses/{userAddress}', [UserAddressController::class, 'destroy'])->name('account.addresses.destroy');
     Route::post('/account/users', [ManagerUserController::class, 'store'])
         ->middleware('manager')
         ->name('manager.users.store');
@@ -37,6 +41,8 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
     Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
     Route::post('/products/{product:slug}/cart', [CartController::class, 'store'])->name('cart.store');
+    Route::patch('/products/{product:slug}/cart', [CartController::class, 'updateProduct'])->name('cart.product.update');
+    Route::delete('/products/{product:slug}/cart', [CartController::class, 'destroyProduct'])->name('cart.product.destroy');
     Route::post('/products/{product:slug}/favorite', [FavoriteController::class, 'store'])->name('favorites.store');
     Route::delete('/products/{product:slug}/favorite', [FavoriteController::class, 'destroy'])->name('favorites.destroy');
     Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');

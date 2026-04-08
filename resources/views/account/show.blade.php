@@ -11,7 +11,7 @@
                 <span class="soft-badge">Менеджерский кабинет</span>
                 <h1 class="access-dashboard-hero__title">Клиенты, контакты и работа с заказами в одном месте.</h1>
                 <p class="access-dashboard-hero__text">
-                    Здесь менеджер создает доступы, видит контактные данные клиентов и забирает заказы в работу. Все, что клиент укажет в профиле или при оформлении корзины, появится в менеджерском кабинете и в карточке заказа.
+                    Здесь менеджер создает доступы, видит контактные данные клиентов и забирает заказы в работу. Все, что клиент укажет в профиле и в адресах доставки, сразу появится в менеджерском кабинете и в карточке заказа.
                 </p>
 
                 <div class="access-dashboard-stats">
@@ -44,7 +44,7 @@
                     <span class="soft-badge">Новый доступ</span>
                     <h2 class="access-user-create__title">Добавление пользователя</h2>
                     <p class="access-user-create__text">
-                        Создайте логин, назначьте прайс-профиль и при необходимости сразу внесите контакты клиента, чтобы менеджеру не пришлось уточнять их позже.
+                        Создайте логин клиента и при необходимости сразу внесите контакты и его первый адрес.
                     </p>
                 </div>
 
@@ -79,12 +79,12 @@
 
                         <label class="access-field">
                             <span>Логин</span>
-                            <input type="text" name="login" value="{{ old('login') }}" placeholder="partner_01">
+                            <input type="text" name="login" value="{{ old('login') }}" placeholder="client_01">
                         </label>
 
                         <label class="access-field">
                             <span>Email</span>
-                            <input type="email" name="email" value="{{ old('email') }}" placeholder="partner@example.com">
+                            <input type="email" name="email" value="{{ old('email') }}" placeholder="client@example.com">
                         </label>
 
                         <label class="access-field">
@@ -98,20 +98,8 @@
                         </label>
 
                         <label class="access-field access-field--full">
-                            <span>Адрес / комментарий к доставке</span>
+                            <span>Первичный адрес</span>
                             <input type="text" name="delivery_address" value="{{ old('delivery_address') }}" placeholder="Город, улица, объект, удобное время связи">
-                        </label>
-
-                        <label class="access-field access-field--full">
-                            <span>Прайс-профиль</span>
-                            <select name="price_profile_id">
-                                <option value="">По умолчанию</option>
-                                @foreach ($priceProfiles as $priceProfile)
-                                    <option value="{{ $priceProfile->id }}" @selected((string) old('price_profile_id') === (string) $priceProfile->id)>
-                                        {{ $priceProfile->name }} · {{ $priceProfile->price_label }}
-                                    </option>
-                                @endforeach
-                            </select>
                         </label>
                     </div>
 
@@ -132,7 +120,7 @@
                     <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Все пользователи</h2>
                 </div>
                 <p class="max-w-xl text-sm leading-6 text-slate-600">
-                    Список клиентов с текущими контактами и назначенными профилями. Эти данные менеджер увидит и в заказах.
+                    Список клиентов с текущими контактами и адресами доставки.
                 </p>
             </div>
 
@@ -166,21 +154,29 @@
                                 <span>Телефон</span>
                                 <strong>{{ $managedUser->phone ?: 'Не указан' }}</strong>
                             </div>
-                            <div>
-                                <span>Контакт</span>
-                                <strong>{{ $managedUser->contact_person ?: 'Не указан' }}</strong>
-                            </div>
-                            <div>
-                                <span>Telegram</span>
-                                <strong>{{ $managedUser->telegram ?: 'Не указан' }}</strong>
+                            <div class="access-field--full">
+                                <span>Контактные лица</span>
+                                <strong>
+                                    @php($managedContacts = $managedUser->contactPeopleList())
+                                    {{ $managedContacts !== [] ? implode(' • ', $managedContacts) : 'Не указаны' }}
+                                </strong>
                             </div>
                             <div class="access-field--full">
-                                <span>Прайс-профиль</span>
-                                <strong>{{ $managedUser->priceProfile?->name ?? 'Не назначен' }}</strong>
+                                <span>Мессенджеры</span>
+                                <strong>
+                                    @php($managedMessengers = $managedUser->messengersList())
+                                    {{ $managedMessengers !== [] ? implode(' • ', $managedMessengers) : 'Не указаны' }}
+                                </strong>
                             </div>
                             <div class="access-field--full">
-                                <span>Адрес / доставка</span>
-                                <strong>{{ $managedUser->delivery_address ?: 'Не указан' }}</strong>
+                                <span>Адреса</span>
+                                <strong>
+                                    @if ($managedUser->addresses->isNotEmpty())
+                                        {{ $managedUser->addresses->map(fn ($address) => $address->formattedLabel())->implode(' • ') }}
+                                    @else
+                                        Не указаны
+                                    @endif
+                                </strong>
                             </div>
                         </div>
                     </article>
@@ -188,40 +184,18 @@
             </div>
         </section>
     @else
-        <section class="surface-card access-only-panel">
-            <span class="soft-badge">Авторизация</span>
-            <h1 class="access-only-panel__title">Доступ подтвержден.</h1>
-            <p class="access-only-panel__text">
-                Профиль закрыт для самостоятельной регистрации. Ниже можно заполнить контакты и адрес, чтобы менеджер видел их в кабинете и автоматически получал при оформлении заказа.
-            </p>
+        @php($contactPeople = old('contact_people', $user->contactPeopleList()))
+        @php($messengers = old('messengers', $user->messengersList()))
+        @php($contactPeople = is_array($contactPeople) && count(array_filter($contactPeople, fn ($item) => filled($item))) > 0 ? array_values($contactPeople) : [''])
+        @php($messengers = is_array($messengers) && count(array_filter($messengers, fn ($item) => filled($item))) > 0 ? array_values($messengers) : [''])
 
-            <div class="access-only-panel__grid">
-                <div class="stat-card">
-                    <span>Компания</span>
-                    <strong>{{ $user->company ?: 'Не указана' }}</strong>
-                </div>
-                <div class="stat-card">
-                    <span>Логин</span>
-                    <strong>{{ $user->login }}</strong>
-                </div>
-                <div class="stat-card">
-                    <span>Email</span>
-                    <strong>{{ $user->email }}</strong>
-                </div>
-                <div class="stat-card">
-                    <span>Прайс-профиль</span>
-                    <strong>{{ $profile?->name ?? 'Не назначен' }}</strong>
-                </div>
-            </div>
-        </section>
-
-        <section class="surface-card mt-8 catalog-account-panel">
+        <section class="surface-card catalog-account-panel">
             <div class="catalog-page-head">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Контакты для менеджера</p>
                     <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Профиль клиента</h2>
                     <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                        Эти данные автоматически подставятся в корзине при оформлении заказа. Их же увидит менеджер в списке пользователей и в карточке заказа.
+                        Эти данные менеджер увидит в списке пользователей и в карточке заказа.
                     </p>
                 </div>
 
@@ -244,28 +218,172 @@
                     </label>
 
                     <label class="access-field">
-                        <span>Контактное лицо</span>
-                        <input type="text" name="contact_person" value="{{ old('contact_person', $user->contact_person) }}" placeholder="К кому обращаться по заказу">
-                    </label>
-
-                    <label class="access-field">
                         <span>Телефон</span>
                         <input type="text" name="phone" value="{{ old('phone', $user->phone) }}" placeholder="+7 999 000-00-00">
                     </label>
 
-                    <label class="access-field access-field--full">
-                        <span>Telegram / мессенджер</span>
-                        <input type="text" name="telegram" value="{{ old('telegram', $user->telegram) }}" placeholder="@major_client">
-                    </label>
+                    <div class="access-field access-field--full catalog-repeatable" data-repeatable>
+                        <div class="catalog-repeatable__head">
+                            <span>Контактные лица</span>
+                            <button type="button" class="catalog-inline-action" data-repeatable-add>+ Добавить</button>
+                        </div>
 
-                    <label class="access-field access-field--full">
-                        <span>Адрес / комментарий для доставки</span>
-                        <input type="text" name="delivery_address" value="{{ old('delivery_address', $user->delivery_address) }}" placeholder="Город, адрес, объект, удобное время связи">
-                    </label>
+                        <div class="catalog-repeatable__items" data-repeatable-items>
+                            @foreach ($contactPeople as $contactPerson)
+                                <div class="catalog-repeatable__item" data-repeatable-row>
+                                    <input
+                                        type="text"
+                                        name="contact_people[]"
+                                        value="{{ $contactPerson }}"
+                                        placeholder="К кому обращаться по заказу"
+                                        class="catalog-clean-input"
+                                    >
+                                    <button type="button" class="catalog-inline-action" data-repeatable-remove>Удалить</button>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <template data-repeatable-template>
+                            <div class="catalog-repeatable__item" data-repeatable-row>
+                                <input type="text" name="contact_people[]" value="" placeholder="К кому обращаться по заказу" class="catalog-clean-input">
+                                <button type="button" class="catalog-inline-action" data-repeatable-remove>Удалить</button>
+                            </div>
+                        </template>
+
+                        @if ($errors->has('contact_people') || $errors->has('contact_people.*'))
+                            <p class="text-sm font-medium text-red-600">{{ $errors->first('contact_people') ?: $errors->first('contact_people.*') }}</p>
+                        @endif
+                    </div>
+
+                    <div class="access-field access-field--full catalog-repeatable" data-repeatable>
+                        <div class="catalog-repeatable__head">
+                            <span>Мессенджеры</span>
+                            <button type="button" class="catalog-inline-action" data-repeatable-add>+ Добавить</button>
+                        </div>
+
+                        <div class="catalog-repeatable__items" data-repeatable-items>
+                            @foreach ($messengers as $messenger)
+                                <div class="catalog-repeatable__item" data-repeatable-row>
+                                    <input
+                                        type="text"
+                                        name="messengers[]"
+                                        value="{{ $messenger }}"
+                                        placeholder="@major_client или WhatsApp"
+                                        class="catalog-clean-input"
+                                    >
+                                    <button type="button" class="catalog-inline-action" data-repeatable-remove>Удалить</button>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <template data-repeatable-template>
+                            <div class="catalog-repeatable__item" data-repeatable-row>
+                                <input type="text" name="messengers[]" value="" placeholder="@major_client или WhatsApp" class="catalog-clean-input">
+                                <button type="button" class="catalog-inline-action" data-repeatable-remove>Удалить</button>
+                            </div>
+                        </template>
+
+                        @if ($errors->has('messengers') || $errors->has('messengers.*'))
+                            <p class="text-sm font-medium text-red-600">{{ $errors->first('messengers') ?: $errors->first('messengers.*') }}</p>
+                        @endif
+                    </div>
                 </div>
 
                 <button type="submit" class="action-button access-user-create__submit">Сохранить профиль</button>
             </form>
+        </section>
+
+        <section class="surface-card mt-8 catalog-account-panel">
+            <div class="catalog-page-head">
+                <div>
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Адреса</p>
+                    <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Адреса для заявок</h2>
+                    <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                        В корзине вы будете выбирать один из этих адресов. Менеджер увидит выбранный адрес прямо в заказе.
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-8 access-dashboard-grid">
+                <div class="surface-card access-user-create">
+                    <div>
+                        <span class="soft-badge">Новый адрес</span>
+                        <h3 class="access-user-create__title">Добавить адрес</h3>
+                    </div>
+
+                    <form action="{{ route('account.addresses.store') }}" method="POST" class="access-user-create__form">
+                        @csrf
+
+                        <div class="access-user-create__grid">
+                            <label class="access-field">
+                                <span>Название</span>
+                                <input type="text" name="title" value="{{ old('title') }}" placeholder="Склад, офис, объект">
+                            </label>
+
+                            <label class="access-checkbox self-end">
+                                <input type="checkbox" name="is_default" value="1" @checked(old('is_default') === '1' || $userAddresses->isEmpty())>
+                                Сделать основным
+                            </label>
+
+                            <label class="access-field access-field--full">
+                                <span>Адрес</span>
+                                <textarea name="address" placeholder="Город, улица, корпус, комментарий для доставки">{{ old('address') }}</textarea>
+                            </label>
+                        </div>
+
+                        <button type="submit" class="action-button access-user-create__submit">Добавить адрес</button>
+                    </form>
+                </div>
+
+                <div class="surface-card access-user-create">
+                    <div>
+                        <span class="soft-badge">Мои адреса</span>
+                        <h3 class="access-user-create__title">Сохраненные адреса</h3>
+                    </div>
+
+                    @if ($userAddresses->isEmpty())
+                        <p class="access-user-create__text">
+                            Пока адресов нет. Добавьте первый адрес, и он станет доступен при оформлении заявки.
+                        </p>
+                    @else
+                        <div class="access-users-grid">
+                            @foreach ($userAddresses as $address)
+                                <article class="surface-card access-user-card">
+                                    <div class="access-user-card__head">
+                                        <div>
+                                            <span class="soft-badge">{{ $address->is_default ? 'Основной адрес' : 'Адрес' }}</span>
+                                            <h3>{{ $address->title }}</h3>
+                                        </div>
+                                    </div>
+
+                                    <div class="access-user-card__meta">
+                                        <div class="access-field--full">
+                                            <span>Адрес доставки</span>
+                                            <strong>{{ $address->address }}</strong>
+                                        </div>
+                                    </div>
+
+                                    <div class="catalog-account-address-card__actions">
+                                        @unless ($address->is_default)
+                                            <form action="{{ route('account.addresses.default', $address) }}" method="POST">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="catalog-reset-button">Сделать основным</button>
+                                            </form>
+                                        @endunless
+
+                                        <form action="{{ route('account.addresses.destroy', $address) }}" method="POST">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="catalog-inline-action">Удалить</button>
+                                        </form>
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
         </section>
     @endif
 @endsection

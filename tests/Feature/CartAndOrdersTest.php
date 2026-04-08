@@ -6,10 +6,10 @@ use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\PriceProfile;
 use App\Models\Product;
 use App\Models\ProductPrice;
 use App\Models\User;
+use App\Models\UserAddress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -37,15 +37,65 @@ class CartAndOrdersTest extends TestCase
             ->get(route('cart.index'))
             ->assertOk()
             ->assertSeeText('Оформление заказа')
-            ->assertSeeText('Приобрести и отправить заявку');
+            ->assertSeeText('Подтверждаю заявку')
+            ->assertDontSeeText('Открыть профиль');
     }
 
-    public function test_checkout_moves_cart_to_order_history_and_stores_contact_snapshot(): void
+    public function test_user_can_manage_product_card_cart_asynchronously(): void
+    {
+        [$user, $product] = $this->createUserAndProduct();
+
+        $this->actingAs($user)
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->post(route('cart.store', $product), ['quantity' => 1])
+            ->assertOk()
+            ->assertJsonPath('productId', $product->id)
+            ->assertJsonPath('quantity', 1)
+            ->assertJsonPath('cartCount', 1);
+
+        $this->actingAs($user)
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->post(route('cart.store', $product), ['quantity' => 1])
+            ->assertOk()
+            ->assertJsonPath('quantity', 2)
+            ->assertJsonPath('cartCount', 2);
+
+        $this->actingAs($user)
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->patch(route('cart.product.update', $product), ['quantity' => 1])
+            ->assertOk()
+            ->assertJsonPath('quantity', 1)
+            ->assertJsonPath('cartCount', 1);
+
+        $this->actingAs($user)
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->delete(route('cart.product.destroy', $product))
+            ->assertOk()
+            ->assertJsonPath('quantity', 0)
+            ->assertJsonPath('cartCount', 0);
+
+        $this->assertDatabaseMissing('cart_items', [
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+        ]);
+    }
+
+    public function test_checkout_moves_cart_to_order_history_and_uses_selected_address_snapshot(): void
     {
         [$user, $product] = $this->createUserAndProduct(
             priceLabel: 'Цена 2',
-            profileName: 'Партнерский прайс',
-            profileSlug: 'partner-price',
             profileColumn: 2,
             unitPrice: 2000,
         );
@@ -56,15 +106,26 @@ class CartAndOrdersTest extends TestCase
             'quantity' => 2,
         ]);
 
-        $response = $this->actingAs($user)->post(route('cart.checkout'), [
+        $address = UserAddress::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Объект на Волге',
+            'address' => 'Саратов, ул. Тестовая, 5',
+            'is_default' => true,
+            'sort_order' => 0,
+        ]);
+
+        $user->forceFill([
             'name' => 'Иван Клиент',
             'company' => 'ООО Объект',
             'contact_person' => 'Алексей',
             'phone' => '+7 999 111-22-33',
             'telegram' => '@majorbuyer',
             'delivery_address' => 'Саратов, ул. Тестовая, 5',
+        ])->save();
+
+        $response = $this->actingAs($user)->post(route('cart.checkout'), [
+            'user_address_id' => $address->id,
             'comment' => 'Проверить наличие на складе',
-            'save_profile' => '1',
         ]);
 
         $response->assertRedirect(route('orders.index'));
@@ -74,13 +135,13 @@ class CartAndOrdersTest extends TestCase
             'user_id' => $user->id,
             'status' => 'new',
             'items_count' => 1,
-            'price_profile_name' => 'Партнерский прайс',
+            'price_profile_name' => null,
             'customer_name' => 'Иван Клиент',
             'customer_company' => 'ООО Объект',
             'customer_contact_person' => 'Алексей',
             'customer_phone' => '+7 999 111-22-33',
             'customer_telegram' => '@majorbuyer',
-            'customer_delivery_address' => 'Саратов, ул. Тестовая, 5',
+            'customer_delivery_address' => 'Объект на Волге · Саратов, ул. Тестовая, 5',
             'comment' => 'Проверить наличие на складе',
         ]);
         $this->assertDatabaseHas('order_items', [
@@ -109,25 +170,15 @@ class CartAndOrdersTest extends TestCase
 
     public function test_manager_can_update_order_status_and_comment(): void
     {
-        $profile = PriceProfile::query()->create([
-            'name' => 'Базовый прайс',
-            'slug' => 'base-price',
-            'column_index' => 1,
-            'price_label' => 'Цена 1',
-            'is_default' => true,
-        ]);
-
         $manager = User::factory()->create([
             'login' => 'manager-demo',
             'email' => 'manager-demo@example.com',
-            'price_profile_id' => $profile->id,
             'is_manager' => true,
         ]);
 
         $client = User::factory()->create([
             'login' => 'client-demo',
             'email' => 'client-demo@example.com',
-            'price_profile_id' => $profile->id,
             'is_manager' => false,
         ]);
 
@@ -153,7 +204,7 @@ class CartAndOrdersTest extends TestCase
 
         $this->actingAs($manager)
             ->patch(route('orders.update', $order), [
-                'status' => 'processing',
+                'status' => 'accepted',
                 'manager_comment' => 'Созвонились, заказ подтвержден.',
             ])
             ->assertRedirect(route('orders.index'))
@@ -161,31 +212,20 @@ class CartAndOrdersTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
-            'status' => 'processing',
+            'status' => 'accepted',
             'manager_comment' => 'Созвонились, заказ подтвержден.',
         ]);
     }
 
     private function createUserAndProduct(
         string $priceLabel = 'Цена 1',
-        string $profileName = 'Базовый прайс',
-        string $profileSlug = 'base-price',
         int $profileColumn = 1,
         float $unitPrice = 530,
     ): array {
-        $profile = PriceProfile::query()->create([
-            'name' => $profileName,
-            'slug' => $profileSlug,
-            'column_index' => $profileColumn,
-            'price_label' => $priceLabel,
-            'is_default' => true,
-        ]);
-
         $user = User::factory()->create([
             'login' => 'cart-user-'.$profileColumn,
             'email' => 'cart-user-'.$profileColumn.'@example.com',
             'password' => 'secret12345',
-            'price_profile_id' => $profile->id,
         ]);
 
         $category = Category::query()->create([

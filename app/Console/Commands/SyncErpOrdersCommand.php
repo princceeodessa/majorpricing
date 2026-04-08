@@ -27,7 +27,7 @@ class SyncErpOrdersCommand extends Command
         $statuses = $statuses !== [] ? $statuses : ['pending', 'failed'];
 
         $orders = Order::query()
-            ->with(['user.priceProfile', 'items.product'])
+            ->with(['user', 'items.product'])
             ->when(
                 filled($this->argument('orderNumber')),
                 fn ($query) => $query->where('number', $this->argument('orderNumber')),

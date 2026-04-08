@@ -239,7 +239,7 @@
                         <div class="flex items-start justify-between gap-4">
                             <div>
                                 <h3 class="text-base font-semibold text-slate-950">{{ $order->number }}</h3>
-                                <p class="mt-2 text-sm text-slate-600">Статус: {{ $order->status }} · Оплата: {{ $order->payment_status }}</p>
+                                <p class="mt-2 text-sm text-slate-600">Статус: {{ \App\Support\OrderStatuses::label($order->status) }} · Оплата: {{ $order->payment_status }}</p>
                             </div>
                             <div class="text-right">
                                 <p class="text-xs uppercase tracking-[0.22em] text-slate-400">1С документ</p>

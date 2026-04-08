@@ -13,7 +13,6 @@ class ProductController extends Controller
 {
     public function show(Request $request, Product $product): View
     {
-        $request->user()->loadMissing('priceProfile');
         $product->loadMissing(['category.children', 'category.parent.children', 'category.parent', 'prices']);
         $cartQuantity = (int) $request->user()->cartItems()->where('product_id', $product->id)->value('quantity');
 

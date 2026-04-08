@@ -12,9 +12,9 @@ class CatalogController extends Controller
 {
     public function index(Request $request): View|JsonResponse
     {
-        $request->user()->loadMissing('priceProfile');
-
         $selectedCategory = null;
+        $searchQuery = trim($request->string('q')->toString());
+        $hasSearch = filled($searchQuery);
 
         if ($request->filled('category')) {
             $selectedCategory = Category::query()
@@ -28,7 +28,7 @@ class CatalogController extends Controller
                 $selectedCategory,
                 fn ($query) => $query->whereIn('category_id', $this->categoryTreeIds($selectedCategory)),
             )
-            ->search($request->string('q')->toString())
+            ->search($searchQuery)
             ->orderByRaw('price_from is null')
             ->orderBy('title')
             ->paginate(18)
@@ -46,60 +46,67 @@ class CatalogController extends Controller
             ]);
         }
 
-        $rootCategories = Category::query()
-            ->roots()
-            ->with('children')
-            ->get();
+        $rootCategories = collect();
+        $featuredProducts = collect();
 
-        $catalogCategoryIds = $rootCategories
-            ->flatMap(fn (Category $category) => $category->children->pluck('id')->push($category->id))
-            ->unique()
-            ->values();
+        if (! $hasSearch) {
+            $rootCategories = Category::query()
+                ->roots()
+                ->with('children')
+                ->get();
 
-        $productCounts = Product::query()
-            ->selectRaw('category_id, COUNT(*) as aggregate')
-            ->whereIn('category_id', $catalogCategoryIds)
-            ->groupBy('category_id')
-            ->pluck('aggregate', 'category_id');
+            $catalogCategoryIds = $rootCategories
+                ->flatMap(fn (Category $category) => $category->children->pluck('id')->push($category->id))
+                ->unique()
+                ->values();
 
-        $categoryPreviewProducts = Product::query()
-            ->select(['category_id', 'title', 'image_path', 'sort_order'])
-            ->whereIn('category_id', $catalogCategoryIds)
-            ->orderByRaw('image_path is null')
-            ->orderBy('sort_order')
-            ->orderBy('title')
-            ->get()
-            ->groupBy('category_id')
-            ->map(fn ($products) => $products->first());
+            $productCounts = Product::query()
+                ->selectRaw('category_id, COUNT(*) as aggregate')
+                ->whereIn('category_id', $catalogCategoryIds)
+                ->groupBy('category_id')
+                ->pluck('aggregate', 'category_id');
 
-        $rootCategories->each(function (Category $category) use ($productCounts, $categoryPreviewProducts): void {
-            $categoryIds = $category->children->pluck('id')->push($category->id);
-            $previewCandidates = $categoryIds
-                ->map(fn (int $categoryId) => $categoryPreviewProducts->get($categoryId))
-                ->filter();
+            $categoryPreviewProducts = Product::query()
+                ->select(['category_id', 'title', 'image_path', 'sort_order'])
+                ->whereIn('category_id', $catalogCategoryIds)
+                ->orderByRaw('image_path is null')
+                ->orderBy('sort_order')
+                ->orderBy('title')
+                ->get()
+                ->groupBy('category_id')
+                ->map(fn ($products) => $products->first());
 
-            $previewProduct = $previewCandidates->first(fn ($product): bool => filled($product->image_path))
-                ?? $previewCandidates->first();
+            $rootCategories->each(function (Category $category) use ($productCounts, $categoryPreviewProducts): void {
+                $categoryIds = $category->children->pluck('id')->push($category->id);
+                $previewCandidates = $categoryIds
+                    ->map(fn (int $categoryId) => $categoryPreviewProducts->get($categoryId))
+                    ->filter();
 
-            $category->setAttribute(
-                'catalog_products_count',
-                $categoryIds->sum(fn (int $categoryId): int => (int) ($productCounts[$categoryId] ?? 0)),
-            );
-            $category->setAttribute('catalog_preview_image', $previewProduct?->image_path);
-            $category->setAttribute('catalog_preview_title', $previewProduct?->title);
-        });
+                $previewProduct = $previewCandidates->first(fn ($product): bool => filled($product->image_path))
+                    ?? $previewCandidates->first();
 
-        $featuredProducts = Product::query()
-            ->with(['category.parent', 'prices'])
-            ->orderByRaw('image_path is null')
-            ->orderByDesc('id')
-            ->limit(8)
-            ->get();
+                $category->setAttribute(
+                    'catalog_products_count',
+                    $categoryIds->sum(fn (int $categoryId): int => (int) ($productCounts[$categoryId] ?? 0)),
+                );
+                $category->setAttribute('catalog_preview_image', $previewProduct?->image_path);
+                $category->setAttribute('catalog_preview_title', $previewProduct?->title);
+            });
+
+            $featuredProducts = Product::query()
+                ->with(['category.parent', 'prices'])
+                ->orderByRaw('image_path is null')
+                ->orderByDesc('id')
+                ->limit(8)
+                ->get();
+        }
 
         return view('catalog.index', [
             'featuredProducts' => $featuredProducts,
+            'hasSearch' => $hasSearch,
             'products' => $products,
             'rootCategories' => $rootCategories,
+            'searchQuery' => $searchQuery,
             'selectedCategory' => $selectedCategory,
             'totalProducts' => Product::query()->count(),
             'totalSections' => Category::query()->count(),

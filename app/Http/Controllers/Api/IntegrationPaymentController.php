@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\Concerns\NormalizesIntegrationData;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Support\OrderStatuses;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -78,9 +79,9 @@ class IntegrationPaymentController extends Controller
     private function resolveOrderStatus(string $paymentStatus, string $currentStatus): string
     {
         return match ($paymentStatus) {
-            'paid' => $currentStatus === 'new' ? 'processing' : $currentStatus,
-            'failed' => 'payment_failed',
-            'canceled' => 'canceled',
+            'paid' => $currentStatus === OrderStatuses::NEW ? OrderStatuses::ACCEPTED : $currentStatus,
+            'failed' => $currentStatus,
+            'canceled' => OrderStatuses::CANCELED,
             default => $currentStatus,
         };
     }

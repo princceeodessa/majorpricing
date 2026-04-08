@@ -9,8 +9,7 @@
                 <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Корзина</p>
                 <h1 class="mt-2 font-['IBM_Plex_Sans'] text-4xl font-semibold tracking-tight text-slate-950">Оформление заказа</h1>
                 <p class="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-                    Проверьте позиции, оставьте контакты для связи с менеджером и отправьте заявку в работу.
-                    Данные можно заполнить прямо здесь или сохранить в профиле для следующих заказов.
+                    Проверьте позиции, выберите один из сохраненных адресов и подтвердите заявку менеджеру.
                 </p>
             </div>
 
@@ -104,7 +103,7 @@
                             </div>
 
                             <div class="catalog-cart-item__price">
-                                <p class="catalog-cart-item__price-label">{{ $price?->label ?? (auth()->user()->priceProfile?->price_label ?? 'Цена') }}</p>
+                                <p class="catalog-cart-item__price-label">Цена</p>
                                 @if ($cartItem->resolved_unit_amount !== null)
                                     <p class="catalog-cart-item__price-value">
                                         {{ \Illuminate\Support\Number::format((float) $cartItem->resolved_unit_amount, 2, locale: 'ru') }} ₽
@@ -126,11 +125,7 @@
                     @csrf
 
                     <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Связь с менеджером</p>
-                        <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold tracking-tight text-slate-950">Приобрести и отправить заявку</h2>
-                        <p class="mt-3 text-sm leading-6 text-slate-600">
-                            Менеджер получит состав корзины, ваши контакты и комментарий по заказу. После отправки заказ появится в истории.
-                        </p>
+                        <h2 class="font-['IBM_Plex_Sans'] text-3xl font-semibold tracking-tight text-slate-950">Подтверждение заявки</h2>
                     </div>
 
                     <div class="space-y-3">
@@ -164,72 +159,34 @@
                         </div>
                     </div>
 
-                    <div class="catalog-checkout-fields">
-                        <label class="access-field">
-                            <span>Имя</span>
-                            <input
-                                type="text"
-                                name="name"
-                                value="{{ old('name', $user->name) }}"
-                                placeholder="Ваше имя"
-                                class="catalog-clean-input"
-                            >
-                        </label>
+                    <div class="space-y-3">
+                        <label class="catalog-filter-title">Выберите адрес доставки</label>
 
-                        <label class="access-field">
-                            <span>Компания</span>
-                            <input
-                                type="text"
-                                name="company"
-                                value="{{ old('company', $user->company) }}"
-                                placeholder="Название компании"
-                                class="catalog-clean-input"
-                            >
-                        </label>
-
-                        <label class="access-field">
-                            <span>Контактное лицо</span>
-                            <input
-                                type="text"
-                                name="contact_person"
-                                value="{{ old('contact_person', $user->contact_person ?: $user->name) }}"
-                                placeholder="К кому обращаться по заказу"
-                                class="catalog-clean-input"
-                            >
-                        </label>
-
-                        <label class="access-field">
-                            <span>Телефон</span>
-                            <input
-                                type="text"
-                                name="phone"
-                                value="{{ old('phone', $user->phone) }}"
-                                placeholder="+7 999 000-00-00"
-                                class="catalog-clean-input"
-                            >
-                        </label>
-
-                        <label class="access-field">
-                            <span>Telegram</span>
-                            <input
-                                type="text"
-                                name="telegram"
-                                value="{{ old('telegram', $user->telegram) }}"
-                                placeholder="@major_client"
-                                class="catalog-clean-input"
-                            >
-                        </label>
-
-                        <label class="access-field access-field--full">
-                            <span>Адрес / доставка</span>
-                            <input
-                                type="text"
-                                name="delivery_address"
-                                value="{{ old('delivery_address', $user->delivery_address) }}"
-                                placeholder="Город, адрес, объект"
-                                class="catalog-clean-input"
-                            >
-                        </label>
+                        @if ($userAddresses->isEmpty())
+                            <div class="catalog-order-note">
+                                Сначала добавьте хотя бы один адрес в личном кабинете, после этого он появится здесь для выбора.
+                            </div>
+                        @else
+                            <div class="catalog-checkout-addresses">
+                                @foreach ($userAddresses as $address)
+                                    <label class="catalog-checkout-address">
+                                        <input
+                                            type="radio"
+                                            name="user_address_id"
+                                            value="{{ $address->id }}"
+                                            @checked((string) old('user_address_id', $selectedAddressId) === (string) $address->id)
+                                        >
+                                        <span class="catalog-checkout-address__content">
+                                            <strong>{{ $address->title }}</strong>
+                                            <small>{{ $address->address }}</small>
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('user_address_id')
+                                <p class="text-sm font-medium text-red-600">{{ $message }}</p>
+                            @enderror
+                        @endif
                     </div>
 
                     <div class="space-y-2">
@@ -243,14 +200,7 @@
                         >{{ old('comment') }}</textarea>
                     </div>
 
-                    <label class="access-checkbox">
-                        <input type="checkbox" name="save_profile" value="1" @checked(old('save_profile', '1') === '1')>
-                        Сохранить эти данные в профиле и использовать в следующих заказах
-                    </label>
-
-                    <button type="submit" class="catalog-buy-button w-full justify-center">Приобрести и отправить менеджеру</button>
-
-                    <a href="{{ route('account.show') }}" class="catalog-reset-button w-full justify-center">Открыть профиль</a>
+                    <button type="submit" class="catalog-buy-button w-full justify-center" @disabled($userAddresses->isEmpty())>Подтверждаю заявку</button>
                 </form>
             </aside>
         </section>

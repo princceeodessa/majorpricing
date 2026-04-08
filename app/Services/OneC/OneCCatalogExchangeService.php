@@ -295,15 +295,17 @@ class OneCCatalogExchangeService
                 );
 
                 if ($amount !== null) {
-                    $resolvedMinimums[] = $amount;
+                    $resolvedMinimums[$columnIndex] = $amount;
                 }
 
                 $count++;
             }
 
             if ($resolvedMinimums !== []) {
+                ksort($resolvedMinimums);
+
                 $product->forceFill([
-                    'price_from' => min($resolvedMinimums),
+                    'price_from' => reset($resolvedMinimums),
                 ])->save();
             }
         }

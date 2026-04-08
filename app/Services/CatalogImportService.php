@@ -463,7 +463,10 @@ class CatalogImportService
 
         $title = $this->extractTitle($name);
         $description = $this->extractDescription($name);
-        $priceFrom = collect($prices)->pluck('min_amount')->filter()->sort()->first();
+        $priceFrom = collect($prices)
+            ->sortBy('column_index')
+            ->pluck('min_amount')
+            ->first(fn ($value) => $value !== null);
 
         if (blank($title)) {
             return null;

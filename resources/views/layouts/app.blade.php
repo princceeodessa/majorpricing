@@ -3,7 +3,7 @@
     <head>
         @php
             $metaTitle = trim($__env->yieldContent('title', 'MAJOR'));
-            $metaDescription = trim($__env->yieldContent('meta_description', 'Закрытый B2B-каталог MAJOR с персональными ценами, актуальным каталогом и быстрым оформлением заказов для партнеров.'));
+            $metaDescription = trim($__env->yieldContent('meta_description', 'Закрытый B2B-каталог MAJOR с единой ценой, актуальным каталогом и быстрым оформлением заказов для клиентов.'));
             $metaImage = trim($__env->yieldContent('meta_image', asset('brand/major-link-badge.jpg')));
             $metaUrl = url()->current();
         @endphp
@@ -147,7 +147,7 @@
                                             <circle cx="9.2" cy="20" r="1.3" />
                                             <circle cx="16.4" cy="20" r="1.3" />
                                         </svg>
-                                        <strong class="catalog-header-icon-link__badge">{{ $headerCartCount ?? 0 }}</strong>
+                                        <strong class="catalog-header-icon-link__badge" data-cart-count>{{ $headerCartCount ?? 0 }}</strong>
                                     </span>
                                     <span class="catalog-header-icon-link__label">Корзина</span>
                                 </a>
@@ -156,21 +156,6 @@
                                     @csrf
                                     <button type="submit" class="catalog-header-exit">Выйти</button>
                                 </form>
-                            </div>
-                        </div>
-
-                        <div class="catalog-header-bottom">
-                            <nav class="catalog-header-shortcuts" aria-label="Дополнительная навигация">
-                                <a href="{{ route('catalog.index') }}">Акции</a>
-                                <a href="{{ route('catalog.index') }}">О компании</a>
-                                <a href="{{ route('catalog.index') }}">Услуги</a>
-                                <a href="{{ route('catalog.index') }}">Доставка и оплата</a>
-                                <a href="{{ route('catalog.index') }}">Контакты</a>
-                            </nav>
-
-                            <div class="catalog-header-bottom-meta">
-                                <a href="{{ route('account.show') }}" class="catalog-header-b2b-link">Покупать как юрлицо</a>
-                                <a href="{{ route('orders.index') }}" class="catalog-header-manager-link">Связь с менеджером</a>
                             </div>
                         </div>
                     </div>

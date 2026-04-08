@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\PriceProfile;
 use App\Models\User;
 use App\Services\CatalogImportService;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -14,48 +13,6 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        $profiles = collect([
-            [
-                'name' => 'Базовый прайс',
-                'slug' => 'base-price',
-                'column_index' => 1,
-                'price_label' => 'Цена 1',
-                'description' => 'Основной прайс для менеджеров и базовых клиентов.',
-                'is_default' => true,
-            ],
-            [
-                'name' => 'Партнерский прайс',
-                'slug' => 'partner-price',
-                'column_index' => 2,
-                'price_label' => 'Цена 2',
-                'description' => 'Адаптированный прайс для постоянных партнеров.',
-                'is_default' => false,
-            ],
-            [
-                'name' => 'VIP прайс',
-                'slug' => 'vip-price',
-                'column_index' => 3,
-                'price_label' => 'Цена 3',
-                'description' => 'Расширенный прайс для ключевых клиентов.',
-                'is_default' => false,
-            ],
-            [
-                'name' => 'Спецусловия',
-                'slug' => 'special-price',
-                'column_index' => 4,
-                'price_label' => 'Цена 4',
-                'description' => 'Дополнительный профиль под индивидуальные условия.',
-                'is_default' => false,
-            ],
-        ])->mapWithKeys(function (array $profile): array {
-            $model = PriceProfile::query()->updateOrCreate(
-                ['slug' => $profile['slug']],
-                $profile,
-            );
-
-            return [$profile['slug'] => $model];
-        });
-
         User::query()->updateOrCreate(
             ['login' => 'manager'],
             [
@@ -64,7 +21,7 @@ class DatabaseSeeder extends Seeder
                 'email' => 'manager@major.local',
                 'email_verified_at' => now(),
                 'password' => 'MajorDemo123!',
-                'price_profile_id' => $profiles['base-price']->id,
+                'price_profile_id' => null,
                 'is_active' => true,
                 'is_manager' => true,
             ],
@@ -78,7 +35,7 @@ class DatabaseSeeder extends Seeder
                 'email' => 'partner@major.local',
                 'email_verified_at' => now(),
                 'password' => 'MajorDemo123!',
-                'price_profile_id' => $profiles['partner-price']->id,
+                'price_profile_id' => null,
                 'is_active' => true,
                 'is_manager' => false,
             ],
@@ -92,7 +49,7 @@ class DatabaseSeeder extends Seeder
                 'email' => 'vip@major.local',
                 'email_verified_at' => now(),
                 'password' => 'MajorDemo123!',
-                'price_profile_id' => $profiles['vip-price']->id,
+                'price_profile_id' => null,
                 'is_active' => true,
                 'is_manager' => false,
             ],

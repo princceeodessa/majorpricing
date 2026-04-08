@@ -3,55 +3,8 @@
 @section('title', 'Каталог MAJOR')
 
 @section('content')
-    <section class="catalog-spotlight" data-home-banners data-home-banner-interval="7600">
-        <button type="button" class="catalog-spotlight__arrow is-left" data-home-banner-prev aria-label="Предыдущий баннер">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M14.5 5 8 12l6.5 7" />
-            </svg>
-        </button>
-
-        <div class="catalog-spotlight__viewport">
-            <article class="catalog-spotlight__slide is-active" data-home-banner-slide aria-hidden="false">
-                <img
-                    src="{{ asset('brand/major-banner-delivery.png') }}"
-                    alt="Доставка по городу"
-                    class="catalog-spotlight__image"
-                    loading="eager"
-                    decoding="async"
-                >
-            </article>
-
-            <article class="catalog-spotlight__slide" data-home-banner-slide aria-hidden="true">
-                <img
-                    src="{{ asset('brand/major-banner-catalog.png') }}"
-                    alt="Комплектующие для натяжных потолков"
-                    class="catalog-spotlight__image"
-                    loading="lazy"
-                    decoding="async"
-                >
-            </article>
-        </div>
-
-        <button type="button" class="catalog-spotlight__arrow is-right" data-home-banner-next aria-label="Следующий баннер">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m9.5 5 6.5 7-6.5 7" />
-            </svg>
-        </button>
-
-        <div class="catalog-spotlight__footer">
-            <div class="catalog-spotlight__progress">
-                <span data-home-banner-progress></span>
-            </div>
-
-            <div class="catalog-spotlight__dots">
-                <button type="button" class="catalog-spotlight__dot is-active" data-home-banner-dot="0" aria-label="Баннер 1" aria-pressed="true"></button>
-                <button type="button" class="catalog-spotlight__dot" data-home-banner-dot="1" aria-label="Баннер 2" aria-pressed="false"></button>
-            </div>
-        </div>
-    </section>
-
-    @if ($rootCategories->isNotEmpty())
-        <section class="mt-8">
+    @if (!($hasSearch ?? false) && $rootCategories->isNotEmpty())
+        <section>
             <div class="catalog-section-head catalog-section-head--clean">
                 <h2 class="catalog-section-title">Основные категории</h2>
             </div>
@@ -107,7 +60,7 @@
         </section>
     @endif
 
-    @if ($featuredProducts->isNotEmpty())
+    @if (!($hasSearch ?? false) && $featuredProducts->isNotEmpty())
         <section class="mt-10">
             <div class="catalog-section-head catalog-section-head--clean">
                 <h2 class="catalog-section-title">Новинки</h2>
@@ -123,15 +76,35 @@
 
     <section class="mt-10">
         <div class="catalog-section-head catalog-section-head--clean">
-            <h2 class="catalog-section-title">Каталог товаров</h2>
+            <div>
+                <h2 class="catalog-section-title">{{ ($hasSearch ?? false) ? 'Результаты поиска' : 'Каталог товаров' }}</h2>
+                @if ($hasSearch ?? false)
+                    @php($resultsCount = $products->total())
+                    @php($resultsLabel = match (true) {
+                        $resultsCount % 10 === 1 && $resultsCount % 100 !== 11 => 'товар',
+                        in_array($resultsCount % 10, [2, 3, 4], true) && !in_array($resultsCount % 100, [12, 13, 14], true) => 'товара',
+                        default => 'товаров',
+                    })
+                    <p class="mt-2 text-sm leading-6 text-slate-600">
+                        По запросу «{{ $searchQuery }}» найдено {{ $resultsCount }} {{ $resultsLabel }}.
+                    </p>
+                @endif
+            </div>
         </div>
 
         @if ($products->isEmpty())
             <div class="surface-card mt-5 p-10 text-center">
-                <h3 class="font-['IBM_Plex_Sans'] text-2xl font-semibold text-slate-950">Каталог пока пуст</h3>
-                <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">
-                    После наполнения базы здесь появятся категории, секции, карточки товаров и персональные цены.
-                </p>
+                @if ($hasSearch ?? false)
+                    <h3 class="font-['IBM_Plex_Sans'] text-2xl font-semibold text-slate-950">Ничего не найдено</h3>
+                    <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">
+                        Попробуйте изменить запрос или использовать более короткое название товара.
+                    </p>
+                @else
+                    <h3 class="font-['IBM_Plex_Sans'] text-2xl font-semibold text-slate-950">Каталог пока пуст</h3>
+                    <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">
+                        После наполнения базы здесь появятся категории, секции и карточки товаров с единой ценой.
+                    </p>
+                @endif
             </div>
         @else
             <div class="catalog-infinite-feed mt-5" data-infinite-feed data-next-page="{{ $products->nextPageUrl() ?? '' }}">

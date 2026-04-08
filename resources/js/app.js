@@ -217,6 +217,103 @@ const setupQuantityControls = () => {
     });
 };
 
+const syncCartControls = (productId, quantity, cartCount) => {
+    document.querySelectorAll(`[data-cart-control][data-product-id="${productId}"]`).forEach((control) => {
+        if (!(control instanceof HTMLElement)) {
+            return;
+        }
+
+        control.dataset.quantity = `${quantity}`;
+
+        const addState = control.querySelector('[data-cart-add-state]');
+        const qtyState = control.querySelector('[data-cart-qty-state]');
+        const qtyValue = control.querySelector('[data-cart-quantity]');
+
+        addState?.classList.toggle('hidden', quantity > 0);
+        qtyState?.classList.toggle('hidden', quantity <= 0);
+
+        if (qtyValue instanceof HTMLElement) {
+            qtyValue.textContent = `${quantity}`;
+        }
+    });
+
+    document.querySelectorAll('[data-cart-count]').forEach((node) => {
+        node.textContent = `${cartCount}`;
+    });
+};
+
+const setupProductCardCartControls = () => {
+    document.addEventListener('click', async (event) => {
+        const target = event.target instanceof Element
+            ? event.target.closest('[data-cart-add], [data-cart-inc], [data-cart-dec]')
+            : null;
+
+        if (!(target instanceof HTMLElement)) {
+            return;
+        }
+
+        const control = target.closest('[data-cart-control]');
+
+        if (!(control instanceof HTMLElement) || control.dataset.loading === '1') {
+            return;
+        }
+
+        event.preventDefault();
+
+        const quantity = Number(control.dataset.quantity || 0);
+        const token = control.dataset.csrfToken;
+        let url = control.dataset.storeUrl;
+        const body = new FormData();
+
+        if (token) {
+            body.append('_token', token);
+        }
+
+        if (target.hasAttribute('data-cart-add') || target.hasAttribute('data-cart-inc')) {
+            body.append('quantity', '1');
+        } else if (quantity > 1) {
+            url = control.dataset.updateUrl;
+            body.append('_method', 'PATCH');
+            body.append('quantity', `${quantity - 1}`);
+        } else {
+            url = control.dataset.destroyUrl;
+            body.append('_method', 'DELETE');
+        }
+
+        if (!url) {
+            return;
+        }
+
+        control.dataset.loading = '1';
+        control.classList.add('is-loading');
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body,
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('Cart control failed');
+            }
+
+            const payload = await response.json();
+
+            syncCartControls(payload.productId, payload.quantity, payload.cartCount);
+        } catch (error) {
+            window.location.reload();
+        } finally {
+            control.dataset.loading = '0';
+            control.classList.remove('is-loading');
+        }
+    });
+};
+
 const setupProductGalleries = () => {
     document.querySelectorAll('[data-gallery]').forEach((galleryRoot) => {
         if (!(galleryRoot instanceof HTMLElement)) {
@@ -509,6 +606,82 @@ const setupCatalogMenus = () => {
     });
 };
 
+const setupRepeatables = () => {
+    document.querySelectorAll('[data-repeatable]').forEach((repeatableRoot) => {
+        if (!(repeatableRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        const itemsRoot = repeatableRoot.querySelector('[data-repeatable-items]');
+        const template = repeatableRoot.querySelector('template[data-repeatable-template]');
+
+        if (!(itemsRoot instanceof HTMLElement) || !(template instanceof HTMLTemplateElement)) {
+            return;
+        }
+
+        const syncRows = () => {
+            const rows = Array.from(itemsRoot.querySelectorAll('[data-repeatable-row]'))
+                .filter((row) => row instanceof HTMLElement);
+
+            rows.forEach((row) => {
+                const remove = row.querySelector('[data-repeatable-remove]');
+
+                if (remove instanceof HTMLButtonElement) {
+                    remove.disabled = rows.length === 1;
+                }
+            });
+        };
+
+        repeatableRoot.addEventListener('click', (event) => {
+            const target = event.target instanceof Element ? event.target.closest('[data-repeatable-add], [data-repeatable-remove]') : null;
+
+            if (!(target instanceof HTMLElement)) {
+                return;
+            }
+
+            if (target.hasAttribute('data-repeatable-add')) {
+                event.preventDefault();
+
+                const fragment = template.content.cloneNode(true);
+                itemsRoot.append(fragment);
+                syncRows();
+                const input = itemsRoot.querySelector('[data-repeatable-row]:last-child input');
+
+                if (input instanceof HTMLInputElement) {
+                    input.focus();
+                }
+
+                return;
+            }
+
+            if (target.hasAttribute('data-repeatable-remove')) {
+                event.preventDefault();
+
+                const row = target.closest('[data-repeatable-row]');
+                const rows = Array.from(itemsRoot.querySelectorAll('[data-repeatable-row]'));
+
+                if (!(row instanceof HTMLElement)) {
+                    return;
+                }
+
+                if (rows.length === 1) {
+                    const input = row.querySelector('input, textarea');
+
+                    if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+                        input.value = '';
+                    }
+                } else {
+                    row.remove();
+                }
+
+                syncRows();
+            }
+        });
+
+        syncRows();
+    });
+};
+
 const setupInfiniteFeeds = () => {
     document.querySelectorAll('[data-infinite-feed]').forEach((feedRoot) => {
         if (!(feedRoot instanceof HTMLElement)) {
@@ -639,9 +812,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setupFavoriteToggles();
     setupPriceFilters();
     setupQuantityControls();
+    setupProductCardCartControls();
     setupProductGalleries();
     setupHomeBanners();
     setupCatalogMenus();
     setupCategoryRails();
+    setupRepeatables();
     setupInfiniteFeeds();
 });

@@ -111,7 +111,7 @@ class CatalogFiltersAndRecommendationsTest extends TestCase
         $response->assertDontSeeText('Шпатель Lumfer');
     }
 
-    public function test_product_page_shows_relevant_recommendations(): void
+    public function test_product_page_hides_recommendations_block(): void
     {
         $baseProfile = PriceProfile::query()->create([
             'name' => 'Базовый прайс',
@@ -244,9 +244,9 @@ class CatalogFiltersAndRecommendationsTest extends TestCase
         $response = $this->actingAs($user)->get(route('products.show', $product));
 
         $response->assertOk();
-        $response->assertSeeText('Похожие и нужные рядом позиции');
-        $response->assertSeeText('Шпатель Hanov L');
-        $response->assertSeeText('Нож Hanov монтажный');
+        $response->assertDontSeeText('Похожие и нужные рядом позиции');
+        $response->assertDontSeeText('Шпатель Hanov L');
+        $response->assertDontSeeText('Нож Hanov монтажный');
         $response->assertDontSeeText('Светильник Linea');
     }
 }

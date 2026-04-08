@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\Concerns\NormalizesIntegrationData;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Support\OrderStatuses;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class IntegrationOrderController extends Controller
 {
@@ -73,7 +75,7 @@ class IntegrationOrderController extends Controller
     public function update(Request $request, Order $order): JsonResponse
     {
         $validated = $request->validate([
-            'status' => ['nullable', 'string', 'max:80'],
+            'status' => ['nullable', 'string', Rule::in(OrderStatuses::allowed())],
             'payment_status' => ['nullable', 'string', 'max:80'],
             'payment_method' => ['nullable', 'string', 'max:120'],
             'payment_reference' => ['nullable', 'string', 'max:190'],
@@ -91,6 +93,10 @@ class IntegrationOrderController extends Controller
 
         if (filled($validated['integration_reference'] ?? null) && ! array_key_exists('integration_synced_at', $validated)) {
             $validated['integration_synced_at'] = now();
+        }
+
+        if (array_key_exists('status', $validated)) {
+            $validated['status'] = OrderStatuses::normalize($validated['status']);
         }
 
         $order->fill($validated);

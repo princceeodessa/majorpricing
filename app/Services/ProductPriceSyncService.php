@@ -67,14 +67,16 @@ class ProductPriceSyncService
                     );
 
                     if ($amount !== null) {
-                        $resolvedMinimums[] = $amount;
+                        $resolvedMinimums[(int) $priceData['column_index']] = $amount;
                     }
                 }
+
+                ksort($resolvedMinimums);
 
                 $product->forceFill([
                     'price_from' => array_key_exists('price_from', $item)
                         ? ($item['price_from'] !== null ? (float) $item['price_from'] : null)
-                        : ($resolvedMinimums !== [] ? min($resolvedMinimums) : $product->price_from),
+                        : ($resolvedMinimums !== [] ? reset($resolvedMinimums) : $product->price_from),
                 ])->save();
             });
 
@@ -120,4 +122,3 @@ class ProductPriceSyncService
         return number_format($amount, 2, ',', ' ');
     }
 }
-

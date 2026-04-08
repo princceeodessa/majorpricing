@@ -13,9 +13,7 @@ class CategoryController extends Controller
 {
     public function show(Request $request, Category $category): View|JsonResponse
     {
-        $request->user()->loadMissing('priceProfile');
         $category->loadMissing(['parent', 'children']);
-        $priceColumn = max(1, (int) ($request->user()->priceProfile?->column_index ?? 1));
 
         $selectedSection = null;
         $categoryIds = [$category->id];
@@ -38,12 +36,8 @@ class CategoryController extends Controller
             ->search($request->string('q')->toString());
 
         $priceStats = (clone $catalogQuery)
-            ->join('product_prices', function ($join) use ($priceColumn): void {
-                $join->on('product_prices.product_id', '=', 'products.id')
-                    ->where('product_prices.column_index', '=', $priceColumn)
-                    ->whereNotNull('product_prices.min_amount');
-            })
-            ->selectRaw('MIN(product_prices.min_amount) as min_amount, MAX(product_prices.min_amount) as max_amount')
+            ->whereNotNull('price_from')
+            ->selectRaw('MIN(price_from) as min_amount, MAX(price_from) as max_amount')
             ->first();
 
         $availableSheets = (clone $catalogQuery)
@@ -89,13 +83,10 @@ class CategoryController extends Controller
             )
             ->when(
                 $hasActivePriceFilter,
-                fn (Builder $query) => $query->whereHas('prices', function (Builder $priceQuery) use ($priceColumn, $selectedPriceMin, $selectedPriceMax): void {
-                    $priceQuery
-                        ->where('column_index', $priceColumn)
-                        ->whereNotNull('min_amount')
-                        ->where('min_amount', '>=', $selectedPriceMin)
-                        ->where('min_amount', '<=', $selectedPriceMax);
-                }),
+                fn (Builder $query) => $query
+                    ->whereNotNull('price_from')
+                    ->where('price_from', '>=', $selectedPriceMin)
+                    ->where('price_from', '<=', $selectedPriceMax),
             )
             ->orderByRaw('price_from is null')
             ->orderBy('title')

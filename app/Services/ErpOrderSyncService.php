@@ -21,7 +21,7 @@ class ErpOrderSyncService
             return false;
         }
 
-        $order->loadMissing(['user.priceProfile', 'items.product.category.parent']);
+        $order->loadMissing(['user', 'items.product.category.parent']);
 
         $request = Http::acceptJson()
             ->timeout((int) config('integrations.erp.timeout', 10))
@@ -79,7 +79,7 @@ class ErpOrderSyncService
                 'payment_reference' => $order->payment_reference,
                 'placed_at' => $order->placed_at?->toAtomString(),
                 'comment' => $order->comment,
-                'price_profile_name' => $order->price_profile_name,
+                'price_profile_name' => null,
                 'items_count' => $order->items_count,
                 'subtotal_amount' => $order->subtotal_amount !== null ? (float) $order->subtotal_amount : null,
                 'total_amount' => $order->total_amount !== null ? (float) $order->total_amount : null,
@@ -95,7 +95,7 @@ class ErpOrderSyncService
                 'phone' => $order->customer_phone,
                 'telegram' => $order->customer_telegram,
                 'delivery_address' => $order->customer_delivery_address,
-                'price_profile' => $order->user?->priceProfile?->name,
+                'price_profile' => null,
             ],
             'items' => $order->items->map(fn (OrderItem $item): array => [
                 'id' => $item->id,

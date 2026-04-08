@@ -10,9 +10,11 @@ use App\Models\User;
 use App\Services\ErpOrderSyncService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class CartController extends Controller
 {
@@ -23,18 +25,27 @@ class CartController extends Controller
 
     public function index(Request $request): View
     {
-        $request->user()->loadMissing('priceProfile');
+        $request->user()->loadMissing('addresses');
 
         [$cartItems, $summary] = $this->resolveCartState($request->user());
+        $selectedAddress = old('user_address_id')
+            ? $request->user()->addresses->firstWhere('id', (int) old('user_address_id'))
+            : $request->user()->addresses->firstWhere('is_default', true);
+
+        if (! $selectedAddress) {
+            $selectedAddress = $request->user()->addresses->first();
+        }
 
         return view('cart.index', [
             'cartItems' => $cartItems,
             'summary' => $summary,
             'user' => $request->user(),
+            'userAddresses' => $request->user()->addresses,
+            'selectedAddressId' => $selectedAddress?->id,
         ]);
     }
 
-    public function store(Request $request, Product $product): RedirectResponse
+    public function store(Request $request, Product $product): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'quantity' => ['nullable', 'integer', 'min:1', 'max:999'],
@@ -49,7 +60,34 @@ class CartController extends Controller
         $cartItem->quantity = min(999, ($cartItem->exists ? $cartItem->quantity : 0) + $quantity);
         $cartItem->save();
 
-        return back()->with('status', 'Товар добавлен в корзину.');
+        return $this->cartMutationResponse($request, $product, $cartItem->quantity, 'Товар добавлен в корзину.');
+    }
+
+    public function updateProduct(Request $request, Product $product): RedirectResponse|JsonResponse
+    {
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1', 'max:999'],
+        ]);
+
+        $cartItem = CartItem::query()->firstOrNew([
+            'user_id' => $request->user()->id,
+            'product_id' => $product->id,
+        ]);
+
+        $cartItem->quantity = (int) $validated['quantity'];
+        $cartItem->save();
+
+        return $this->cartMutationResponse($request, $product, $cartItem->quantity, 'Количество в корзине обновлено.');
+    }
+
+    public function destroyProduct(Request $request, Product $product): RedirectResponse|JsonResponse
+    {
+        CartItem::query()
+            ->where('user_id', $request->user()->id)
+            ->where('product_id', $product->id)
+            ->delete();
+
+        return $this->cartMutationResponse($request, $product, 0, 'Товар удален из корзины.');
     }
 
     public function update(Request $request, CartItem $cartItem): RedirectResponse
@@ -79,18 +117,21 @@ class CartController extends Controller
     public function checkout(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['nullable', 'string', 'max:255'],
-            'company' => ['nullable', 'string', 'max:255'],
+            'user_address_id' => [
+                'required',
+                'integer',
+                Rule::exists('user_addresses', 'id')->where(
+                    fn ($query) => $query->where('user_id', $request->user()->id)
+                ),
+            ],
             'comment' => ['nullable', 'string', 'max:1500'],
-            'contact_person' => ['nullable', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:64'],
-            'telegram' => ['nullable', 'string', 'max:255'],
-            'delivery_address' => ['nullable', 'string', 'max:1500'],
-            'save_profile' => ['nullable', 'boolean'],
+        ], [
+            'user_address_id.required' => 'Выберите адрес доставки из профиля.',
+            'user_address_id.exists' => 'Выбранный адрес не найден.',
         ]);
 
         $user = $request->user();
-        $user->loadMissing('priceProfile');
+        $user->loadMissing('addresses');
 
         [$cartItems, $summary] = $this->resolveCartState($user);
 
@@ -98,26 +139,23 @@ class CartController extends Controller
             return redirect()->route('cart.index')->with('status', 'Корзина пока пуста.');
         }
 
-        $contactSnapshot = [
-            'customer_name' => filled($validated['name'] ?? null) ? trim($validated['name']) : $user->name,
-            'customer_company' => filled($validated['company'] ?? null) ? trim($validated['company']) : $user->company,
-            'customer_email' => $user->email,
-            'customer_phone' => filled($validated['phone'] ?? null) ? trim($validated['phone']) : $user->phone,
-            'customer_contact_person' => filled($validated['contact_person'] ?? null) ? trim($validated['contact_person']) : ($user->contact_person ?: $user->name),
-            'customer_telegram' => filled($validated['telegram'] ?? null) ? trim($validated['telegram']) : $user->telegram,
-            'customer_delivery_address' => filled($validated['delivery_address'] ?? null) ? trim($validated['delivery_address']) : $user->delivery_address,
-        ];
+        $selectedAddress = $user->addresses->firstWhere('id', (int) $validated['user_address_id']);
 
-        if ($request->boolean('save_profile', true)) {
-            $user->forceFill([
-                'name' => $contactSnapshot['customer_name'],
-                'company' => $contactSnapshot['customer_company'],
-                'contact_person' => $contactSnapshot['customer_contact_person'],
-                'phone' => $contactSnapshot['customer_phone'],
-                'telegram' => $contactSnapshot['customer_telegram'],
-                'delivery_address' => $contactSnapshot['customer_delivery_address'],
-            ])->save();
+        if (! $selectedAddress) {
+            return redirect()->route('cart.index')->withErrors([
+                'user_address_id' => 'Выберите корректный адрес доставки.',
+            ]);
         }
+
+        $contactSnapshot = [
+            'customer_name' => $user->name,
+            'customer_company' => $user->company,
+            'customer_email' => $user->email,
+            'customer_phone' => $user->phone,
+            'customer_contact_person' => $user->primaryContactPerson() ?: $user->name,
+            'customer_telegram' => $user->primaryMessenger(),
+            'customer_delivery_address' => $selectedAddress->formattedLabel(),
+        ];
 
         $order = DB::transaction(function () use ($user, $validated, $cartItems, $summary, $contactSnapshot): Order {
             $order = Order::query()->create([
@@ -127,7 +165,7 @@ class CartController extends Controller
                 'items_count' => (int) $summary['items_count'],
                 'subtotal_amount' => $summary['total_amount'],
                 'total_amount' => $summary['total_amount'],
-                'price_profile_name' => $user->priceProfile?->name,
+                'price_profile_name' => null,
                 'customer_name' => $contactSnapshot['customer_name'],
                 'customer_company' => $contactSnapshot['customer_company'],
                 'customer_email' => $contactSnapshot['customer_email'],
@@ -155,7 +193,7 @@ class CartController extends Controller
                     'product_title' => $product?->title ?? 'Товар из каталога',
                     'product_slug' => $product?->slug,
                     'quantity' => $cartItem->quantity,
-                    'price_label' => $resolvedPrice?->label ?? $user->priceProfile?->price_label,
+                    'price_label' => $resolvedPrice?->label ?? 'Цена',
                     'unit_price' => $resolvedUnitAmount,
                     'line_total' => $resolvedLineAmount,
                     'source_sheet' => $product?->source_sheet,
@@ -187,8 +225,8 @@ class CartController extends Controller
             ->latest('id')
             ->get();
 
-        $cartItems->each(function (CartItem $cartItem) use ($user): void {
-            $price = $cartItem->product?->priceForProfile($user->priceProfile);
+        $cartItems->each(function (CartItem $cartItem): void {
+            $price = $cartItem->product?->priceForProfile();
             $unitAmount = $price?->min_amount !== null ? (float) $price->min_amount : null;
             $lineAmount = $unitAmount !== null ? round($unitAmount * $cartItem->quantity, 2) : null;
 
@@ -211,5 +249,23 @@ class CartController extends Controller
     private function ensureOwner(Request $request, CartItem $cartItem): void
     {
         abort_unless($cartItem->user_id === $request->user()->id, 404);
+    }
+
+    private function cartMutationResponse(Request $request, Product $product, int $quantity, string $message): RedirectResponse|JsonResponse
+    {
+        $cartCount = (int) CartItem::query()
+            ->where('user_id', $request->user()->id)
+            ->sum('quantity');
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'productId' => $product->id,
+                'quantity' => $quantity,
+                'cartCount' => $cartCount,
+                'message' => $message,
+            ]);
+        }
+
+        return back()->with('status', $message);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Support\OrderStatuses;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ class OrderController extends Controller
         $isManager = $user->isManager();
 
         $orders = Order::query()
-            ->with(['user.priceProfile', 'items.product'])
+            ->with(['user', 'items.product'])
             ->when(! $isManager, fn ($query) => $query->where('user_id', $user->id))
             ->latest('placed_at')
             ->latest('id')
@@ -31,17 +32,11 @@ class OrderController extends Controller
         return view('orders.index', [
             'orders' => $orders,
             'isManager' => $isManager,
-            'statusOptions' => [
-                'new' => 'Новый',
-                'processing' => 'Подтвержден',
-                'completed' => 'Выполнен',
-                'canceled' => 'Отменен',
-                'payment_failed' => 'Проблема с оплатой',
-            ],
+            'statusOptions' => OrderStatuses::options(),
             'orderStats' => [
                 'total' => (clone $baseQuery)->count(),
-                'new' => (clone $baseQuery)->where('status', 'new')->count(),
-                'processing' => (clone $baseQuery)->where('status', 'processing')->count(),
+                'new' => (clone $baseQuery)->where('status', OrderStatuses::NEW)->count(),
+                'processing' => (clone $baseQuery)->whereIn('status', OrderStatuses::inProgress())->count(),
             ],
         ]);
     }
@@ -51,12 +46,12 @@ class OrderController extends Controller
         abort_unless($request->user()->isManager(), 403);
 
         $validated = $request->validate([
-            'status' => ['required', 'string', Rule::in(['new', 'processing', 'completed', 'canceled', 'payment_failed'])],
+            'status' => ['required', 'string', Rule::in(OrderStatuses::allowed())],
             'manager_comment' => ['nullable', 'string', 'max:1500'],
         ]);
 
         $order->update([
-            'status' => $validated['status'],
+            'status' => OrderStatuses::normalize($validated['status']) ?? OrderStatuses::NEW,
             'manager_comment' => filled($validated['manager_comment'] ?? null) ? trim($validated['manager_comment']) : null,
         ]);
 

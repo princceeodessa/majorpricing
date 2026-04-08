@@ -4,6 +4,7 @@ namespace App\Services\OneC;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Support\OrderStatuses;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
@@ -163,11 +164,10 @@ class OneCSaleExchangeService
             $xml->endElement();
 
             $xml->startElement('ЗначенияРеквизитов');
-            $this->writeRequisite($xml, 'Статус заказа', $order->status);
+            $this->writeRequisite($xml, 'Статус заказа', OrderStatuses::label($order->status));
             $this->writeRequisite($xml, 'Статус оплаты', $order->payment_status);
             $this->writeRequisite($xml, 'Комментарий', $order->comment);
             $this->writeRequisite($xml, 'Контактное лицо', $order->customer_contact_person);
-            $this->writeRequisite($xml, 'Прайс-профиль', $order->price_profile_name);
             $xml->endElement();
 
             $xml->endElement();
@@ -246,17 +246,19 @@ class OneCSaleExchangeService
     private function resolveOrderStatus(?string $status, ?string $isCanceled): ?string
     {
         if ($this->isTruthy($isCanceled)) {
-            return 'canceled';
+            return OrderStatuses::CANCELED;
         }
 
         $normalized = Str::lower(trim((string) $status));
 
         return match (true) {
             $normalized === '' => null,
-            str_contains($normalized, 'отмен') => 'canceled',
-            str_contains($normalized, 'выполн'), str_contains($normalized, 'заверш') => 'completed',
-            str_contains($normalized, 'обработ'), str_contains($normalized, 'принят'), str_contains($normalized, 'соглас') => 'processing',
-            default => 'new',
+            str_contains($normalized, 'отмен') => OrderStatuses::CANCELED,
+            str_contains($normalized, 'в пути'), str_contains($normalized, 'достав') => OrderStatuses::IN_TRANSIT,
+            str_contains($normalized, 'сборк'), str_contains($normalized, 'комплект') => OrderStatuses::ASSEMBLING,
+            str_contains($normalized, 'выполн'), str_contains($normalized, 'заверш') => OrderStatuses::COMPLETED,
+            str_contains($normalized, 'обработ'), str_contains($normalized, 'принят'), str_contains($normalized, 'соглас') => OrderStatuses::ACCEPTED,
+            default => OrderStatuses::NEW,
         };
     }
 
@@ -300,7 +302,7 @@ class OneCSaleExchangeService
 
     private function normalizeLegacyEncoding(string $xml): string
     {
-        if (! str_contains($xml, 'Р')) {
+        if (! str_contains($xml, 'Р ')) {
             return $xml;
         }
 

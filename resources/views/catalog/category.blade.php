@@ -25,15 +25,11 @@
 
                 <h1 class="mt-4 font-['IBM_Plex_Sans'] text-4xl font-semibold tracking-tight text-slate-950 sm:text-[3.2rem]">{{ $category->name }}</h1>
                 <p class="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-                    Белая каталоговая раскладка с боковой фильтрацией по секциям, персональной цене и серии. Все значения считаются по текущему прайс-профилю пользователя.
+                    Белая каталоговая раскладка с боковой фильтрацией по секциям, единой цене и серии. Все значения на странице показываются в общем режиме без профилей цен.
                 </p>
             </div>
 
             <div class="catalog-list-header__stats">
-                <div class="catalog-stat-box">
-                    <span>Профиль цен</span>
-                    <strong>{{ auth()->user()->priceProfile?->name ?? 'Базовый прайс' }}</strong>
-                </div>
                 <div class="catalog-stat-box">
                     <span>Найдено</span>
                     <strong>{{ $products->total() }}</strong>

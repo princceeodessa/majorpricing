@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
-use App\Models\PriceProfile;
 use App\Models\Product;
 use App\Models\ProductPrice;
 use App\Models\User;
@@ -14,29 +13,12 @@ class CatalogPricingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_category_uses_price_for_authenticated_user_profile(): void
+    public function test_category_uses_single_catalog_price(): void
     {
-        $baseProfile = PriceProfile::query()->create([
-            'name' => 'Базовый прайс',
-            'slug' => 'base-price',
-            'column_index' => 1,
-            'price_label' => 'Цена 1',
-            'is_default' => true,
-        ]);
-
-        $partnerProfile = PriceProfile::query()->create([
-            'name' => 'Партнерский прайс',
-            'slug' => 'partner-price',
-            'column_index' => 2,
-            'price_label' => 'Цена 2',
-            'is_default' => false,
-        ]);
-
         $user = User::factory()->create([
             'login' => 'partner-demo',
             'email' => 'partner-demo@example.com',
             'password' => 'secret12345',
-            'price_profile_id' => $partnerProfile->id,
         ]);
 
         $category = Category::query()->create([
@@ -59,7 +41,7 @@ class CatalogPricingTest extends TestCase
 
         ProductPrice::query()->create([
             'product_id' => $product->id,
-            'column_index' => $baseProfile->column_index,
+            'column_index' => 1,
             'label' => 'Цена 1',
             'display_value' => '530,00',
             'min_amount' => 530,
@@ -67,7 +49,7 @@ class CatalogPricingTest extends TestCase
 
         ProductPrice::query()->create([
             'product_id' => $product->id,
-            'column_index' => $partnerProfile->column_index,
+            'column_index' => 2,
             'label' => 'Цена 2',
             'display_value' => '624,75',
             'min_amount' => 624.75,
@@ -76,9 +58,8 @@ class CatalogPricingTest extends TestCase
         $response = $this->actingAs($user)->get(route('categories.show', $category));
 
         $response->assertOk();
-        $response->assertSeeText('Партнерский прайс');
         $response->assertSeeText('Профиль тестовый');
-        $response->assertSeeText('624,75');
-        $response->assertDontSeeText('530,00');
+        $response->assertSeeText('530,00');
+        $response->assertDontSeeText('624,75');
     }
 }

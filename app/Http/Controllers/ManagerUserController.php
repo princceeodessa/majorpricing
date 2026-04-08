@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PriceProfile;
 use App\Models\User;
+use App\Models\UserAddress;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,13 +16,16 @@ class ManagerUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'company' => ['nullable', 'string', 'max:255'],
             'contact_person' => ['nullable', 'string', 'max:255'],
+            'contact_people' => ['nullable', 'array', 'max:10'],
+            'contact_people.*' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:64'],
             'telegram' => ['nullable', 'string', 'max:255'],
+            'messengers' => ['nullable', 'array', 'max:10'],
+            'messengers.*' => ['nullable', 'string', 'max:255'],
             'delivery_address' => ['nullable', 'string', 'max:1500'],
             'login' => ['required', 'string', 'max:255', 'alpha_dash', Rule::unique(User::class, 'login')],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'price_profile_id' => ['nullable', 'integer', Rule::exists(PriceProfile::class, 'id')],
             'is_active' => ['nullable', 'boolean'],
         ], [
             'name.required' => 'Укажите имя пользователя.',
@@ -35,31 +38,62 @@ class ManagerUserController extends Controller
             'password.required' => 'Укажите пароль.',
             'password.min' => 'Пароль должен содержать минимум 8 символов.',
             'password.confirmed' => 'Подтверждение пароля не совпадает.',
-            'price_profile_id.exists' => 'Выбранный прайс-профиль не найден.',
         ]);
 
-        $priceProfileId = $validated['price_profile_id']
-            ?? PriceProfile::query()->where('is_default', true)->value('id')
-            ?? PriceProfile::query()->orderBy('column_index')->value('id');
+        $contactPeople = $this->normalizeStringList([
+            ...($validated['contact_people'] ?? []),
+            $validated['contact_person'] ?? null,
+        ]);
 
-        User::query()->create([
+        $messengers = $this->normalizeStringList([
+            ...($validated['messengers'] ?? []),
+            $validated['telegram'] ?? null,
+        ]);
+
+        $user = User::query()->create([
             'name' => trim($validated['name']),
             'company' => filled($validated['company'] ?? null) ? trim($validated['company']) : null,
-            'contact_person' => filled($validated['contact_person'] ?? null) ? trim($validated['contact_person']) : null,
+            'contact_person' => $contactPeople[0] ?? null,
+            'contact_people' => $contactPeople !== [] ? $contactPeople : null,
             'phone' => filled($validated['phone'] ?? null) ? trim($validated['phone']) : null,
-            'telegram' => filled($validated['telegram'] ?? null) ? trim($validated['telegram']) : null,
+            'telegram' => $messengers[0] ?? null,
+            'messengers' => $messengers !== [] ? $messengers : null,
             'delivery_address' => filled($validated['delivery_address'] ?? null) ? trim($validated['delivery_address']) : null,
             'login' => $validated['login'],
             'email' => $validated['email'],
             'password' => $validated['password'],
-            'price_profile_id' => $priceProfileId,
+            'price_profile_id' => null,
             'is_active' => $request->boolean('is_active', true),
             'is_manager' => false,
             'email_verified_at' => now(),
         ]);
 
+        if (filled($validated['delivery_address'] ?? null)) {
+            UserAddress::query()->create([
+                'user_id' => $user->id,
+                'title' => 'Основной адрес',
+                'address' => trim($validated['delivery_address']),
+                'is_default' => true,
+                'sort_order' => 0,
+            ]);
+        }
+
         return redirect()
             ->route('account.show')
             ->with('status', 'Пользователь добавлен. Доступ готов к выдаче.');
+    }
+
+    /**
+     * @param  array<int, mixed>  $items
+     * @return array<int, string>
+     */
+    private function normalizeStringList(array $items): array
+    {
+        return collect($items)
+            ->map(fn (mixed $item): string => trim((string) $item))
+            ->filter(fn (string $item): bool => $item !== '')
+            ->unique()
+            ->values()
+            ->all();
     }
 }

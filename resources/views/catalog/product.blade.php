@@ -4,16 +4,15 @@
 
 @section('content')
     @php
-        $price = $product->priceForProfile(auth()->user()?->priceProfile);
+        $price = $product->priceForProfile();
         $category = $product->category;
         $rootCategory = $category?->parent ?? $category;
         $galleryFacts = collect([
             $rootCategory?->name,
             $category?->name,
-            $product->source_sheet,
             $product->measurement_value ? str_replace("\n", ' / ', $product->measurement_value) : null,
         ])->filter(fn ($value) => filled($value))->unique()->values()->take(4);
-        $stageMetaFallback = $product->source_sheet ?: ($product->measurement_value ? str_replace("\n", ' / ', $product->measurement_value) : 'Позиция каталога');
+        $stageMetaFallback = $product->measurement_value ? str_replace("\n", ' / ', $product->measurement_value) : 'Каталог';
         $gallerySlides = ($galleryFacts->isNotEmpty() ? $galleryFacts : collect([$rootCategory?->name ?? $category?->name ?? 'MAJOR']))
             ->values()
             ->map(fn ($fact) => [
@@ -26,8 +25,6 @@
             ['label' => 'Категория', 'value' => $category?->name],
             ['label' => 'Направление', 'value' => $rootCategory && $rootCategory?->id !== $category?->id ? $rootCategory->name : null],
             ['label' => $product->measurement_label ?? 'Параметры', 'value' => $product->measurement_value ? str_replace("\n", ' / ', $product->measurement_value) : null],
-            ['label' => 'Лист прайса', 'value' => $product->source_sheet],
-            ['label' => 'Строка прайса', 'value' => $product->source_row ? 'Позиция #'.$product->source_row : null],
             ['label' => 'Видео', 'value' => $product->has_video ? ($product->video_label ?: 'Есть видео по товару') : null],
         ])->filter(fn (array $item) => filled($item['value']))->values();
         $description = trim($product->description ?: $product->name);
@@ -111,7 +108,7 @@
                 </h1>
 
                 <p class="catalog-product-copy__subtitle">
-                    {{ $product->source_sheet ?? ($category?->name ?? 'Каталоговая позиция') }}
+                    {{ $category?->name ?? ($rootCategory?->name ?? 'Каталог') }}
                 </p>
 
                 <div class="catalog-product-price-block">
@@ -124,9 +121,7 @@
                         <p class="catalog-product-price-block__value catalog-product-price-block__value--empty">Цена по запросу</p>
                     @endif
 
-                    <p class="catalog-product-price-block__profile">
-                        {{ auth()->user()->priceProfile?->name ?? 'Базовый прайс' }}
-                    </p>
+                    <p class="catalog-product-price-block__profile">Цена</p>
                 </div>
 
                 <div class="catalog-product-secondary-actions">
@@ -166,45 +161,5 @@
                 @endif
             </div>
         </div>
-    </section>
-
-    @if ($price)
-        <section class="surface-card reveal-card mt-6 p-6 sm:p-7">
-            <div class="catalog-detail-strip">
-                <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Детали цены</p>
-                    <h2 class="mt-2 font-['IBM_Plex_Sans'] text-2xl font-semibold tracking-tight text-slate-950">Формат из прайса</h2>
-                </div>
-
-                <div class="catalog-detail-strip__value">{{ $price->display_value }}</div>
-            </div>
-        </section>
-    @endif
-
-    <section class="mt-10" id="similar-products">
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-                <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Смотрите также</p>
-                <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold tracking-tight text-slate-950">Похожие и нужные рядом позиции</h2>
-            </div>
-            <p class="max-w-2xl text-sm leading-6 text-slate-600">
-                Подборка собирается по разделу, листу прайса и совпадениям в названии, чтобы рядом были реально близкие товары.
-            </p>
-        </div>
-
-        @if ($relatedProducts->isNotEmpty())
-            <div class="catalog-grid catalog-grid--dense mt-5">
-                @foreach ($relatedProducts as $index => $relatedProduct)
-                    @include('catalog.partials.product-card', ['product' => $relatedProduct, 'delay' => $index * 70])
-                @endforeach
-            </div>
-        @else
-            <div class="surface-card mt-5 p-12 text-center">
-                <h3 class="font-['IBM_Plex_Sans'] text-2xl font-semibold text-slate-950">Подходящих соседних товаров пока нет</h3>
-                <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-                    После следующего расширения прайса здесь появится автоматическая подборка похожих позиций.
-                </p>
-            </div>
-        @endif
     </section>
 @endsection
