@@ -179,6 +179,7 @@ class CartAndOrdersTest extends TestCase
         $client = User::factory()->create([
             'login' => 'client-demo',
             'email' => 'client-demo@example.com',
+            'manager_id' => $manager->id,
             'is_manager' => false,
         ]);
 

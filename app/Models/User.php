@@ -24,6 +24,7 @@ use Illuminate\Notifications\Notifiable;
     'login',
     'email',
     'password',
+    'manager_id',
     'price_profile_id',
     'is_active',
     'is_manager',
@@ -37,6 +38,18 @@ class User extends Authenticatable
     public function priceProfile(): BelongsTo
     {
         return $this->belongsTo(PriceProfile::class);
+    }
+
+    public function manager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function managedClients(): HasMany
+    {
+        return $this->hasMany(User::class, 'manager_id')
+            ->where('is_manager', false)
+            ->orderByDesc('id');
     }
 
     public function cartItems(): HasMany
@@ -59,6 +72,20 @@ class User extends Authenticatable
         return $this->hasMany(UserAddress::class)
             ->orderByDesc('is_default')
             ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function supportMessages(): HasMany
+    {
+        return $this->hasMany(SupportMessage::class, 'client_id')
+            ->orderBy('created_at')
+            ->orderBy('id');
+    }
+
+    public function sentSupportMessages(): HasMany
+    {
+        return $this->hasMany(SupportMessage::class, 'sender_id')
+            ->orderBy('created_at')
             ->orderBy('id');
     }
 

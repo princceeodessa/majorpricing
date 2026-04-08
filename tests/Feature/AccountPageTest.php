@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\SupportMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -10,22 +11,44 @@ class AccountPageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_regular_user_sees_profile_screen_with_contact_form(): void
+    public function test_regular_user_sees_profile_screen_with_manager_contacts_and_support(): void
     {
+        $manager = User::factory()->create([
+            'name' => 'Мария Менеджер',
+            'login' => 'manager-demo',
+            'email' => 'manager-demo@example.com',
+            'phone' => '+7 900 000-00-01',
+            'telegram' => '@manager_major',
+            'messengers' => ['@manager_major'],
+            'is_manager' => true,
+        ]);
+
         $user = User::factory()->create([
             'name' => 'Партнер',
             'company' => 'ООО Партнер',
             'login' => 'partner-demo',
             'email' => 'partner-demo@example.com',
+            'manager_id' => $manager->id,
             'is_manager' => false,
+        ]);
+
+        SupportMessage::query()->create([
+            'client_id' => $user->id,
+            'manager_id' => $manager->id,
+            'sender_id' => $manager->id,
+            'message' => 'Добрый день, подскажите адрес разгрузки.',
         ]);
 
         $this->actingAs($user)
             ->get('/account')
             ->assertOk()
             ->assertSee('Профиль клиента')
+            ->assertSee('Ваш менеджер')
+            ->assertSee('Мария Менеджер')
+            ->assertSee('@manager_major')
+            ->assertSee('Вопрос менеджеру')
+            ->assertSee('Добрый день, подскажите адрес разгрузки.')
             ->assertSee('Адреса для заявок')
-            ->assertSee('ООО Партнер')
             ->assertDontSee('Добавление пользователя');
     }
 
@@ -91,7 +114,7 @@ class AccountPageTest extends TestCase
         ]);
     }
 
-    public function test_manager_sees_user_management_screen(): void
+    public function test_manager_sees_only_managed_clients_on_account_screen(): void
     {
         $manager = User::factory()->create([
             'name' => 'Менеджер',
@@ -101,11 +124,41 @@ class AccountPageTest extends TestCase
             'is_manager' => true,
         ]);
 
+        $otherManager = User::factory()->create([
+            'login' => 'manager-other',
+            'email' => 'manager-other@example.com',
+            'is_manager' => true,
+        ]);
+
+        $managedClient = User::factory()->create([
+            'name' => 'Клиент А',
+            'login' => 'client-a',
+            'email' => 'client-a@example.com',
+            'manager_id' => $manager->id,
+            'is_manager' => false,
+        ]);
+
+        User::factory()->create([
+            'name' => 'Клиент Б',
+            'login' => 'client-b',
+            'email' => 'client-b@example.com',
+            'manager_id' => $otherManager->id,
+            'is_manager' => false,
+        ]);
+
+        SupportMessage::query()->create([
+            'client_id' => $managedClient->id,
+            'manager_id' => $manager->id,
+            'sender_id' => $managedClient->id,
+            'message' => 'Когда сможете подтвердить заявку?',
+        ]);
+
         $this->actingAs($manager)
             ->get('/account')
             ->assertOk()
-            ->assertSee('Клиенты, контакты и работа с заказами в одном месте.')
-            ->assertSee('Добавление пользователя')
-            ->assertSee('Открыть заказы клиентов');
+            ->assertSee('Мои клиенты')
+            ->assertSee('Клиент А')
+            ->assertSee('Когда сможете подтвердить заявку?')
+            ->assertDontSee('Клиент Б');
     }
 }

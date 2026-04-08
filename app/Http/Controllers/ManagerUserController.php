@@ -62,6 +62,7 @@ class ManagerUserController extends Controller
             'login' => $validated['login'],
             'email' => $validated['email'],
             'password' => $validated['password'],
+            'manager_id' => $request->user()->id,
             'price_profile_id' => null,
             'is_active' => $request->boolean('is_active', true),
             'is_manager' => false,

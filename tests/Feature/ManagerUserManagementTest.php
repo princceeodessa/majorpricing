@@ -45,10 +45,12 @@ class ManagerUserManagementTest extends TestCase
             'delivery_address' => 'Саратов, объект 5',
             'login' => 'new_client',
             'email' => 'new-client@example.com',
+            'manager_id' => $manager->id,
             'price_profile_id' => null,
             'is_active' => true,
             'is_manager' => false,
         ]);
+
         $this->assertDatabaseHas('user_addresses', [
             'user_id' => User::query()->where('login', 'new_client')->value('id'),
             'title' => 'Основной адрес',

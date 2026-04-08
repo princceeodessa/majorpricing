@@ -11,6 +11,7 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\OneCExchangeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\SupportMessageController;
 use App\Http\Controllers\UserAddressController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/', [CatalogController::class, 'index'])->name('catalog.index');
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
     Route::patch('/account', [AccountController::class, 'update'])->name('account.update');
+    Route::post('/account/support/messages', [SupportMessageController::class, 'storeForClient'])->name('account.support.messages.store');
     Route::post('/account/addresses', [UserAddressController::class, 'store'])->name('account.addresses.store');
     Route::patch('/account/addresses/{userAddress}/default', [UserAddressController::class, 'makeDefault'])->name('account.addresses.default');
     Route::delete('/account/addresses/{userAddress}', [UserAddressController::class, 'destroy'])->name('account.addresses.destroy');
@@ -38,6 +40,9 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/manager/1c/catalog/import', [OneCDiagnosticsController::class, 'importCatalog'])
         ->middleware('manager')
         ->name('manager.onec.catalog.import');
+    Route::post('/manager/support/messages', [SupportMessageController::class, 'storeForManager'])
+        ->middleware('manager')
+        ->name('manager.support.messages.store');
     Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
     Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
     Route::post('/products/{product:slug}/cart', [CartController::class, 'store'])->name('cart.store');

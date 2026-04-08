@@ -18,14 +18,20 @@ class OrderController extends Controller
 
         $orders = Order::query()
             ->with(['user', 'items.product'])
-            ->when(! $isManager, fn ($query) => $query->where('user_id', $user->id))
+            ->when(
+                $isManager,
+                fn ($query) => $query->whereHas('user', fn ($userQuery) => $userQuery->where('manager_id', $user->id)),
+                fn ($query) => $query->where('user_id', $user->id)
+            )
             ->latest('placed_at')
             ->latest('id')
             ->paginate(12);
 
         $baseQuery = Order::query();
 
-        if (! $isManager) {
+        if ($isManager) {
+            $baseQuery->whereHas('user', fn ($userQuery) => $userQuery->where('manager_id', $user->id));
+        } else {
             $baseQuery->where('user_id', $user->id);
         }
 
@@ -44,6 +50,7 @@ class OrderController extends Controller
     public function update(Request $request, Order $order): RedirectResponse
     {
         abort_unless($request->user()->isManager(), 403);
+        abort_unless((int) $order->user?->manager_id === (int) $request->user()->id, 403);
 
         $validated = $request->validate([
             'status' => ['required', 'string', Rule::in(OrderStatuses::allowed())],

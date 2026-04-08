@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\User;
 use App\Support\OrderStatuses;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -13,9 +12,14 @@ class AccountController extends Controller
 {
     public function show(Request $request): View
     {
-        $user = $request->user()->load('addresses');
+        $user = $request->user()->load([
+            'addresses',
+            'manager',
+            'supportMessages.sender',
+        ]);
 
         $managedUsers = collect();
+        $supportMessages = $user->supportMessages;
         $managementStats = [
             'totalUsers' => 0,
             'activeUsers' => 0,
@@ -25,18 +29,25 @@ class AccountController extends Controller
         ];
 
         if ($user->isManager()) {
-            $managedUsers = User::query()
-                ->with('addresses')
+            $managedUsers = $user->managedClients()
+                ->with(['addresses', 'supportMessages.sender'])
                 ->withCount('orders')
-                ->orderByDesc('id')
                 ->get();
+
+            $managedUserIds = $managedUsers->modelKeys();
 
             $managementStats = [
                 'totalUsers' => $managedUsers->count(),
                 'activeUsers' => $managedUsers->where('is_active', true)->count(),
                 'disabledUsers' => $managedUsers->where('is_active', false)->count(),
-                'newOrders' => Order::query()->where('status', OrderStatuses::NEW)->count(),
-                'processingOrders' => Order::query()->whereIn('status', OrderStatuses::inProgress())->count(),
+                'newOrders' => Order::query()
+                    ->whereIn('user_id', $managedUserIds)
+                    ->where('status', OrderStatuses::NEW)
+                    ->count(),
+                'processingOrders' => Order::query()
+                    ->whereIn('user_id', $managedUserIds)
+                    ->whereIn('status', OrderStatuses::inProgress())
+                    ->count(),
             ];
         }
 
@@ -44,6 +55,8 @@ class AccountController extends Controller
             'managedUsers' => $managedUsers,
             'userAddresses' => $user->addresses,
             'managementStats' => $managementStats,
+            'assignedManager' => $user->manager,
+            'supportMessages' => $supportMessages,
         ]);
     }
 
