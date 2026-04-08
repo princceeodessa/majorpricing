@@ -21,7 +21,17 @@ class OneCCatalogExchangeService
     }
 
     /**
-     * @return array{categories:int,products:int,prices:int,images:int}
+     * @return array{
+     *     categories:int,
+     *     products:int,
+     *     prices:int,
+     *     images:int,
+     *     files:array<int, string>,
+     *     has_import:bool,
+     *     has_offers:bool,
+     *     offers_without_products:int,
+     *     warnings:array<int, string>
+     * }
      */
     public function import(string $sessionKey): array
     {
@@ -30,9 +40,19 @@ class OneCCatalogExchangeService
             'products' => 0,
             'prices' => 0,
             'images' => 0,
+            'files' => [],
+            'has_import' => false,
+            'has_offers' => false,
+            'offers_without_products' => 0,
+            'warnings' => [],
         ];
 
         foreach ($this->storage->xmlFiles($sessionKey, 'catalog') as $xmlFile) {
+            $filename = basename($xmlFile);
+            $result['files'][] = $filename;
+            $result['has_import'] = $result['has_import'] || $filename === 'import.xml';
+            $result['has_offers'] = $result['has_offers'] || $filename === 'offers.xml';
+
             $xml = $this->storage->fileContents($xmlFile);
 
             if ($xml === null) {
@@ -54,8 +74,26 @@ class OneCCatalogExchangeService
             }
 
             if ($this->hasAnyNode($xpath, ['ПакетПредложений', 'РџР°РєРµС‚РџСЂРµРґР»РѕР¶РµРЅРёР№'])) {
-                $result['prices'] += $this->importOffers($xpath);
+                $offersResult = $this->importOffers($xpath);
+                $result['prices'] += $offersResult['prices'];
+                $result['offers_without_products'] += $offersResult['offers_without_products'];
             }
+        }
+
+        if (! $result['has_import']) {
+            $result['warnings'][] = 'В пакете нет import.xml. Это означает, что 1С прислала предложения или цены без каталога товаров.';
+        }
+
+        if (! $result['has_offers']) {
+            $result['warnings'][] = 'В пакете нет offers.xml. Товары и категории могут загрузиться, но цены не обновятся.';
+        }
+
+        if ($result['offers_without_products'] > 0) {
+            $result['warnings'][] = 'Часть предложений из offers.xml не привязалась к товарам: '.$result['offers_without_products'].'. Обычно это происходит, когда товары ещё не были загружены через import.xml.';
+        }
+
+        if ($result['has_offers'] && ! $result['has_import'] && $result['products'] === 0 && $result['prices'] === 0) {
+            $result['warnings'][] = 'Пакет содержит только offers.xml, поэтому импорт завершился без изменений. Сначала нужен import.xml с товарами и категориями.';
         }
 
         return $result;
@@ -225,10 +263,14 @@ class OneCCatalogExchangeService
         return $count;
     }
 
-    private function importOffers(DOMXPath $xpath): int
+    /**
+     * @return array{prices:int,offers_without_products:int}
+     */
+    private function importOffers(DOMXPath $xpath): array
     {
         $priceTypeMap = $this->syncPriceTypes($xpath);
         $count = 0;
+        $offersWithoutProducts = 0;
         $offerNodes = $this->queryChildren(
             $xpath,
             '//*',
@@ -254,6 +296,7 @@ class OneCCatalogExchangeService
             $product = Product::query()->where('one_c_id', $productOneCId)->first();
 
             if (! $product) {
+                $offersWithoutProducts++;
                 continue;
             }
 
@@ -310,7 +353,10 @@ class OneCCatalogExchangeService
             }
         }
 
-        return $count;
+        return [
+            'prices' => $count,
+            'offers_without_products' => $offersWithoutProducts,
+        ];
     }
 
     /**

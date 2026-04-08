@@ -3,6 +3,39 @@
 @section('title', 'Диагностика 1С MAJOR')
 
 @section('content')
+    @if ($lastImportReport)
+        <section class="surface-card mb-8 border border-rose-200/80 bg-rose-50/80 p-6">
+            <span class="soft-badge">Последний импорт</span>
+            <h2 class="mt-4 font-['IBM_Plex_Sans'] text-2xl font-semibold text-slate-950">Почему пакет не импортировался полностью</h2>
+            <div class="mt-5 grid gap-4 md:grid-cols-4">
+                <div class="stat-card">
+                    <span>Категорий</span>
+                    <strong>{{ $lastImportReport['categories'] }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Товаров</span>
+                    <strong>{{ $lastImportReport['products'] }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Цен</span>
+                    <strong>{{ $lastImportReport['prices'] }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Без привязки</span>
+                    <strong>{{ $lastImportReport['offers_without_products'] }}</strong>
+                </div>
+            </div>
+
+            @if ($lastImportReport['warnings'] !== [])
+                <div class="mt-5 space-y-2 text-sm leading-6 text-slate-700">
+                    @foreach ($lastImportReport['warnings'] as $warning)
+                        <p class="rounded-2xl border border-rose-200/80 bg-white px-4 py-3">{{ $warning }}</p>
+                    @endforeach
+                </div>
+            @endif
+        </section>
+    @endif
+
     <section class="surface-card p-8 sm:p-10">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div class="max-w-3xl">
@@ -126,14 +159,31 @@
                                     </p>
                                     <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
                                         @foreach ($package['files'] as $filename)
-                                            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">{{ $filename }}</span>
+                                            <a href="{{ route('manager.onec.catalog.file', ['session_key' => $package['session_key'], 'filename' => $filename]) }}" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 transition hover:border-slate-300 hover:bg-white hover:text-slate-900">{{ $filename }}</a>
                                         @endforeach
                                     </div>
+
+                                    @if ($package['notes'] !== [])
+                                        <div class="mt-4 space-y-2 text-sm text-amber-700">
+                                            @foreach ($package['notes'] as $note)
+                                                <p class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">{{ $note }}</p>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </div>
 
                                 <div class="flex flex-wrap gap-3">
-                                    <span class="soft-badge {{ $package['has_import'] ? '' : 'opacity-60' }}">import.xml</span>
-                                    <span class="soft-badge {{ $package['has_offers'] ? '' : 'opacity-60' }}">offers.xml</span>
+                                    @if (in_array('import.xml', $package['files'], true))
+                                        <a href="{{ route('manager.onec.catalog.file', ['session_key' => $package['session_key'], 'filename' => 'import.xml']) }}" class="soft-badge {{ $package['has_import'] ? '' : 'opacity-60' }}">import.xml</a>
+                                    @else
+                                        <span class="soft-badge opacity-60">import.xml</span>
+                                    @endif
+
+                                    @if (in_array('offers.xml', $package['files'], true))
+                                        <a href="{{ route('manager.onec.catalog.file', ['session_key' => $package['session_key'], 'filename' => 'offers.xml']) }}" class="soft-badge {{ $package['has_offers'] ? '' : 'opacity-60' }}">offers.xml</a>
+                                    @else
+                                        <span class="soft-badge opacity-60">offers.xml</span>
+                                    @endif
                                     <form action="{{ route('manager.onec.catalog.import') }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="session_key" value="{{ $package['session_key'] }}">

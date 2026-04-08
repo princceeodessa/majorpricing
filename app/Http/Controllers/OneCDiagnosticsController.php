@@ -6,11 +6,14 @@ use App\Models\Category;
 use App\Models\OneCPriceType;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\OneC\OneCCatalogExchangeService;
+use DOMDocument;
+use DOMNode;
+use DOMXPath;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use App\Services\OneC\OneCCatalogExchangeService;
 
 class OneCDiagnosticsController extends Controller
 {
@@ -42,14 +45,26 @@ class OneCDiagnosticsController extends Controller
             ->groupBy('session_key')
             ->map(function ($files, string $sessionKey): array {
                 $sortedFiles = collect($files)->sortByDesc('modified_timestamp')->values();
+                $hasImport = $sortedFiles->contains(fn (array $file): bool => $file['filename'] === 'import.xml');
+                $hasOffers = $sortedFiles->contains(fn (array $file): bool => $file['filename'] === 'offers.xml');
+                $notes = [];
+
+                if (! $hasImport) {
+                    $notes[] = 'Нет import.xml: пакет не содержит каталог товаров и категорий.';
+                }
+
+                if (! $hasOffers) {
+                    $notes[] = 'Нет offers.xml: цены из 1С не обновятся.';
+                }
 
                 return [
                     'session_key' => $sessionKey,
                     'modified_timestamp' => $sortedFiles->first()['modified_timestamp'] ?? 0,
                     'modified_at' => $sortedFiles->first()['modified_at'] ?? null,
                     'files' => $sortedFiles->pluck('filename')->values()->all(),
-                    'has_import' => $sortedFiles->contains(fn (array $file): bool => $file['filename'] === 'import.xml'),
-                    'has_offers' => $sortedFiles->contains(fn (array $file): bool => $file['filename'] === 'offers.xml'),
+                    'has_import' => $hasImport,
+                    'has_offers' => $hasOffers,
+                    'notes' => $notes,
                 ];
             })
             ->sortByDesc('modified_timestamp')
@@ -83,6 +98,7 @@ class OneCDiagnosticsController extends Controller
                 ->latest('updated_at')
                 ->take(8)
                 ->get(['id', 'number', 'status', 'payment_status', 'one_c_document_id', 'one_c_exported_at', 'updated_at']),
+            'lastImportReport' => session('onec_import_report'),
         ]);
     }
 
@@ -106,15 +122,48 @@ class OneCDiagnosticsController extends Controller
 
         $result = $catalogExchangeService->import($sessionKey);
 
+        $message = sprintf(
+            'Каталог 1С импортирован вручную. Категорий: %d, товаров: %d, цен: %d, изображений: %d.',
+            $result['categories'],
+            $result['products'],
+            $result['prices'],
+            $result['images'],
+        );
+
+        if ($result['warnings'] !== []) {
+            $message .= ' Причины: '.implode(' ', $result['warnings']);
+        }
+
         return redirect()
             ->route('manager.onec.show')
-            ->with('status', sprintf(
-                'Каталог 1С импортирован вручную. Категорий: %d, товаров: %d, цен: %d, изображений: %d.',
-                $result['categories'],
-                $result['products'],
-                $result['prices'],
-                $result['images'],
-            ));
+            ->with('status', $message)
+            ->with('onec_import_report', $result);
+    }
+
+    public function showCatalogFile(Request $request): View
+    {
+        $validated = $request->validate([
+            'session_key' => ['required', 'string'],
+            'filename' => ['required', 'string'],
+        ]);
+
+        $sessionKey = trim($validated['session_key']);
+        $filename = $this->sanitizeCatalogFilename($validated['filename']);
+        $uploadDir = trim((string) config('integrations.one_c.upload_dir', 'one-c-exchange'), '/');
+        $relativePath = $uploadDir.'/'.$sessionKey.'/catalog/'.$filename;
+
+        abort_unless(Storage::disk('local')->exists($relativePath), 404);
+
+        $content = (string) Storage::disk('local')->get($relativePath);
+
+        return view('manager.onec.file', [
+            'exchangeUrl' => route('onec.exchange'),
+            'sessionKey' => $sessionKey,
+            'filename' => $filename,
+            'content' => $content,
+            'summary' => $this->summarizeXmlContent($content, $filename),
+            'backUrl' => route('manager.onec.show'),
+        ]);
     }
 
     private function humanFileSize(int $bytes): string
@@ -135,5 +184,212 @@ class OneCDiagnosticsController extends Controller
         }
 
         return (string) $bytes;
+    }
+
+    private function sanitizeCatalogFilename(string $filename): string
+    {
+        $normalized = str_replace('\\', '/', trim($filename));
+        $segments = collect(explode('/', $normalized))
+            ->filter(fn (string $segment): bool => $segment !== '' && $segment !== '.' && $segment !== '..')
+            ->values();
+
+        abort_if($segments->isEmpty(), 404);
+
+        return $segments->implode('/');
+    }
+
+    /**
+     * @return array{
+     *     detected_type:string,
+     *     categories_count:int,
+     *     products_count:int,
+     *     offers_count:int,
+     *     price_types_count:int,
+     *     category_names:array<int, string>,
+     *     product_rows:array<int, array{id:string,name:string,article:string}>,
+     *     offer_rows:array<int, array{id:string,price_type:string,amount:string}>,
+     *     warnings:array<int, string>
+     * }
+     */
+    private function summarizeXmlContent(string $content, string $filename): array
+    {
+        $summary = [
+            'detected_type' => str_ends_with(mb_strtolower($filename), 'offers.xml') ? 'offers' : 'import',
+            'categories_count' => 0,
+            'products_count' => 0,
+            'offers_count' => 0,
+            'price_types_count' => 0,
+            'category_names' => [],
+            'product_rows' => [],
+            'offer_rows' => [],
+            'warnings' => [],
+        ];
+
+        $xpath = $this->createXPath($content);
+
+        if (! $xpath) {
+            $summary['warnings'][] = 'Файл не удалось разобрать как CommerceML/XML.';
+
+            return $summary;
+        }
+
+        $categoryNodes = $this->queryChildren($xpath, '//*', null, [
+            ['Группы', 'Р“СЂСѓРїРїС‹'],
+            ['Группа', 'Р“СЂСѓРїРїР°'],
+        ]);
+
+        foreach ($categoryNodes as $categoryNode) {
+            if (! $categoryNode instanceof DOMNode) {
+                continue;
+            }
+
+            $summary['categories_count']++;
+            $name = $this->firstChildValue($xpath, $categoryNode, ['Наименование', 'РќР°РёРјРµРЅРѕРІР°РЅРёРµ']);
+
+            if (filled($name) && count($summary['category_names']) < 8) {
+                $summary['category_names'][] = $name;
+            }
+        }
+
+        $productNodes = $this->queryChildren($xpath, '//*', null, [
+            ['Каталог', 'РљР°С‚Р°Р»РѕРі'],
+            ['Товары', 'РўРѕРІР°СЂС‹'],
+            ['Товар', 'РўРѕРІР°СЂ'],
+        ]);
+
+        foreach ($productNodes as $productNode) {
+            if (! $productNode instanceof DOMNode) {
+                continue;
+            }
+
+            $summary['products_count']++;
+
+            if (count($summary['product_rows']) < 10) {
+                $summary['product_rows'][] = [
+                    'id' => $this->firstChildValue($xpath, $productNode, ['Ид', 'РРґ']) ?? '—',
+                    'name' => $this->firstChildValue($xpath, $productNode, ['Наименование', 'РќР°РёРјРµРЅРѕРІР°РЅРёРµ']) ?? '—',
+                    'article' => $this->firstChildValue($xpath, $productNode, ['Артикул', 'РђСЂС‚РёРєСѓР»']) ?? '—',
+                ];
+            }
+        }
+
+        $priceTypeNames = [];
+        $priceTypeNodes = $this->queryChildren($xpath, '//*', null, [
+            ['ТипыЦен', 'РўРёРїС‹Р¦РµРЅ'],
+            ['ТипЦены', 'РўРёРїР¦РµРЅС‹'],
+        ]);
+
+        foreach ($priceTypeNodes as $priceTypeNode) {
+            if (! $priceTypeNode instanceof DOMNode) {
+                continue;
+            }
+
+            $summary['price_types_count']++;
+            $id = $this->firstChildValue($xpath, $priceTypeNode, ['Ид', 'РРґ']);
+            $name = $this->firstChildValue($xpath, $priceTypeNode, ['Наименование', 'РќР°РёРјРµРЅРѕРІР°РЅРёРµ']);
+
+            if (filled($id)) {
+                $priceTypeNames[$id] = $name ?: $id;
+            }
+        }
+
+        $offerNodes = $this->queryChildren($xpath, '//*', null, [
+            ['Предложения', 'РџСЂРµРґР»РѕР¶РµРЅРёСЏ'],
+            ['Предложение', 'РџСЂРµРґР»РѕР¶РµРЅРёРµ'],
+        ]);
+
+        foreach ($offerNodes as $offerNode) {
+            if (! $offerNode instanceof DOMNode) {
+                continue;
+            }
+
+            $summary['offers_count']++;
+
+            if (count($summary['offer_rows']) >= 10) {
+                continue;
+            }
+
+            $priceNode = $this->queryChildren($xpath, '.', $offerNode, [
+                ['Цены', 'Р¦РµРЅС‹'],
+                ['Цена', 'Р¦РµРЅР°'],
+            ])->item(0);
+
+            $priceTypeId = $priceNode instanceof DOMNode
+                ? $this->firstChildValue($xpath, $priceNode, ['ИдТипаЦены', 'РРґРўРёРїР°Р¦РµРЅС‹'])
+                : null;
+
+            $summary['offer_rows'][] = [
+                'id' => $this->firstChildValue($xpath, $offerNode, ['Ид', 'РРґ']) ?? '—',
+                'price_type' => $priceTypeId ? ($priceTypeNames[$priceTypeId] ?? $priceTypeId) : '—',
+                'amount' => $priceNode instanceof DOMNode
+                    ? ($this->firstChildValue($xpath, $priceNode, ['ЦенаЗаЕдиницу', 'Р¦РµРЅР°Р—Р°Р•РґРёРЅРёС†Сѓ']) ?? '—')
+                    : '—',
+            ];
+        }
+
+        if ($summary['products_count'] === 0 && $summary['offers_count'] > 0) {
+            $summary['warnings'][] = 'В файле есть только предложения и цены. Для импорта товаров нужен import.xml.';
+        }
+
+        if ($summary['products_count'] > 0 && $summary['offers_count'] === 0 && str_contains(mb_strtolower($filename), 'offers')) {
+            $summary['warnings'][] = 'Файл называется offers.xml, но предложения в нем не найдены.';
+        }
+
+        return $summary;
+    }
+
+    private function createXPath(string $xml): ?DOMXPath
+    {
+        $xml = preg_replace('/^\xEF\xBB\xBF/', '', $xml) ?? $xml;
+        $document = new DOMDocument('1.0', 'UTF-8');
+        $document->preserveWhiteSpace = false;
+
+        if (! @$document->loadXML($xml, LIBXML_NOCDATA | LIBXML_COMPACT | LIBXML_PARSEHUGE)) {
+            return null;
+        }
+
+        return new DOMXPath($document);
+    }
+
+    /**
+     * @param  array<int, array<int, string>>  $levels
+     */
+    private function queryChildren(DOMXPath $xpath, string $base, ?DOMNode $contextNode, array $levels)
+    {
+        $query = $base;
+
+        foreach ($levels as $index => $level) {
+            $segment = '*['.$this->localNamePredicate($level).']';
+
+            if ($index === 0 && $base === '//*') {
+                $query .= '['.$this->localNamePredicate($level).']';
+                continue;
+            }
+
+            $query .= '/'.$segment;
+        }
+
+        return $xpath->query($query, $contextNode);
+    }
+
+    /**
+     * @param  array<int, string>|string  $localNames
+     */
+    private function firstChildValue(DOMXPath $xpath, DOMNode $contextNode, array|string $localNames): ?string
+    {
+        $names = is_array($localNames) ? $localNames : [$localNames];
+        $node = $xpath->query('./*['.$this->localNamePredicate($names).']', $contextNode)->item(0);
+
+        return $node ? trim($node->textContent) : null;
+    }
+
+    /**
+     * @param  array<int, string>  $localNames
+     */
+    private function localNamePredicate(array $localNames): string
+    {
+        return collect($localNames)
+            ->map(fn (string $name): string => 'local-name()="'.$name.'"')
+            ->implode(' or ');
     }
 }

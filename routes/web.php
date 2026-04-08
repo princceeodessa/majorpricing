@@ -37,6 +37,9 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/manager/1c', [OneCDiagnosticsController::class, 'show'])
         ->middleware('manager')
         ->name('manager.onec.show');
+    Route::get('/manager/1c/catalog/file', [OneCDiagnosticsController::class, 'showCatalogFile'])
+        ->middleware('manager')
+        ->name('manager.onec.catalog.file');
     Route::post('/manager/1c/catalog/import', [OneCDiagnosticsController::class, 'importCatalog'])
         ->middleware('manager')
         ->name('manager.onec.catalog.import');
