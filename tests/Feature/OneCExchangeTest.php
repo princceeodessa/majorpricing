@@ -132,7 +132,7 @@ class OneCExchangeTest extends TestCase
         }
     }
 
-    public function test_one_c_catalog_import_uses_full_name_requisite_with_space_as_public_title(): void
+    public function test_one_c_catalog_import_does_not_use_full_name_requisite_as_public_title(): void
     {
         $sessionKey = 'catalog-full-name-space';
         $storage = app(OneCExchangeStorage::class);
@@ -149,7 +149,7 @@ class OneCExchangeTest extends TestCase
 
             $product = Product::query()->where('one_c_id', 'product-guid-1')->firstOrFail();
 
-            $this->assertSame(json_decode('"\u041f\u0440\u043e\u0444\u0438\u043b\u044c M \u043f\u0435\u0447\u0430\u0442\u044c"', true), $product->title);
+            $this->assertSame(json_decode('"\u041f\u0440\u043e\u0444\u0438\u043b\u044c M"', true), $product->title);
             $this->assertSame(json_decode('"\u041f\u0440\u043e\u0444\u0438\u043b\u044c M"', true), $product->name);
         } finally {
             $storage->clearType($sessionKey, 'catalog');

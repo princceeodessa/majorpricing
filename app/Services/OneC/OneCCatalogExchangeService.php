@@ -434,12 +434,6 @@ class OneCCatalogExchangeService
             json_decode('"\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0434\u043b\u044f \u043f\u0435\u0447\u0430\u0442\u0438"'),
         ];
 
-        $fullNameKeys = [
-            json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435\u041f\u043e\u043b\u043d\u043e\u0435"'),
-            json_decode('"\u041f\u043e\u043b\u043d\u043e\u0435\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435"'),
-            json_decode('"\u041f\u043e\u043b\u043d\u043e\u0435 \u043d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435"'),
-        ];
-
         return $this->firstFilled([
             $this->requisiteValue($xpath, $productNode, $printTitleKeys),
             $this->firstChildValue($xpath, $productNode, $printTitleKeys),
@@ -448,9 +442,6 @@ class OneCCatalogExchangeService
                 [json_decode('"\u043f\u0435\u0447\u0430\u0442"'), json_decode('"\u043d\u0430\u0437\u0432"')],
                 [json_decode('"\u043f\u0435\u0447\u0430\u0442"')],
             ]),
-            $this->requisiteValue($xpath, $productNode, $fullNameKeys),
-            $this->firstChildValue($xpath, $productNode, $fullNameKeys),
-            $this->resolveProductTitle($xpath, $productNode, $fallback),
             $fallback,
         ]);
     }
@@ -985,6 +976,12 @@ class OneCCatalogExchangeService
      */
     private function requisiteValue(DOMXPath $xpath, DOMNode $contextNode, array $requisiteNames): ?string
     {
+        $normalizedNames = collect($requisiteNames)
+            ->map(fn (?string $name): string => $this->normalizeRequisiteName($name))
+            ->filter()
+            ->values()
+            ->all();
+
         $requisites = $this->queryChildren(
             $xpath,
             '.',
@@ -1002,7 +999,7 @@ class OneCCatalogExchangeService
 
             $name = $this->firstChildValue($xpath, $requisite, ['Наименование']);
 
-            if (! filled($name) || ! in_array(trim($name), $requisiteNames, true)) {
+            if (! filled($name) || ! in_array($this->normalizeRequisiteName($name), $normalizedNames, true)) {
                 continue;
             }
 
@@ -1022,8 +1019,8 @@ class OneCCatalogExchangeService
             '.',
             $contextNode,
             [
-                ['Р—РЅР°С‡РµРЅРёСЏР РµРєРІРёР·РёС‚РѕРІ'],
-                ['Р—РЅР°С‡РµРЅРёРµР РµРєРІРёР·РёС‚Р°'],
+                ['ЗначенияРеквизитов'],
+                ['ЗначениеРеквизита'],
             ],
         );
 
@@ -1038,12 +1035,13 @@ class OneCCatalogExchangeService
                 continue;
             }
 
-            $normalizedName = mb_strtolower(trim((string) $name));
+            $normalizedName = $this->normalizeRequisiteName($name);
 
             foreach ($fragmentSets as $fragments) {
                 $matched = collect($fragments)
-                    ->filter(fn (?string $fragment): bool => filled($fragment))
-                    ->every(fn (string $fragment): bool => mb_stripos($normalizedName, mb_strtolower($fragment)) !== false);
+                    ->map(fn (?string $fragment): string => $this->normalizeRequisiteName($fragment))
+                    ->filter()
+                    ->every(fn (string $fragment): bool => str_contains($normalizedName, $fragment));
 
                 if ($matched) {
                     return $this->firstChildValue($xpath, $requisite, ['Значение']);
@@ -1066,6 +1064,20 @@ class OneCCatalogExchangeService
         }
 
         return null;
+    }
+
+    private function normalizeRequisiteName(?string $value): string
+    {
+        $normalized = mb_strtolower(trim((string) $value));
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        $normalized = preg_replace('/\s+/u', '', $normalized) ?? $normalized;
+        $normalized = preg_replace('/[^\p{L}\p{N}]+/u', '', $normalized) ?? $normalized;
+
+        return $normalized;
     }
 
     private function syncKey(?string $value): string
