@@ -194,4 +194,63 @@ XML);
             ->assertSee('530.00')
             ->assertSee('product-guid-1');
     }
+
+    public function test_manager_can_download_received_catalog_file(): void
+    {
+        $manager = User::factory()->create([
+            'is_manager' => true,
+            'is_active' => true,
+        ]);
+
+        $sessionKey = 'session-download-file';
+        $basePath = 'one-c-exchange/'.$sessionKey.'/catalog';
+
+        Storage::disk('local')->put($basePath.'/import.xml', <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<КоммерческаяИнформация>
+  <Каталог />
+</КоммерческаяИнформация>
+XML);
+
+        $response = $this->actingAs($manager)->get(route('manager.onec.catalog.file.download', [
+            'session_key' => $sessionKey,
+            'filename' => 'import.xml',
+        ]));
+
+        $response->assertOk();
+        $response->assertHeader('content-disposition', 'attachment; filename=import.xml');
+    }
+
+    public function test_manager_can_download_catalog_package_archive(): void
+    {
+        $manager = User::factory()->create([
+            'is_manager' => true,
+            'is_active' => true,
+        ]);
+
+        $sessionKey = 'session-download-package';
+        $basePath = 'one-c-exchange/'.$sessionKey.'/catalog';
+
+        Storage::disk('local')->put($basePath.'/import.xml', <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<КоммерческаяИнформация>
+  <Каталог />
+</КоммерческаяИнформация>
+XML);
+
+        Storage::disk('local')->put($basePath.'/offers.xml', <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<КоммерческаяИнформация>
+  <ПакетПредложений />
+</КоммерческаяИнформация>
+XML);
+
+        $response = $this->actingAs($manager)->get(route('manager.onec.catalog.package.download', [
+            'session_key' => $sessionKey,
+        ]));
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/zip');
+        $response->assertHeader('content-disposition', 'attachment; filename=onec-catalog-'.$sessionKey.'.zip');
+    }
 }

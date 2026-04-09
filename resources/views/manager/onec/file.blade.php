@@ -15,6 +15,8 @@
             </div>
 
             <div class="flex flex-wrap gap-3">
+                <a href="{{ route('manager.onec.catalog.file.download', ['session_key' => $sessionKey, 'filename' => $filename]) }}" class="ghost-button">Скачать XML</a>
+                <a href="{{ route('manager.onec.catalog.package.download', ['session_key' => $sessionKey]) }}" class="ghost-button">Скачать пакет</a>
                 <a href="{{ $exchangeUrl }}" class="ghost-button">Endpoint 1С</a>
                 <a href="{{ $backUrl }}" class="action-button">Назад к диагностике</a>
             </div>

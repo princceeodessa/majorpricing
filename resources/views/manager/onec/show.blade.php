@@ -43,7 +43,7 @@
                 <h1 class="mt-4 font-['IBM_Plex_Sans'] text-4xl font-semibold text-slate-950">Проверка штатного обмена с 1С</h1>
                 <p class="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
                     Здесь менеджер видит, настроен ли endpoint обмена, приходят ли файлы CommerceML, появились ли товары и цены из 1С,
-                    а также ушли ли заказы обратно в 1С. Для теста не нужен отдельный админ: достаточно менеджера и одного тестового клиента.
+                    а также ушли ли заказы обратно в 1С. Для разбора можно открыть XML прямо в браузере или скачать весь пакет одним архивом.
                 </p>
             </div>
 
@@ -145,7 +145,7 @@
 
             @if ($catalogPackages->isEmpty())
                 <div class="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50/70 p-6 text-sm text-slate-500">
-                    Каталожных пакетов от 1С пока нет. После выгрузки товаров здесь появится последний `session_key`, и можно будет запустить ручной импорт на сайт.
+                    Каталожных пакетов от 1С пока нет. После выгрузки товаров здесь появится последний session key, и можно будет открыть или скачать файлы пакета.
                 </div>
             @else
                 <div class="mt-6 space-y-3">
@@ -154,9 +154,8 @@
                             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                 <div>
                                     <h3 class="text-base font-semibold text-slate-950">Пакет {{ $package['session_key'] }}</h3>
-                                    <p class="mt-2 text-sm text-slate-600">
-                                        Обновлён: {{ $package['modified_at'] ?: '—' }}
-                                    </p>
+                                    <p class="mt-2 text-sm text-slate-600">Обновлён: {{ $package['modified_at'] ?: '—' }}</p>
+
                                     <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
                                         @foreach ($package['files'] as $filename)
                                             <a href="{{ route('manager.onec.catalog.file', ['session_key' => $package['session_key'], 'filename' => $filename]) }}" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 transition hover:border-slate-300 hover:bg-white hover:text-slate-900">{{ $filename }}</a>
@@ -184,6 +183,9 @@
                                     @else
                                         <span class="soft-badge opacity-60">offers.xml</span>
                                     @endif
+
+                                    <a href="{{ route('manager.onec.catalog.package.download', ['session_key' => $package['session_key']]) }}" class="soft-badge">Скачать пакет</a>
+
                                     <form action="{{ route('manager.onec.catalog.import') }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="session_key" value="{{ $package['session_key'] }}">
@@ -203,7 +205,7 @@
 
             @if ($recentFiles->isEmpty())
                 <div class="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50/70 p-6 text-sm text-slate-500">
-                    Пока нет сохранённых файлов обмена. После первой выгрузки из 1С здесь появятся `import.xml`, `offers.xml` и файлы статусов заказов.
+                    Пока нет сохранённых файлов обмена. После первой выгрузки из 1С здесь появятся import.xml, offers.xml и файлы заказов.
                 </div>
             @else
                 <div class="mt-6 overflow-hidden rounded-[1.75rem] border border-slate-200/80">
@@ -237,13 +239,12 @@
             <span class="soft-badge">Как тестировать</span>
             <h2 class="mt-4 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Быстрый сценарий</h2>
             <ol class="mt-6 space-y-4 text-sm leading-7 text-slate-700">
-                <li>1. В менеджерском кабинете создайте обычного тестового клиента. Отдельный админ для обмена не нужен.</li>
+                <li>1. В менеджерском кабинете создайте обычного тестового клиента.</li>
                 <li>2. В 1С запустите полную выгрузку товаров и цен на сайт.</li>
-                <li>3. Если 1С прислала файлы, но товары на сайт не появились, нажмите `Импортировать последний каталог` или кнопку `Импортировать` напротив нужного пакета.</li>
-                <li>4. Проверьте на этой странице, что выросли счётчики категорий, товаров и типов цен, а ниже появились файлы `import.xml` и `offers.xml`.</li>
-                <li>5. Войдите под тестовым клиентом, добавьте товар в корзину и оформите тестовый заказ с контактами.</li>
-                <li>6. Запустите обмен заказами в 1С. После успешной выгрузки число `Заказов выгружено` должно увеличиться.</li>
-                <li>7. Если 1С вернёт статусы обратно, у заказов появится номер документа 1С и обновится статус.</li>
+                <li>3. Если 1С прислала файлы, но товары на сайт не появились, нажмите `Импортировать последний каталог` или `Импортировать` напротив нужного пакета.</li>
+                <li>4. Если нужно проверить содержимое обмена, откройте `import.xml` и `offers.xml` либо скачайте пакет целиком.</li>
+                <li>5. Войдите под тестовым клиентом, добавьте товар в корзину и оформите тестовый заказ.</li>
+                <li>6. Запустите обмен заказами в 1С и проверьте, что число `Заказов выгружено` увеличилось.</li>
             </ol>
         </div>
     </section>

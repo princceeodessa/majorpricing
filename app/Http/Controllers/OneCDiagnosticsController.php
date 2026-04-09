@@ -14,6 +14,8 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use ZipArchive;
 
 class OneCDiagnosticsController extends Controller
 {
@@ -166,6 +168,68 @@ class OneCDiagnosticsController extends Controller
         ]);
     }
 
+    public function downloadCatalogFile(Request $request): BinaryFileResponse
+    {
+        $validated = $request->validate([
+            'session_key' => ['required', 'string'],
+            'filename' => ['required', 'string'],
+        ]);
+
+        $sessionKey = trim($validated['session_key']);
+        $filename = $this->sanitizeCatalogFilename($validated['filename']);
+        $relativePath = $this->catalogRelativePath($sessionKey, $filename);
+
+        abort_unless(Storage::disk('local')->exists($relativePath), 404);
+
+        return response()->download(
+            Storage::disk('local')->path($relativePath),
+            basename($filename),
+            ['Content-Type' => 'application/xml; charset=UTF-8']
+        );
+    }
+
+    public function downloadCatalogPackage(Request $request): BinaryFileResponse
+    {
+        $validated = $request->validate([
+            'session_key' => ['required', 'string'],
+        ]);
+
+        $sessionKey = trim($validated['session_key']);
+        $uploadDir = trim((string) config('integrations.one_c.upload_dir', 'one-c-exchange'), '/');
+        $files = collect(Storage::disk('local')->files($uploadDir.'/'.$sessionKey.'/catalog'))
+            ->filter(fn (string $path): bool => in_array(basename($path), ['import.xml', 'offers.xml'], true))
+            ->values();
+
+        abort_if($files->isEmpty(), 404);
+        abort_unless(class_exists(ZipArchive::class), 500, 'ZIP archive support is not available.');
+
+        $temporaryZip = tempnam(sys_get_temp_dir(), 'onec-package-');
+        abort_if($temporaryZip === false, 500, 'Unable to prepare temporary archive.');
+
+        $zipPath = $temporaryZip.'.zip';
+
+        if (file_exists($zipPath)) {
+            @unlink($zipPath);
+        }
+
+        @rename($temporaryZip, $zipPath);
+
+        $zip = new ZipArchive();
+        abort_unless($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true, 500, 'Unable to create package archive.');
+
+        foreach ($files as $path) {
+            $zip->addFile(Storage::disk('local')->path($path), basename($path));
+        }
+
+        $zip->close();
+
+        return response()->download(
+            $zipPath,
+            'onec-catalog-'.$sessionKey.'.zip',
+            ['Content-Type' => 'application/zip']
+        )->deleteFileAfterSend(true);
+    }
+
     private function humanFileSize(int $bytes): string
     {
         if ($bytes < 1024) {
@@ -196,6 +260,13 @@ class OneCDiagnosticsController extends Controller
         abort_if($segments->isEmpty(), 404);
 
         return $segments->implode('/');
+    }
+
+    private function catalogRelativePath(string $sessionKey, string $filename): string
+    {
+        $uploadDir = trim((string) config('integrations.one_c.upload_dir', 'one-c-exchange'), '/');
+
+        return $uploadDir.'/'.$sessionKey.'/catalog/'.$filename;
     }
 
     /**
