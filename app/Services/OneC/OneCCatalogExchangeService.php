@@ -442,6 +442,11 @@ class OneCCatalogExchangeService
         return $this->firstFilled([
             $this->requisiteValue($xpath, $productNode, $printTitleKeys),
             $this->firstChildValue($xpath, $productNode, $printTitleKeys),
+            $this->requisiteValueByNameFragments($xpath, $productNode, [
+                [json_decode('"\u043f\u0435\u0447\u0430\u0442"'), json_decode('"\u043d\u0430\u0438\u043c"')],
+                [json_decode('"\u043f\u0435\u0447\u0430\u0442"'), json_decode('"\u043d\u0430\u0437\u0432"')],
+                [json_decode('"\u043f\u0435\u0447\u0430\u0442"')],
+            ]),
             $this->requisiteValue($xpath, $productNode, $fullNameKeys),
             $this->firstChildValue($xpath, $productNode, $fullNameKeys),
             $this->resolveProductTitle($xpath, $productNode, $fallback),
@@ -1001,6 +1006,48 @@ class OneCCatalogExchangeService
             }
 
             return $this->firstChildValue($xpath, $requisite, ['Значение']);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, array<int, string>>  $fragmentSets
+     */
+    private function requisiteValueByNameFragments(DOMXPath $xpath, DOMNode $contextNode, array $fragmentSets): ?string
+    {
+        $requisites = $this->queryChildren(
+            $xpath,
+            '.',
+            $contextNode,
+            [
+                ['Р—РЅР°С‡РµРЅРёСЏР РµРєРІРёР·РёС‚РѕРІ'],
+                ['Р—РЅР°С‡РµРЅРёРµР РµРєРІРёР·РёС‚Р°'],
+            ],
+        );
+
+        foreach ($requisites as $requisite) {
+            if (! $requisite instanceof DOMElement) {
+                continue;
+            }
+
+            $name = $this->firstChildValue($xpath, $requisite, ['Наименование']);
+
+            if (! filled($name)) {
+                continue;
+            }
+
+            $normalizedName = mb_strtolower(trim((string) $name));
+
+            foreach ($fragmentSets as $fragments) {
+                $matched = collect($fragments)
+                    ->filter(fn (?string $fragment): bool => filled($fragment))
+                    ->every(fn (string $fragment): bool => mb_stripos($normalizedName, mb_strtolower($fragment)) !== false);
+
+                if ($matched) {
+                    return $this->firstChildValue($xpath, $requisite, ['Значение']);
+                }
+            }
         }
 
         return null;
