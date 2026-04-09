@@ -63,7 +63,7 @@ class CatalogPricingTest extends TestCase
         $response->assertDontSeeText('624,75');
     }
 
-    public function test_public_catalog_prefers_optovaya_price_from_one_c_labels(): void
+    public function test_public_catalog_prefers_optovaya_price_and_shows_compare_beznal_price(): void
     {
         $user = User::factory()->create([
             'login' => 'one-c-price-viewer',
@@ -114,9 +114,12 @@ class CatalogPricingTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeText('35,00');
+        $response->assertSeeText('38,89');
         $response->assertSeeText('Оптовая');
+        $response->assertSeeText('Оптовая БЕЗНАЛ');
         $response->assertDontSeeText('44,45');
     }
+
     public function test_product_page_uses_print_title_as_public_name(): void
     {
         $user = User::factory()->create([
@@ -125,7 +128,7 @@ class CatalogPricingTest extends TestCase
         ]);
 
         $category = Category::query()->create([
-            'name' => 'РљР°СЂРЅРёР·С‹',
+            'name' => 'Карнизы',
             'slug' => 'karnizy',
             'sort_order' => 0,
             'accent_color' => '#f97316',
@@ -133,8 +136,8 @@ class CatalogPricingTest extends TestCase
 
         $product = Product::query()->create([
             'category_id' => $category->id,
-            'title' => 'РљР°СЂРЅРёР· РЅР°РєР»Р°РґРЅРѕР№ РџР’РҐ 2-С… СЂСЏРґРЅС‹Р№ СЃ РїРѕРІРѕСЂРѕС‚РѕРј Р‘РµР»С‹Р№ 160',
-            'name' => '160 РєР°СЂРЅРёР· РќРљ РљР›РђРЎРЎРРљ 2 Р‘Р•Р›Р«Р™ РІ РёРЅРґ. СѓРї. РЈР»СЊС‚СЂР°РєРѕРјРїР»РµРєС‚',
+            'title' => 'Карниз накладной ПВХ 2-х рядный с поворотом Белый 160',
+            'name' => '160 карниз НК КЛАССИК 2 БЕЛЫЙ в инд. уп. Ультракомплект',
             'slug' => 'karniz-nakladnoy-belyy-160',
             'price_from' => 508,
             'sort_order' => 0,
@@ -143,7 +146,7 @@ class CatalogPricingTest extends TestCase
         $response = $this->actingAs($user)->get(route('products.show', $product));
 
         $response->assertOk();
-        $response->assertSeeText('РљР°СЂРЅРёР· РЅР°РєР»Р°РґРЅРѕР№ РџР’РҐ 2-С… СЂСЏРґРЅС‹Р№ СЃ РїРѕРІРѕСЂРѕС‚РѕРј Р‘РµР»С‹Р№ 160');
-        $response->assertDontSeeText('160 РєР°СЂРЅРёР· РќРљ РљР›РђРЎРЎРРљ 2 Р‘Р•Р›Р«Р™ РІ РёРЅРґ. СѓРї. РЈР»СЊС‚СЂР°РєРѕРјРїР»РµРєС‚');
+        $response->assertSeeText('Карниз накладной ПВХ 2-х рядный с поворотом Белый 160');
+        $response->assertDontSeeText('160 карниз НК КЛАССИК 2 БЕЛЫЙ в инд. уп. Ультракомплект');
     }
 }

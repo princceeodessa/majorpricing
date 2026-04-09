@@ -4,7 +4,8 @@
 
 @section('content')
     @php
-        $price = $product->priceForProfile();
+        $price = $product->publicPrice();
+        $comparePrice = $product->comparePrice();
         $category = $product->category;
         $unitLabel = $product->publicUnitLabel();
         $fallbackImageUrl = asset('brand/product-placeholder.png');
@@ -62,8 +63,15 @@
                 @endif
 
                 <div class="catalog-product-price-block">
+                    @if ($comparePrice?->min_amount !== null)
+                        <p class="catalog-product-price-block__compare">
+                            {{ \Illuminate\Support\Number::format((float) $comparePrice->min_amount, 2, locale: 'ru') }} ₽
+                            <span>{{ $comparePrice->label }}</span>
+                        </p>
+                    @endif
+
                     @if ($price?->min_amount !== null)
-                        <p class="catalog-product-price-block__value">
+                        <p class="catalog-product-price-block__value {{ $comparePrice?->min_amount !== null ? 'catalog-product-price-block__value--accent' : '' }}">
                             {{ \Illuminate\Support\Number::format((float) $price->min_amount, 2, locale: 'ru') }} ₽
                             @if ($unitLabel)
                                 <span>/ 1 {{ $unitLabel }}</span>

@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -87,15 +87,20 @@ class Product extends Model
 
     public function priceForProfile(): ?ProductPrice
     {
+        return $this->publicPrice();
+    }
+
+    public function publicPrice(): ?ProductPrice
+    {
         $prices = $this->relationLoaded('prices')
             ? $this->prices
             : $this->prices()->orderBy('column_index')->get();
 
         $prices = $prices->sortBy('column_index')->values();
 
-        foreach ($this->publicPricePriority() as $preferredLabel) {
+        foreach (self::publicPricePriority() as $preferredLabel) {
             $matched = $prices->first(
-                fn (ProductPrice $price): bool => trim((string) $price->label) === $preferredLabel
+                fn (ProductPrice $price): bool => $this->normalizedPriceLabel($price->label) === $this->normalizedPriceLabel($preferredLabel)
             );
 
             if ($matched) {
@@ -104,6 +109,31 @@ class Product extends Model
         }
 
         return $prices->first();
+    }
+
+    public function comparePrice(): ?ProductPrice
+    {
+        $publicPrice = $this->publicPrice();
+
+        if (! $publicPrice || $this->normalizedPriceLabel($publicPrice->label) !== $this->normalizedPriceLabel(self::primaryPublicPriceLabel())) {
+            return null;
+        }
+
+        $prices = $this->relationLoaded('prices')
+            ? $this->prices
+            : $this->prices()->orderBy('column_index')->get();
+
+        $comparePrice = $prices->first(
+            fn (ProductPrice $price): bool => $this->normalizedPriceLabel($price->label) === $this->normalizedPriceLabel(self::comparePublicPriceLabel())
+        );
+
+        if (! $comparePrice || $comparePrice->min_amount === null || $publicPrice->min_amount === null) {
+            return null;
+        }
+
+        return (float) $comparePrice->min_amount > (float) $publicPrice->min_amount
+            ? $comparePrice
+            : null;
     }
 
     public function publicTitle(): string
@@ -129,8 +159,31 @@ class Product extends Model
     public static function publicPricePriority(): array
     {
         return [
-            'Оптовая',
-            'Оптовая БЕЗНАЛ',
+            self::primaryPublicPriceLabel(),
+            self::comparePublicPriceLabel(),
         ];
+    }
+
+    public static function primaryPublicPriceLabel(): string
+    {
+        return json_decode('"\u041e\u043f\u0442\u043e\u0432\u0430\u044f"', true);
+    }
+
+    public static function comparePublicPriceLabel(): string
+    {
+        return json_decode('"\u041e\u043f\u0442\u043e\u0432\u0430\u044f \u0411\u0415\u0417\u041d\u0410\u041b"', true);
+    }
+
+    private function normalizedPriceLabel(?string $label): string
+    {
+        $normalized = mb_strtolower(trim((string) $label));
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+
+        return trim($normalized);
     }
 }

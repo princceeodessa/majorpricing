@@ -2777,6 +2777,29 @@ html {
         color: #8d919c;
     }
 
+    .catalog-product-card__compare-price {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.45rem;
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: #9aa0ad;
+        text-decoration: line-through;
+        text-decoration-thickness: 1.5px;
+        text-decoration-color: #c6ccd8;
+    }
+
+    .catalog-product-card__compare-price span {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #b1b7c3;
+        text-decoration: none;
+    }
+
     .catalog-product-card__price {
         margin-top: 0.45rem;
         font-family: var(--font-display);
@@ -2784,6 +2807,10 @@ html {
         line-height: 1.15;
         font-weight: 600;
         color: var(--catalog-clean-text);
+    }
+
+    .catalog-product-card__price--accent {
+        color: #d11117;
     }
 
     .catalog-product-card__price--empty {
@@ -3140,12 +3167,39 @@ html {
         margin-top: 1.65rem;
     }
 
+    .catalog-product-price-block__compare {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.55rem;
+        margin-bottom: 0.45rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #9aa0ad;
+        text-decoration: line-through;
+        text-decoration-thickness: 1.5px;
+        text-decoration-color: #c6ccd8;
+    }
+
+    .catalog-product-price-block__compare span {
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #b1b7c3;
+        text-decoration: none;
+    }
+
     .catalog-product-price-block__value {
         font-family: var(--font-display);
         font-size: 2.2rem;
         line-height: 1.15;
         font-weight: 600;
         color: var(--catalog-clean-text);
+    }
+
+    .catalog-product-price-block__value--accent {
+        color: #d11117;
     }
 
     .catalog-product-price-block__value span {
