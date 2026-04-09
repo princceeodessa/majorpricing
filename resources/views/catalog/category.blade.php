@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $category->name.' - MAJOR')
+@section('title', $category->name.' - ПОТОЛКОВЫЧ')
 
 @section('content')
     @php($sectionTotal = $category->children->isNotEmpty() ? (int) $sectionCounts->sum() : $products->total())

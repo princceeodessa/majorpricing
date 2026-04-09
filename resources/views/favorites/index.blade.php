@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Избранное - MAJOR')
+@section('title', 'Избранное - ПОТОЛКОВЫЧ')
 
 @section('content')
     <section class="surface-card reveal-card p-6 sm:p-8">

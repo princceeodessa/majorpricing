@@ -1,20 +1,14 @@
 {
-    "name": "MAJOR",
-    "short_name": "MAJOR",
+    "name": "ПОТОЛКОВЫЧ",
+    "short_name": "ПОТОЛКОВЫЧ",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",
-    "theme_color": "#d60000",
+    "theme_color": "#203f68",
     "icons": [
         {
-            "src": "/brand/major-favicon.svg",
-            "sizes": "any",
-            "type": "image/svg+xml",
-            "purpose": "any"
-        },
-        {
-            "src": "/brand/major-favicon.png",
-            "sizes": "768x768",
+            "src": "/brand/potolkovych-emblem.png",
+            "sizes": "500x506",
             "type": "image/png",
             "purpose": "any maskable"
         }

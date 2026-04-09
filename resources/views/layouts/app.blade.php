@@ -2,9 +2,9 @@
 <html lang="ru">
     <head>
         @php
-            $metaTitle = trim($__env->yieldContent('title', 'MAJOR'));
-            $metaDescription = trim($__env->yieldContent('meta_description', 'Закрытый B2B-каталог MAJOR с единой ценой, актуальным каталогом и быстрым оформлением заказов для клиентов.'));
-            $metaImage = trim($__env->yieldContent('meta_image', asset('brand/major-link-badge.jpg')));
+            $metaTitle = trim($__env->yieldContent('title', 'ПОТОЛКОВЫЧ'));
+            $metaDescription = trim($__env->yieldContent('meta_description', 'Каталог ПОТОЛКОВЫЧ с актуальным ассортиментом, единой ценой и быстрым оформлением заказов для клиентов.'));
+            $metaImage = trim($__env->yieldContent('meta_image', asset('brand/potolkovych-emblem.png')));
             $metaUrl = url()->current();
         @endphp
 
@@ -12,22 +12,21 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $metaTitle }}</title>
         <meta name="description" content="{{ $metaDescription }}">
-        <meta name="theme-color" content="#d60000">
+        <meta name="theme-color" content="#203f68">
 
         <link rel="canonical" href="{{ $metaUrl }}">
-        <link rel="icon" type="image/svg+xml" sizes="any" href="{{ asset('brand/major-favicon.svg') }}">
-        <link rel="icon" type="image/png" sizes="768x768" href="{{ asset('brand/major-favicon.png') }}">
-        <link rel="apple-touch-icon" href="{{ asset('brand/major-favicon.png') }}">
+        <link rel="icon" type="image/png" sizes="500x506" href="{{ asset('brand/potolkovych-emblem.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('brand/potolkovych-emblem.png') }}">
         <link rel="manifest" href="{{ asset('site.webmanifest') }}">
 
         <meta property="og:type" content="website">
         <meta property="og:locale" content="ru_RU">
-        <meta property="og:site_name" content="MAJOR">
+        <meta property="og:site_name" content="ПОТОЛКОВЫЧ">
         <meta property="og:title" content="{{ $metaTitle }}">
         <meta property="og:description" content="{{ $metaDescription }}">
         <meta property="og:url" content="{{ $metaUrl }}">
         <meta property="og:image" content="{{ $metaImage }}">
-        <meta property="og:image:alt" content="MAJOR">
+        <meta property="og:image:alt" content="ПОТОЛКОВЫЧ">
 
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:title" content="{{ $metaTitle }}">
@@ -52,8 +51,8 @@
                     <div class="catalog-header-shell catalog-header-shell--figma">
                         <div class="catalog-header-top">
                             <div class="catalog-header-brand">
-                                <a href="{{ route('catalog.index') }}" class="catalog-header-logo" aria-label="MAJOR">
-                                    <img src="{{ asset('brand/major-logo-wide.svg') }}" alt="MAJOR" class="catalog-header-logo__image">
+                                <a href="{{ route('catalog.index') }}" class="catalog-header-logo" aria-label="ПОТОЛКОВЫЧ">
+                                    <img src="{{ asset('brand/potolkovych-logo-wide.svg') }}" alt="ПОТОЛКОВЫЧ" class="catalog-header-logo__image">
                                 </a>
 
                                 <details class="catalog-header-catalog-menu">

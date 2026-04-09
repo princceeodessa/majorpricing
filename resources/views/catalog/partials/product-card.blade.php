@@ -8,6 +8,7 @@
     $fallbackImageUrl = asset('brand/product-placeholder.png');
     $hasRealImage = filled($product->image_path);
     $imageUrl = $hasRealImage ? asset($product->image_path) : $fallbackImageUrl;
+    $unitLabel = $product->publicUnitLabel();
     $productAccents = ['#d11117', '#c81e1e', '#b91c1c', '#991b1b', '#be123c', '#7f1d1d'];
     $productAccent = $productAccents[($rootCategory?->id ?? $product->id ?? 0) % count($productAccents)];
     $cartQuantity = (int) (($cartProductQuantities[$product->id] ?? 0));
@@ -56,6 +57,9 @@
                 @if ($price?->min_amount !== null)
                     <p class="catalog-product-card__price">
                         {{ \Illuminate\Support\Number::format((float) $price->min_amount, 2, locale: 'ru') }} ₽
+                        @if ($unitLabel)
+                            <span class="catalog-product-card__price-unit">/ за 1 {{ mb_strtolower($unitLabel) }}</span>
+                        @endif
                     </p>
                 @else
                     <p class="catalog-product-card__price catalog-product-card__price--empty">Цена по запросу</p>

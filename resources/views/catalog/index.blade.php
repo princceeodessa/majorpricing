@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Каталог MAJOR')
+@section('title', 'Каталог ПОТОЛКОВЫЧ')
 
 @section('content')
     @if (!($hasSearch ?? false) && $rootCategories->isNotEmpty())

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Диагностика 1С MAJOR')
+@section('title', 'Диагностика 1С ПОТОЛКОВЫЧ')
 
 @section('content')
     @if ($lastImportReport)

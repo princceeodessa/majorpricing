@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $product->publicTitle().' - MAJOR')
+@section('title', $product->publicTitle().' - ПОТОЛКОВЫЧ')
 
 @section('content')
     @php

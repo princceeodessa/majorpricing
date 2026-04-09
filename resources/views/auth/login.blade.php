@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Вход в личный кабинет MAJOR')
+@section('title', 'Вход в личный кабинет ПОТОЛКОВЫЧ')
 
 @section('content')
     <div class="catalog-auth-screen">
@@ -18,7 +18,7 @@
                         type="text"
                         name="login"
                         value="{{ old('login') }}"
-                        placeholder="manager или manager@major.local"
+                        placeholder="manager или ваш email"
                         class="w-full rounded-[24px] border border-slate-200 bg-white px-5 py-[1.05rem] text-base text-slate-900 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
                     >
                     @error('login')

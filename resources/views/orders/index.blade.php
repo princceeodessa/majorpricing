@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', ($isManager ?? false) ? 'Заказы клиентов - MAJOR' : 'История заказов - MAJOR')
+@section('title', ($isManager ?? false) ? 'Заказы клиентов - ПОТОЛКОВЫЧ' : 'История заказов - ПОТОЛКОВЫЧ')
 
 @section('content')
     @if ($orders->isEmpty())

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Кабинет MAJOR')
+@section('title', 'Кабинет ПОТОЛКОВЫЧ')
 
 @section('content')
     @php($user = auth()->user())
@@ -135,7 +135,7 @@
                                             type="text"
                                             name="messengers[]"
                                             value="{{ $messenger }}"
-                                            placeholder="@major_client или WhatsApp"
+                                            placeholder="@client_support или WhatsApp"
                                             class="catalog-clean-input"
                                         >
                                         <button type="button" class="catalog-inline-action" data-repeatable-remove>Удалить</button>
@@ -145,7 +145,7 @@
 
                             <template data-repeatable-template>
                                 <div class="catalog-repeatable__item" data-repeatable-row>
-                                    <input type="text" name="messengers[]" value="" placeholder="@major_client или WhatsApp" class="catalog-clean-input">
+                                    <input type="text" name="messengers[]" value="" placeholder="@client_support или WhatsApp" class="catalog-clean-input">
                                     <button type="button" class="catalog-inline-action" data-repeatable-remove>Удалить</button>
                                 </div>
                             </template>
@@ -356,7 +356,7 @@
                                             type="text"
                                             name="messengers[]"
                                             value="{{ $messenger }}"
-                                            placeholder="@major_client или WhatsApp"
+                                            placeholder="@client_support или WhatsApp"
                                             class="catalog-clean-input"
                                         >
                                         <button type="button" class="catalog-inline-action" data-repeatable-remove>Удалить</button>
@@ -366,7 +366,7 @@
 
                             <template data-repeatable-template>
                                 <div class="catalog-repeatable__item" data-repeatable-row>
-                                    <input type="text" name="messengers[]" value="" placeholder="@major_client или WhatsApp" class="catalog-clean-input">
+                                    <input type="text" name="messengers[]" value="" placeholder="@client_support или WhatsApp" class="catalog-clean-input">
                                     <button type="button" class="catalog-inline-action" data-repeatable-remove>Удалить</button>
                                 </div>
                             </template>
