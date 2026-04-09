@@ -7,7 +7,8 @@
         $price = $product->priceForProfile();
         $category = $product->category;
         $unitLabel = $product->publicUnitLabel();
-        $imageUrl = $product->image_path ? asset($product->image_path) : null;
+        $fallbackImageUrl = asset('brand/product-placeholder.png');
+        $imageUrl = $product->image_path ? asset($product->image_path) : $fallbackImageUrl;
         $productFacts = collect([
             ['label' => 'В группе', 'value' => $category?->name],
             ['label' => 'Артикул', 'value' => $product->vendor_code],
@@ -28,13 +29,15 @@
                         </span>
                         <div class="catalog-product-stage__halo"></div>
 
-                        @if ($imageUrl)
-                            <div class="catalog-product-stage__image-frame">
-                                <img src="{{ $imageUrl }}" alt="{{ $product->publicTitle() }}" class="catalog-product-stage__image">
-                            </div>
-                        @else
-                            <div class="catalog-product-stage__mark">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($product->publicTitle(), 0, 2)) }}</div>
-                        @endif
+                        <div class="catalog-product-stage__image-frame">
+                            <img
+                                src="{{ $imageUrl }}"
+                                alt="{{ $product->publicTitle() }}"
+                                class="catalog-product-stage__image"
+                                data-fallback-src="{{ $fallbackImageUrl }}"
+                                onerror="this.onerror=null; this.src=this.dataset.fallbackSrc;"
+                            >
+                        </div>
                     </div>
                 </div>
             </div>

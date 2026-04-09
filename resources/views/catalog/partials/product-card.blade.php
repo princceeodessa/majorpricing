@@ -5,15 +5,16 @@
     $detailLine = $product->description
         ? \Illuminate\Support\Str::limit(str_replace("\n", ' / ', $product->description), 108)
         : ($product->vendor_code ? 'Артикул: '.$product->vendor_code : ($product->brand_name ?: ''));
-    $visualMark = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($publicTitle, 0, 2));
-    $imageUrl = $product->image_path ? asset($product->image_path) : null;
+    $fallbackImageUrl = asset('brand/product-placeholder.png');
+    $hasRealImage = filled($product->image_path);
+    $imageUrl = $hasRealImage ? asset($product->image_path) : $fallbackImageUrl;
     $productAccents = ['#d11117', '#c81e1e', '#b91c1c', '#991b1b', '#be123c', '#7f1d1d'];
     $productAccent = $productAccents[($rootCategory?->id ?? $product->id ?? 0) % count($productAccents)];
     $cartQuantity = (int) (($cartProductQuantities[$product->id] ?? 0));
 @endphp
 
 <article
-    class="catalog-product-card reveal-card {{ $imageUrl ? 'has-image' : '' }}"
+    class="catalog-product-card reveal-card {{ $hasRealImage ? 'has-image' : '' }}"
     style="animation-delay: {{ $delay ?? 0 }}ms; --card-accent: {{ $productAccent }};"
     data-product-card
     data-product-id="{{ $product->id }}"
@@ -24,19 +25,16 @@
 
     <a href="{{ route('products.show', $product) }}" class="catalog-product-card__visual-link">
         <div class="catalog-product-card__visual">
-            <div class="catalog-product-card__image-wrap {{ $imageUrl ? '' : 'is-placeholder' }}">
-                @if ($imageUrl)
-                    <img
-                        src="{{ $imageUrl }}"
-                        alt="{{ $publicTitle }}"
-                        class="catalog-product-card__image"
-                        loading="lazy"
-                        decoding="async"
-                        onerror="this.onerror=null; this.closest('.catalog-product-card__image-wrap').classList.add('is-fallback');"
-                    >
-                @endif
-
-                <div class="catalog-product-card__mark">{{ $visualMark }}</div>
+            <div class="catalog-product-card__image-wrap">
+                <img
+                    src="{{ $imageUrl }}"
+                    alt="{{ $publicTitle }}"
+                    class="catalog-product-card__image"
+                    loading="lazy"
+                    decoding="async"
+                    data-fallback-src="{{ $fallbackImageUrl }}"
+                    onerror="this.onerror=null; this.src=this.dataset.fallbackSrc;"
+                >
             </div>
         </div>
     </a>

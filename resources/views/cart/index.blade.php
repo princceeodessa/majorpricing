@@ -50,15 +50,18 @@
                 @foreach ($cartItems as $cartItem)
                     @php($product = $cartItem->product)
                     @php($unitLabel = $product?->publicUnitLabel())
+                    @php($fallbackImageUrl = asset('brand/product-placeholder.png'))
 
                     <article class="surface-card reveal-card p-5 sm:p-6">
                         <div class="catalog-cart-item">
                             <div class="catalog-cart-item__visual">
-                                @if ($product?->image_path)
-                                                <img src="{{ asset($product->image_path) }}" alt="{{ $product->publicTitle() }}" class="catalog-cart-item__image">
-                                @else
-                                    {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($product?->title ?? 'PR', 0, 2)) }}
-                                @endif
+                                <img
+                                    src="{{ $product?->image_path ? asset($product->image_path) : $fallbackImageUrl }}"
+                                    alt="{{ $product?->publicTitle() ?? 'Товар из каталога' }}"
+                                    class="catalog-cart-item__image"
+                                    data-fallback-src="{{ $fallbackImageUrl }}"
+                                    onerror="this.onerror=null; this.src=this.dataset.fallbackSrc;"
+                                >
                             </div>
 
                             <div class="catalog-cart-item__content">
