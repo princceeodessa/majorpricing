@@ -84,7 +84,11 @@
                                                 @endif
 
                                                 <p class="catalog-order-item__meta">
-                                                    {{ $item->source_sheet ?? 'Каталог' }}
+                                                    @if ($item->product?->vendor_code)
+                                                        Артикул {{ $item->product->vendor_code }}
+                                                    @else
+                                                        Каталог
+                                                    @endif
                                                     @if ($item->measurement_value)
                                                         · {{ \Illuminate\Support\Str::limit(str_replace("\n", ' / ', $item->measurement_value), 42) }}
                                                     @endif

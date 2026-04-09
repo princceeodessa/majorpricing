@@ -2,7 +2,9 @@
 
 namespace App\Services\OneC;
 
+use App\Models\CartItem;
 use App\Models\Category;
+use App\Models\FavoriteItem;
 use App\Models\OneCPriceType;
 use App\Models\Product;
 use App\Models\ProductPrice;
@@ -10,6 +12,7 @@ use DOMDocument;
 use DOMElement;
 use DOMNode;
 use DOMXPath;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
@@ -65,15 +68,15 @@ class OneCCatalogExchangeService
                 continue;
             }
 
-            if ($this->hasAnyNode($xpath, ['Классификатор', 'РљР»Р°СЃСЃРёС„РёРєР°С‚РѕСЂ'])) {
+            if ($this->hasAnyNode($xpath, ['Классификатор', 'Р С™Р В»Р В°РЎРѓРЎРѓР С‘РЎвЂћР С‘Р С”Р В°РЎвЂљР С•РЎР‚'])) {
                 $result['categories'] += $this->importCategories($xpath);
             }
 
-            if ($this->hasAnyNode($xpath, ['Товар', 'РўРѕРІР°СЂ'])) {
+            if ($this->hasAnyNode($xpath, ['Товар', 'Р СћР С•Р Р†Р В°РЎР‚'])) {
                 $result['products'] += $this->importProducts($xpath, $sessionKey);
             }
 
-            if ($this->hasAnyNode($xpath, ['ПакетПредложений', 'РџР°РєРµС‚РџСЂРµРґР»РѕР¶РµРЅРёР№'])) {
+            if ($this->hasAnyNode($xpath, ['ПакетПредложений', 'Р СџР В°Р С”Р ВµРЎвЂљР СџРЎР‚Р ВµР Т‘Р В»Р С•Р В¶Р ВµР Р…Р С‘Р в„–'])) {
                 $offersResult = $this->importOffers($xpath);
                 $result['prices'] += $offersResult['prices'];
                 $result['offers_without_products'] += $offersResult['offers_without_products'];
@@ -81,7 +84,7 @@ class OneCCatalogExchangeService
         }
 
         if (! $result['has_import']) {
-            $result['warnings'][] = 'В пакете нет import.xml. Это означает, что 1С прислала предложения или цены без каталога товаров.';
+            $result['warnings'][] = 'В пакете нет import.xml. 1С прислала цены или предложения без каталога товаров.';
         }
 
         if (! $result['has_offers']) {
@@ -89,7 +92,7 @@ class OneCCatalogExchangeService
         }
 
         if ($result['offers_without_products'] > 0) {
-            $result['warnings'][] = 'Часть предложений из offers.xml не привязалась к товарам: '.$result['offers_without_products'].'. Обычно это происходит, когда товары ещё не были загружены через import.xml.';
+            $result['warnings'][] = 'Часть предложений из offers.xml не привязалась к товарам: '.$result['offers_without_products'].'. Обычно это происходит, когда import.xml не был загружен или не распарсился.';
         }
 
         if ($result['has_offers'] && ! $result['has_import'] && $result['products'] === 0 && $result['prices'] === 0) {
@@ -107,9 +110,9 @@ class OneCCatalogExchangeService
             '//*',
             null,
             [
-                ['Классификатор', 'РљР»Р°СЃСЃРёС„РёРєР°С‚РѕСЂ'],
-                ['Группы', 'Р“СЂСѓРїРїС‹'],
-                ['Группа', 'Р“СЂСѓРїРїР°'],
+                ['Классификатор', 'Р С™Р В»Р В°РЎРѓРЎРѓР С‘РЎвЂћР С‘Р С”Р В°РЎвЂљР С•РЎР‚'],
+                ['Группы', 'Р вЂњРЎР‚РЎС“Р С—Р С—РЎвЂ№'],
+                ['Группа', 'Р вЂњРЎР‚РЎС“Р С—Р С—Р В°'],
             ],
         );
 
@@ -124,16 +127,14 @@ class OneCCatalogExchangeService
 
     private function upsertCategoryNode(DOMXPath $xpath, DOMElement $groupNode, ?Category $parent, int $sortOrder): int
     {
-        $oneCId = $this->firstChildValue($xpath, $groupNode, ['Ид', 'РРґ']);
-        $name = $this->firstChildValue($xpath, $groupNode, ['Наименование', 'РќР°РёРјРµРЅРѕРІР°РЅРёРµ']);
+        $oneCId = $this->firstChildValue($xpath, $groupNode, ['Ид', 'Р ВР Т‘']);
+        $name = $this->firstChildValue($xpath, $groupNode, ['Наименование', 'Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р Вµ']);
 
         if (blank($oneCId) || blank($name)) {
             return 0;
         }
 
-        $category = Category::query()->firstOrNew([
-            'one_c_id' => $oneCId,
-        ]);
+        $category = $this->resolveCategoryForSync($name, $oneCId, $parent);
 
         if (! $category->exists) {
             $category->slug = $this->uniqueSlug($name, Category::class);
@@ -143,7 +144,7 @@ class OneCCatalogExchangeService
         $category->fill([
             'parent_id' => $parent?->id,
             'name' => $name,
-            'description' => $this->firstChildValue($xpath, $groupNode, ['Описание', 'РћРїРёСЃР°РЅРёРµ']),
+            'description' => $this->firstChildValue($xpath, $groupNode, ['Описание', 'Р С›Р С—Р С‘РЎРѓР В°Р Р…Р С‘Р Вµ']),
             'sort_order' => $sortOrder,
         ]);
         $category->save();
@@ -154,8 +155,8 @@ class OneCCatalogExchangeService
             '.',
             $groupNode,
             [
-                ['Группы', 'Р“СЂСѓРїРїС‹'],
-                ['Группа', 'Р“СЂСѓРїРїР°'],
+                ['Группы', 'Р вЂњРЎР‚РЎС“Р С—Р С—РЎвЂ№'],
+                ['Группа', 'Р вЂњРЎР‚РЎС“Р С—Р С—Р В°'],
             ],
         );
 
@@ -176,9 +177,9 @@ class OneCCatalogExchangeService
             '//*',
             null,
             [
-                ['Каталог', 'РљР°С‚Р°Р»РѕРі'],
-                ['Товары', 'РўРѕРІР°СЂС‹'],
-                ['Товар', 'РўРѕРІР°СЂ'],
+                ['Каталог', 'Р С™Р В°РЎвЂљР В°Р В»Р С•Р С–'],
+                ['Товары', 'Р СћР С•Р Р†Р В°РЎР‚РЎвЂ№'],
+                ['Товар', 'Р СћР С•Р Р†Р В°РЎР‚'],
             ],
         );
 
@@ -187,21 +188,22 @@ class OneCCatalogExchangeService
                 continue;
             }
 
-            $oneCId = $this->firstChildValue($xpath, $productNode, ['Ид', 'РРґ']);
-            $title = $this->firstChildValue($xpath, $productNode, ['Наименование', 'РќР°РёРјРµРЅРѕРІР°РЅРёРµ']);
+            $oneCId = $this->firstChildValue($xpath, $productNode, ['Ид', 'Р ВР Т‘']);
+            $baseTitle = $this->firstChildValue($xpath, $productNode, ['Наименование', 'Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р Вµ']);
+            $title = $this->resolveProductTitle($xpath, $productNode, $baseTitle);
 
             if (blank($oneCId) || blank($title)) {
                 continue;
             }
 
             $groupIds = $this->childValues($xpath, $productNode, [
-                ['Группы', 'Р“СЂСѓРїРїС‹'],
-                ['Ид', 'РРґ'],
+                ['Группы', 'Р вЂњРЎР‚РЎС“Р С—Р С—РЎвЂ№'],
+                ['Ид', 'Р ВР Т‘'],
             ]);
 
             if ($groupIds === []) {
                 $groupIds = $this->childValues($xpath, $productNode, [
-                    ['Группа', 'Р“СЂСѓРїРїР°'],
+                    ['Группа', 'Р вЂњРЎР‚РЎС“Р С—Р С—Р В°'],
                 ]);
             }
 
@@ -209,33 +211,27 @@ class OneCCatalogExchangeService
                 ? Category::query()->where('one_c_id', $groupIds[0])->first()
                 : null;
 
-            $product = Product::query()->firstOrNew([
-                'one_c_id' => $oneCId,
-            ]);
+            $oneCCode = $this->resolveProductCode($xpath, $productNode);
+            $vendorCode = $this->firstChildValue($xpath, $productNode, ['РђСЂС‚РёРєСѓР»', 'РВРЎвЂ™РРЋРвЂљРРЋРІР‚С™РВРЎвЂРВРЎвЂќРРЋРЎвЂњРВР’В»']);
+            $brandName = $this->resolveProductBrand($xpath, $productNode);
+
+            $product = $this->resolveProductForSync(
+                oneCId: $oneCId,
+                title: $title,
+                baseTitle: $baseTitle,
+                category: $category,
+                vendorCode: $vendorCode,
+                oneCCode: $oneCCode,
+            );
 
             if (! $product->exists) {
                 $product->slug = $this->uniqueSlug($title, Product::class);
             }
 
-            $measureNode = $this->queryChildren(
-                $xpath,
-                '.',
-                $productNode,
-                [
-                    ['БазоваяЕдиница', 'Р‘Р°Р·РѕРІР°СЏР•РґРёРЅРёС†Р°'],
-                ],
-            )->item(0);
-
-            $measurementLabel = $measureNode instanceof DOMElement
-                ? ($measureNode->getAttribute('НаименованиеКраткое') ?: $measureNode->getAttribute('РќР°РёРјРµРЅРѕРІР°РЅРёРµРљСЂР°С‚РєРѕРµ') ?: trim($measureNode->textContent))
-                : null;
-
+            $unitLabel = $this->resolveUnitLabel($xpath, $productNode);
             $imagePath = null;
-            $pictureRefs = $this->childValues($xpath, $productNode, [
-                ['Картинка', 'РљР°СЂС‚РёРЅРєР°'],
-            ]);
 
-            foreach ($pictureRefs as $pictureRef) {
+            foreach ($this->childValues($xpath, $productNode, [['Картинка', 'Р С™Р В°РЎР‚РЎвЂљР С‘Р Р…Р С”Р В°']]) as $pictureRef) {
                 $imagePath = $this->copyUploadedImage($sessionKey, $pictureRef, $title, $oneCId);
 
                 if ($imagePath !== null) {
@@ -243,15 +239,20 @@ class OneCCatalogExchangeService
                 }
             }
 
+            $isNewProduct = ! $product->exists;
+
             $product->fill([
                 'category_id' => $category?->id,
                 'title' => $title,
-                'name' => $title,
-                'vendor_code' => $this->firstChildValue($xpath, $productNode, ['Артикул', 'РђСЂС‚РёРєСѓР»']),
-                'measurement_label' => $measurementLabel,
-                'measurement_value' => $this->firstChildValue($xpath, $productNode, ['НаименованиеПолное', 'РќР°РёРјРµРЅРѕРІР°РЅРёРµРџРѕР»РЅРѕРµ']),
-                'description' => $this->firstChildValue($xpath, $productNode, ['Описание', 'РћРїРёСЃР°РЅРёРµ']),
-                'source_sheet' => '1C',
+                'name' => $baseTitle ?: $title,
+                'one_c_code' => $oneCCode,
+                'vendor_code' => $this->firstChildValue($xpath, $productNode, ['Артикул', 'Р С’РЎР‚РЎвЂљР С‘Р С”РЎС“Р В»']),
+                'brand_name' => $brandName,
+                'measurement_label' => $unitLabel,
+                'measurement_value' => $this->firstChildValue($xpath, $productNode, ['НаименованиеПолное', 'Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р ВµР СџР С•Р В»Р Р…Р С•Р Вµ']),
+                'description' => $this->firstChildValue($xpath, $productNode, ['Описание', 'Р С›Р С—Р С‘РЎРѓР В°Р Р…Р С‘Р Вµ']),
+                'source_sheet' => $isNewProduct ? '1C' : $product->source_sheet,
+                'source_row' => $isNewProduct ? null : $product->source_row,
                 'sort_order' => $index,
                 'image_path' => $imagePath ?? $product->image_path,
             ]);
@@ -276,8 +277,8 @@ class OneCCatalogExchangeService
             '//*',
             null,
             [
-                ['Предложения', 'РџСЂРµРґР»РѕР¶РµРЅРёСЏ'],
-                ['Предложение', 'РџСЂРµРґР»РѕР¶РµРЅРёРµ'],
+                ['Предложения', 'Р СџРЎР‚Р ВµР Т‘Р В»Р С•Р В¶Р ВµР Р…Р С‘РЎРЏ'],
+                ['Предложение', 'Р СџРЎР‚Р ВµР Т‘Р В»Р С•Р В¶Р ВµР Р…Р С‘Р Вµ'],
             ],
         );
 
@@ -286,7 +287,7 @@ class OneCCatalogExchangeService
                 continue;
             }
 
-            $offerId = $this->firstChildValue($xpath, $offerNode, ['Ид', 'РРґ']);
+            $offerId = $this->firstChildValue($xpath, $offerNode, ['Ид', 'Р ВР Т‘']);
 
             if (blank($offerId)) {
                 continue;
@@ -301,13 +302,14 @@ class OneCCatalogExchangeService
             }
 
             $resolvedMinimums = [];
+            $publicMinimums = [];
             $priceNodes = $this->queryChildren(
                 $xpath,
                 '.',
                 $offerNode,
                 [
-                    ['Цены', 'Р¦РµРЅС‹'],
-                    ['Цена', 'Р¦РµРЅР°'],
+                    ['Цены', 'Р В¦Р ВµР Р…РЎвЂ№'],
+                    ['Цена', 'Р В¦Р ВµР Р…Р В°'],
                 ],
             );
 
@@ -316,8 +318,8 @@ class OneCCatalogExchangeService
                     continue;
                 }
 
-                $priceTypeId = $this->firstChildValue($xpath, $priceNode, ['ИдТипаЦены', 'РРґРўРёРїР°Р¦РµРЅС‹']);
-                $amount = $this->normalizeDecimal($this->firstChildValue($xpath, $priceNode, ['ЦенаЗаЕдиницу', 'Р¦РµРЅР°Р—Р°Р•РґРёРЅРёС†Сѓ']));
+                $priceTypeId = $this->firstChildValue($xpath, $priceNode, ['ИдТипаЦены', 'Р ВР Т‘Р СћР С‘Р С—Р В°Р В¦Р ВµР Р…РЎвЂ№']);
+                $amount = $this->normalizeDecimal($this->firstChildValue($xpath, $priceNode, ['ЦенаЗаЕдиницу', 'Р В¦Р ВµР Р…Р В°Р вЂ”Р В°Р вЂўР Т‘Р С‘Р Р…Р С‘РЎвЂ РЎС“']));
                 $columnIndex = $priceTypeMap[$priceTypeId]['column_index'] ?? null;
                 $label = $priceTypeMap[$priceTypeId]['name'] ?? null;
 
@@ -339,16 +341,21 @@ class OneCCatalogExchangeService
 
                 if ($amount !== null) {
                     $resolvedMinimums[$columnIndex] = $amount;
+
+                    if ($label !== null && in_array(trim($label), Product::publicPricePriority(), true)) {
+                        $publicMinimums[$columnIndex] = $amount;
+                    }
                 }
 
                 $count++;
             }
 
             if ($resolvedMinimums !== []) {
-                ksort($resolvedMinimums);
+                $chosenMinimums = $publicMinimums !== [] ? $publicMinimums : $resolvedMinimums;
+                ksort($chosenMinimums);
 
                 $product->forceFill([
-                    'price_from' => reset($resolvedMinimums),
+                    'price_from' => reset($chosenMinimums),
                 ])->save();
             }
         }
@@ -370,8 +377,8 @@ class OneCCatalogExchangeService
             '//*',
             null,
             [
-                ['ТипыЦен', 'РўРёРїС‹Р¦РµРЅ'],
-                ['ТипЦены', 'РўРёРїР¦РµРЅС‹'],
+                ['ТипыЦен', 'Р СћР С‘Р С—РЎвЂ№Р В¦Р ВµР Р…'],
+                ['ТипЦены', 'Р СћР С‘Р С—Р В¦Р ВµР Р…РЎвЂ№'],
             ],
         );
 
@@ -380,8 +387,8 @@ class OneCCatalogExchangeService
                 continue;
             }
 
-            $oneCId = $this->firstChildValue($xpath, $priceTypeNode, ['Ид', 'РРґ']);
-            $name = $this->firstChildValue($xpath, $priceTypeNode, ['Наименование', 'РќР°РёРјРµРЅРѕРІР°РЅРёРµ']);
+            $oneCId = $this->firstChildValue($xpath, $priceTypeNode, ['Ид', 'Р ВР Т‘']);
+            $name = $this->firstChildValue($xpath, $priceTypeNode, ['Наименование', 'Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р Вµ']);
 
             if (blank($oneCId) || blank($name)) {
                 continue;
@@ -406,6 +413,385 @@ class OneCCatalogExchangeService
         }
 
         return $map;
+    }
+
+    private function resolveProductTitle(DOMXPath $xpath, DOMElement $productNode, ?string $fallback): ?string
+    {
+        return $this->firstFilled([
+            $this->requisiteValue($xpath, $productNode, ['НаименованиеДляПечати', 'Наименование для печати']),
+            $this->firstChildValue($xpath, $productNode, ['НаименованиеДляПечати']),
+            $this->firstChildValue($xpath, $productNode, ['НаименованиеПолное', 'Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р ВµР СџР С•Р В»Р Р…Р С•Р Вµ']),
+            $fallback,
+        ]);
+    }
+
+    private function resolveProductCode(DOMXPath $xpath, DOMElement $productNode): ?string
+    {
+        return $this->firstFilled([
+            $this->firstChildValue($xpath, $productNode, ['Код', 'РљРѕРґ']),
+            $this->requisiteValue($xpath, $productNode, ['Код']),
+        ]);
+    }
+
+    private function resolveProductBrand(DOMXPath $xpath, DOMElement $productNode): ?string
+    {
+        return $this->firstFilled([
+            $this->firstChildValue($xpath, $productNode, ['Бренд']),
+            $this->requisiteValue($xpath, $productNode, ['Бренд']),
+        ]);
+    }
+
+    private function resolveCategoryForSync(string $name, string $oneCId, ?Category $parent): Category
+    {
+        $existingOneC = Category::query()->where('one_c_id', $oneCId)->first();
+        $legacyMatch = $this->findCategoryByNormalizedName($name, $parent, $existingOneC?->id);
+
+        if ($existingOneC && $legacyMatch && ! $existingOneC->is($legacyMatch)) {
+            return $this->mergeCategories($legacyMatch, $existingOneC);
+        }
+
+        return $existingOneC ?? $legacyMatch ?? new Category([
+            'one_c_id' => $oneCId,
+        ]);
+    }
+
+    private function findCategoryByNormalizedName(string $name, ?Category $parent, ?int $exceptId = null): ?Category
+    {
+        $nameKey = $this->syncKey($name);
+
+        if ($nameKey === '') {
+            return null;
+        }
+
+        $query = Category::query();
+
+        if ($parent) {
+            $query->where('parent_id', $parent->id);
+        } else {
+            $query->whereNull('parent_id');
+        }
+
+        if ($exceptId !== null) {
+            $query->whereKeyNot($exceptId);
+        }
+
+        $candidates = $query->get()->filter(function (Category $category) use ($nameKey): bool {
+            return $this->syncKey($category->name) === $nameKey;
+        });
+
+        return $this->pickPreferredCategoryCandidate($candidates->all());
+    }
+
+    private function pickPreferredCategoryCandidate(array $categories): ?Category
+    {
+        if ($categories === []) {
+            return null;
+        }
+
+        usort($categories, function (Category $left, Category $right): int {
+            $score = $this->categorySyncScore($right) <=> $this->categorySyncScore($left);
+
+            return $score !== 0 ? $score : ($left->id <=> $right->id);
+        });
+
+        return $categories[0] ?? null;
+    }
+
+    private function categorySyncScore(Category $category): int
+    {
+        $score = 0;
+
+        if (blank($category->one_c_id)) {
+            $score += 100;
+        }
+
+        if ($category->source_sheet !== '1C') {
+            $score += 50;
+        }
+
+        return $score;
+    }
+
+    private function mergeCategories(Category $target, Category $duplicate): Category
+    {
+        if ($target->is($duplicate)) {
+            return $target;
+        }
+
+        $duplicateOneCId = $duplicate->one_c_id;
+        $targetHadOneCId = filled($target->one_c_id);
+
+        DB::transaction(function () use ($target, $duplicate, $duplicateOneCId, $targetHadOneCId): void {
+            Category::query()
+                ->where('parent_id', $duplicate->id)
+                ->update(['parent_id' => $target->id]);
+
+            Product::query()
+                ->where('category_id', $duplicate->id)
+                ->update(['category_id' => $target->id]);
+
+            if (! $targetHadOneCId && filled($duplicateOneCId)) {
+                $duplicate->forceFill(['one_c_id' => null])->save();
+            }
+
+            $target->forceFill([
+                'one_c_id' => $target->one_c_id ?: $duplicateOneCId,
+                'description' => $target->description ?: $duplicate->description,
+                'accent_color' => $target->accent_color ?: $duplicate->accent_color,
+                'source_sheet' => $target->source_sheet ?: $duplicate->source_sheet,
+            ])->save();
+
+            $duplicate->delete();
+        });
+
+        return $target->fresh() ?? $target;
+    }
+
+    private function resolveProductForSync(
+        string $oneCId,
+        string $title,
+        ?string $baseTitle,
+        ?Category $category,
+        ?string $vendorCode,
+        ?string $oneCCode,
+    ): Product {
+        $existingOneC = Product::query()->where('one_c_id', $oneCId)->first();
+        $legacyMatch = $this->findLegacyProductCandidate(
+            title: $title,
+            baseTitle: $baseTitle,
+            category: $category,
+            vendorCode: $vendorCode,
+            oneCCode: $oneCCode,
+            exceptId: $existingOneC?->id,
+        );
+
+        if ($existingOneC && $legacyMatch && ! $existingOneC->is($legacyMatch)) {
+            return $this->mergeProducts($legacyMatch, $existingOneC, $category);
+        }
+
+        return $existingOneC ?? $legacyMatch ?? new Product([
+            'one_c_id' => $oneCId,
+        ]);
+    }
+
+    private function findLegacyProductCandidate(
+        string $title,
+        ?string $baseTitle,
+        ?Category $category,
+        ?string $vendorCode,
+        ?string $oneCCode,
+        ?int $exceptId = null,
+    ): ?Product {
+        $candidates = [];
+
+        $byVendorCode = $this->findProductByExactField('vendor_code', $vendorCode, $category, $exceptId);
+
+        if ($byVendorCode) {
+            $candidates[] = $byVendorCode;
+        }
+
+        $byOneCCode = $this->findProductByExactField('one_c_code', $oneCCode, $category, $exceptId);
+
+        if ($byOneCCode) {
+            $candidates[] = $byOneCCode;
+        }
+
+        $byTitle = $this->findProductByNormalizedTitle($title, $baseTitle, $category, $exceptId);
+
+        if ($byTitle) {
+            $candidates[] = $byTitle;
+        }
+
+        $legacyCandidates = collect($candidates)
+            ->filter(fn (Product $product): bool => $this->looksLikeLegacyCatalogProduct($product))
+            ->unique('id')
+            ->all();
+
+        return $this->pickPreferredProductCandidate($legacyCandidates, $category);
+    }
+
+    private function findProductByExactField(string $field, ?string $value, ?Category $category, ?int $exceptId = null): ?Product
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        $query = Product::query()->where($field, trim((string) $value));
+
+        if ($exceptId !== null) {
+            $query->whereKeyNot($exceptId);
+        }
+
+        return $this->pickPreferredProductCandidate($query->get()->all(), $category);
+    }
+
+    private function findProductByNormalizedTitle(string $title, ?string $baseTitle, ?Category $category, ?int $exceptId = null): ?Product
+    {
+        $keys = collect([$title, $baseTitle])
+            ->map(fn (?string $value): string => $this->syncKey($value))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($keys->isEmpty()) {
+            return null;
+        }
+
+        $query = Product::query();
+
+        if ($category) {
+            $query->where('category_id', $category->id);
+        }
+
+        if ($exceptId !== null) {
+            $query->whereKeyNot($exceptId);
+        }
+
+        $candidates = $query->get()->filter(function (Product $product) use ($keys): bool {
+            return collect([$product->title, $product->name])
+                ->map(fn (?string $value): string => $this->syncKey($value))
+                ->filter()
+                ->contains(fn (string $value): bool => $keys->contains($value));
+        })->all();
+
+        return $this->pickPreferredProductCandidate($candidates, $category);
+    }
+
+    private function pickPreferredProductCandidate(array $products, ?Category $category): ?Product
+    {
+        if ($products === []) {
+            return null;
+        }
+
+        usort($products, function (Product $left, Product $right) use ($category): int {
+            $score = $this->productSyncScore($right, $category) <=> $this->productSyncScore($left, $category);
+
+            return $score !== 0 ? $score : ($left->id <=> $right->id);
+        });
+
+        return $products[0] ?? null;
+    }
+
+    private function productSyncScore(Product $product, ?Category $category): int
+    {
+        $score = 0;
+
+        if (blank($product->one_c_id)) {
+            $score += 100;
+        }
+
+        if ($this->looksLikeLegacyCatalogProduct($product)) {
+            $score += 70;
+        }
+
+        if (filled($product->image_path)) {
+            $score += 30;
+        }
+
+        if ($category && $product->category_id === $category->id) {
+            $score += 40;
+        }
+
+        return $score;
+    }
+
+    private function looksLikeLegacyCatalogProduct(Product $product): bool
+    {
+        return $product->source_sheet !== '1C';
+    }
+
+    private function mergeProducts(Product $target, Product $duplicate, ?Category $category): Product
+    {
+        if ($target->is($duplicate)) {
+            return $target;
+        }
+
+        $duplicateOneCId = $duplicate->one_c_id;
+        $targetHadOneCId = filled($target->one_c_id);
+
+        DB::transaction(function () use ($target, $duplicate, $category, $duplicateOneCId, $targetHadOneCId): void {
+            CartItem::query()
+                ->where('product_id', $duplicate->id)
+                ->get()
+                ->each(function (CartItem $cartItem) use ($target): void {
+                    $existing = CartItem::query()
+                        ->where('user_id', $cartItem->user_id)
+                        ->where('product_id', $target->id)
+                        ->first();
+
+                    if ($existing) {
+                        $existing->increment('quantity', $cartItem->quantity);
+                        $cartItem->delete();
+
+                        return;
+                    }
+
+                    $cartItem->update(['product_id' => $target->id]);
+                });
+
+            FavoriteItem::query()
+                ->where('product_id', $duplicate->id)
+                ->get()
+                ->each(function (FavoriteItem $favoriteItem) use ($target): void {
+                    $exists = FavoriteItem::query()
+                        ->where('user_id', $favoriteItem->user_id)
+                        ->where('product_id', $target->id)
+                        ->exists();
+
+                    if ($exists) {
+                        $favoriteItem->delete();
+
+                        return;
+                    }
+
+                    $favoriteItem->update(['product_id' => $target->id]);
+                });
+
+            $duplicate->orderItems()->update(['product_id' => $target->id]);
+            $duplicate->prices()->delete();
+
+            if (! $targetHadOneCId && filled($duplicateOneCId)) {
+                $duplicate->forceFill(['one_c_id' => null])->save();
+            }
+
+            $target->forceFill([
+                'one_c_id' => $target->one_c_id ?: $duplicateOneCId,
+                'vendor_code' => $target->vendor_code ?: $duplicate->vendor_code,
+                'one_c_code' => $target->one_c_code ?: $duplicate->one_c_code,
+                'brand_name' => $target->brand_name ?: $duplicate->brand_name,
+                'measurement_label' => $target->measurement_label ?: $duplicate->measurement_label,
+                'measurement_value' => $target->measurement_value ?: $duplicate->measurement_value,
+                'description' => $target->description ?: $duplicate->description,
+                'image_path' => $target->image_path ?: $duplicate->image_path,
+                'category_id' => $target->category_id ?: $category?->id ?: $duplicate->category_id,
+            ])->save();
+
+            $duplicate->delete();
+        });
+
+        return $target->fresh() ?? $target;
+    }
+
+    private function resolveUnitLabel(DOMXPath $xpath, DOMElement $productNode): ?string
+    {
+        $measureNode = $this->queryChildren(
+            $xpath,
+            '.',
+            $productNode,
+            [
+                ['БазоваяЕдиница', 'Р вЂР В°Р В·Р С•Р Р†Р В°РЎРЏР вЂўР Т‘Р С‘Р Р…Р С‘РЎвЂ Р В°'],
+            ],
+        )->item(0);
+
+        if (! $measureNode instanceof DOMElement) {
+            return null;
+        }
+
+        return $this->firstFilled([
+            $measureNode->getAttribute('НаименованиеКраткое'),
+            $measureNode->getAttribute('Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р ВµР С™РЎР‚Р В°РЎвЂљР С”Р С•Р Вµ'),
+            trim($measureNode->textContent),
+        ]);
     }
 
     private function copyUploadedImage(string $sessionKey, string $pictureRef, string $title, string $oneCId): ?string
@@ -436,7 +822,7 @@ class OneCCatalogExchangeService
             return new DOMXPath($document);
         }
 
-        if (! str_contains($xml, 'Р')) {
+        if (! str_contains($xml, 'Р ')) {
             return null;
         }
 
@@ -462,10 +848,10 @@ class OneCCatalogExchangeService
             'Классификатор',
             'Каталог',
             'ПакетПредложений',
-            'РљРѕРјРјРµСЂС‡РµСЃРєР°СЏРРЅС„РѕСЂРјР°С†РёСЏ',
-            'РљР»Р°СЃСЃРёС„РёРєР°С‚РѕСЂ',
-            'РљР°С‚Р°Р»РѕРі',
-            'РџР°РєРµС‚РџСЂРµРґР»РѕР¶РµРЅРёР№',
+            'Р С™Р С•Р СР СР ВµРЎР‚РЎвЂЎР ВµРЎРѓР С”Р В°РЎРЏР ВР Р…РЎвЂћР С•РЎР‚Р СР В°РЎвЂ Р С‘РЎРЏ',
+            'Р С™Р В»Р В°РЎРѓРЎРѓР С‘РЎвЂћР С‘Р С”Р В°РЎвЂљР С•РЎР‚',
+            'Р С™Р В°РЎвЂљР В°Р В»Р С•Р С–',
+            'Р СџР В°Р С”Р ВµРЎвЂљР СџРЎР‚Р ВµР Т‘Р В»Р С•Р В¶Р ВµР Р…Р С‘Р в„–',
         ]) ? $document : null;
     }
 
@@ -489,6 +875,7 @@ class OneCCatalogExchangeService
 
             if ($index === 0 && $base === '//*') {
                 $query .= '['.$this->localNamePredicate($level).']';
+
                 continue;
             }
 
@@ -561,5 +948,66 @@ class OneCCatalogExchangeService
         }
 
         return $slug;
+    }
+
+    /**
+     * @param  array<int, string>  $requisiteNames
+     */
+    private function requisiteValue(DOMXPath $xpath, DOMNode $contextNode, array $requisiteNames): ?string
+    {
+        $requisites = $this->queryChildren(
+            $xpath,
+            '.',
+            $contextNode,
+            [
+                ['ЗначенияРеквизитов'],
+                ['ЗначениеРеквизита'],
+            ],
+        );
+
+        foreach ($requisites as $requisite) {
+            if (! $requisite instanceof DOMElement) {
+                continue;
+            }
+
+            $name = $this->firstChildValue($xpath, $requisite, ['Наименование']);
+
+            if (! filled($name) || ! in_array(trim($name), $requisiteNames, true)) {
+                continue;
+            }
+
+            return $this->firstChildValue($xpath, $requisite, ['Значение']);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, string|null>  $values
+     */
+    private function firstFilled(array $values): ?string
+    {
+        foreach ($values as $value) {
+            if (filled($value)) {
+                return trim((string) $value);
+            }
+        }
+
+        return null;
+    }
+
+    private function syncKey(?string $value): string
+    {
+        if (blank($value)) {
+            return '';
+        }
+
+        $slug = Str::slug(trim((string) $value), '-', 'ru');
+
+        if ($slug !== '') {
+            return $slug;
+        }
+
+        return Str::slug(Str::transliterate(trim((string) $value)));
     }
 }

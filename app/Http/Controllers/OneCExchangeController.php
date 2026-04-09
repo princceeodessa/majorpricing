@@ -87,7 +87,7 @@ class OneCExchangeController extends Controller
 
     private function initExchange(string $type, string $sessionKey): Response
     {
-        $this->exchangeStorage->clearType($sessionKey, $type);
+        $this->exchangeStorage->resetUploadState($sessionKey, $type);
 
         return $this->plainResponse(sprintf(
             "zip=no\nfile_limit=%d",
@@ -139,9 +139,8 @@ class OneCExchangeController extends Controller
     {
         if ($type === 'sale') {
             $this->saleExchangeService->markExported($sessionKey);
+            $this->exchangeStorage->clearType($sessionKey, $type);
         }
-
-        $this->exchangeStorage->clearType($sessionKey, $type);
 
         return $this->plainResponse('success');
     }

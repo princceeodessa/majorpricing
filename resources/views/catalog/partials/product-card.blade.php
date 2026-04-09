@@ -3,7 +3,7 @@
     $rootCategory = $product->category?->parent ?? $product->category;
     $detailLine = $product->description
         ? \Illuminate\Support\Str::limit(str_replace("\n", ' / ', $product->description), 108)
-        : ($product->measurement_value ? \Illuminate\Support\Str::limit(str_replace("\n", ' / ', $product->measurement_value), 78) : 'Подробная спецификация открывается внутри карточки.');
+        : ($product->vendor_code ? 'Артикул: '.$product->vendor_code : ($product->brand_name ?: ''));
     $visualMark = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($product->title, 0, 2));
     $imageUrl = $product->image_path ? asset($product->image_path) : null;
     $productAccents = ['#d11117', '#c81e1e', '#b91c1c', '#991b1b', '#be123c', '#7f1d1d'];
@@ -46,12 +46,14 @@
             <a href="{{ route('products.show', $product) }}" class="catalog-product-card__title-link">
                 <h3 class="catalog-product-card__title">{{ $product->title }}</h3>
             </a>
-            <p class="catalog-product-card__description">{{ $detailLine }}</p>
+            @if (filled($detailLine))
+                <p class="catalog-product-card__description">{{ $detailLine }}</p>
+            @endif
         </div>
 
         <div class="catalog-product-card__footer">
             <div>
-                <p class="catalog-product-card__price-label">Цена</p>
+                <p class="catalog-product-card__price-label">{{ $price?->label ?? 'Цена' }}</p>
                 @if ($price?->min_amount !== null)
                     <p class="catalog-product-card__price">
                         {{ \Illuminate\Support\Number::format((float) $price->min_amount, 2, locale: 'ru') }} ₽

@@ -62,4 +62,59 @@ class CatalogPricingTest extends TestCase
         $response->assertSeeText('530,00');
         $response->assertDontSeeText('624,75');
     }
+
+    public function test_public_catalog_prefers_optovaya_price_from_one_c_labels(): void
+    {
+        $user = User::factory()->create([
+            'login' => 'one-c-price-viewer',
+            'email' => 'one-c-price-viewer@example.com',
+        ]);
+
+        $category = Category::query()->create([
+            'name' => 'Комплектующие',
+            'slug' => 'komplektuyushchie',
+            'sort_order' => 0,
+            'accent_color' => '#f97316',
+        ]);
+
+        $product = Product::query()->create([
+            'category_id' => $category->id,
+            'title' => 'Заглушка TOREC',
+            'name' => 'Заглушка TOREC',
+            'slug' => 'zaglushka-torec',
+            'price_from' => 38.89,
+            'sort_order' => 0,
+        ]);
+
+        ProductPrice::query()->create([
+            'product_id' => $product->id,
+            'column_index' => 1,
+            'label' => 'Дилер Ижевск',
+            'display_value' => '44,45',
+            'min_amount' => 44.45,
+        ]);
+
+        ProductPrice::query()->create([
+            'product_id' => $product->id,
+            'column_index' => 2,
+            'label' => 'Оптовая БЕЗНАЛ',
+            'display_value' => '38,89',
+            'min_amount' => 38.89,
+        ]);
+
+        ProductPrice::query()->create([
+            'product_id' => $product->id,
+            'column_index' => 3,
+            'label' => 'Оптовая',
+            'display_value' => '35,00',
+            'min_amount' => 35.00,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('products.show', $product));
+
+        $response->assertOk();
+        $response->assertSeeText('35,00');
+        $response->assertSeeText('Оптовая');
+        $response->assertDontSeeText('44,45');
+    }
 }

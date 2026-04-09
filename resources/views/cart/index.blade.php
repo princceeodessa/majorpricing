@@ -49,7 +49,7 @@
             <div class="space-y-4">
                 @foreach ($cartItems as $cartItem)
                     @php($product = $cartItem->product)
-                    @php($price = $cartItem->resolved_price)
+                    @php($unitLabel = $product?->publicUnitLabel())
 
                     <article class="surface-card reveal-card p-5 sm:p-6">
                         <div class="catalog-cart-item">
@@ -71,9 +71,13 @@
                                     @endif
 
                                     <p class="catalog-cart-item__meta">
-                                        {{ $product?->source_sheet ?? 'Закрытый каталог' }}
-                                        @if ($product?->measurement_value)
-                                            · {{ \Illuminate\Support\Str::limit(str_replace("\n", ' / ', $product->measurement_value), 48) }}
+                                        @if ($product?->vendor_code)
+                                            Артикул {{ $product->vendor_code }}
+                                        @else
+                                            Каталог
+                                        @endif
+                                        @if ($unitLabel)
+                                            · {{ $unitLabel }}
                                         @endif
                                     </p>
                                 </div>
@@ -103,7 +107,7 @@
                             </div>
 
                             <div class="catalog-cart-item__price">
-                                <p class="catalog-cart-item__price-label">Цена</p>
+                                <p class="catalog-cart-item__price-label">{{ $cartItem->resolved_price?->label ?? 'Цена' }}</p>
                                 @if ($cartItem->resolved_unit_amount !== null)
                                     <p class="catalog-cart-item__price-value">
                                         {{ \Illuminate\Support\Number::format((float) $cartItem->resolved_unit_amount, 2, locale: 'ru') }} ₽

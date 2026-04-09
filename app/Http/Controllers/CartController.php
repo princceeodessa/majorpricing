@@ -197,7 +197,7 @@ class CartController extends Controller
                     'unit_price' => $resolvedUnitAmount,
                     'line_total' => $resolvedLineAmount,
                     'source_sheet' => $product?->source_sheet,
-                    'measurement_value' => $product?->measurement_value,
+                    'measurement_value' => $product?->publicUnitLabel(),
                 ]);
             }
 

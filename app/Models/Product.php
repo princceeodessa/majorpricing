@@ -18,7 +18,9 @@ class Product extends Model
         'name',
         'slug',
         'one_c_id',
+        'one_c_code',
         'vendor_code',
+        'brand_name',
         'measurement_label',
         'measurement_value',
         'description',
@@ -76,7 +78,10 @@ class Product extends Model
             $builder
                 ->where('title', 'like', $needle)
                 ->orWhere('name', 'like', $needle)
-                ->orWhere('description', 'like', $needle);
+                ->orWhere('description', 'like', $needle)
+                ->orWhere('vendor_code', 'like', $needle)
+                ->orWhere('one_c_code', 'like', $needle)
+                ->orWhere('brand_name', 'like', $needle);
         });
     }
 
@@ -86,6 +91,36 @@ class Product extends Model
             ? $this->prices
             : $this->prices()->orderBy('column_index')->get();
 
-        return $prices->sortBy('column_index')->first();
+        $prices = $prices->sortBy('column_index')->values();
+
+        foreach ($this->publicPricePriority() as $preferredLabel) {
+            $matched = $prices->first(
+                fn (ProductPrice $price): bool => trim((string) $price->label) === $preferredLabel
+            );
+
+            if ($matched) {
+                return $matched;
+            }
+        }
+
+        return $prices->first();
+    }
+
+    public function publicUnitLabel(): ?string
+    {
+        return filled($this->measurement_label)
+            ? trim((string) $this->measurement_label)
+            : (filled($this->measurement_value) ? trim((string) $this->measurement_value) : null);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function publicPricePriority(): array
+    {
+        return [
+            'Оптовая',
+            'Оптовая БЕЗНАЛ',
+        ];
     }
 }
