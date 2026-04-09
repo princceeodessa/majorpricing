@@ -97,7 +97,7 @@ class CatalogPricingTest extends TestCase
         ProductPrice::query()->create([
             'product_id' => $product->id,
             'column_index' => 2,
-            'label' => 'Оптовая БЕЗНАЛ',
+            'label' => 'Оптовая БЕЗНАЛ (от 50 тыс.)',
             'display_value' => '38,89',
             'min_amount' => 38.89,
         ]);
@@ -105,7 +105,7 @@ class CatalogPricingTest extends TestCase
         ProductPrice::query()->create([
             'product_id' => $product->id,
             'column_index' => 3,
-            'label' => 'Оптовая',
+            'label' => 'Оптовая (от 50 тыс.)',
             'display_value' => '35,00',
             'min_amount' => 35.00,
         ]);
