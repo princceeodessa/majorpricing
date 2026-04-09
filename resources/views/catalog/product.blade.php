@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $product->title.' - MAJOR')
+@section('title', $product->publicTitle().' - MAJOR')
 
 @section('content')
     @php
@@ -30,10 +30,10 @@
 
                         @if ($imageUrl)
                             <div class="catalog-product-stage__image-frame">
-                                <img src="{{ $imageUrl }}" alt="{{ $product->title }}" class="catalog-product-stage__image">
+                                <img src="{{ $imageUrl }}" alt="{{ $product->publicTitle() }}" class="catalog-product-stage__image">
                             </div>
                         @else
-                            <div class="catalog-product-stage__mark">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($product->title, 0, 2)) }}</div>
+                            <div class="catalog-product-stage__mark">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($product->publicTitle(), 0, 2)) }}</div>
                         @endif
                     </div>
                 </div>
@@ -49,7 +49,7 @@
                 </div>
 
                 <h1 class="mt-5 max-w-3xl font-['IBM_Plex_Sans'] text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2.55rem]">
-                    {{ $product->title }}
+                    {{ $product->publicTitle() }}
                 </h1>
 
                 @if ($product->brand_name)

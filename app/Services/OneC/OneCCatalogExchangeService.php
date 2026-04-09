@@ -190,7 +190,7 @@ class OneCCatalogExchangeService
 
             $oneCId = $this->firstChildValue($xpath, $productNode, ['Ид', 'Р ВР Т‘']);
             $baseTitle = $this->firstChildValue($xpath, $productNode, ['Наименование', 'Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р Вµ']);
-            $title = $this->resolveProductTitle($xpath, $productNode, $baseTitle);
+            $title = $this->resolvePublicProductTitle($xpath, $productNode, $baseTitle);
 
             if (blank($oneCId) || blank($title)) {
                 continue;
@@ -421,6 +421,30 @@ class OneCCatalogExchangeService
             $this->requisiteValue($xpath, $productNode, ['НаименованиеДляПечати', 'Наименование для печати']),
             $this->firstChildValue($xpath, $productNode, ['НаименованиеДляПечати']),
             $this->firstChildValue($xpath, $productNode, ['НаименованиеПолное', 'Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р ВµР СџР С•Р В»Р Р…Р С•Р Вµ']),
+            $fallback,
+        ]);
+    }
+
+    private function resolvePublicProductTitle(DOMXPath $xpath, DOMElement $productNode, ?string $fallback): ?string
+    {
+        $printTitleKeys = [
+            json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435\u0414\u043b\u044f\u041f\u0435\u0447\u0430\u0442\u0438"'),
+            json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435 \u0434\u043b\u044f \u043f\u0435\u0447\u0430\u0442\u0438"'),
+            json_decode('"\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435\u0414\u043b\u044f\u041f\u0435\u0447\u0430\u0442\u0438"'),
+            json_decode('"\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0434\u043b\u044f \u043f\u0435\u0447\u0430\u0442\u0438"'),
+        ];
+
+        $fullNameKeys = [
+            json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435\u041f\u043e\u043b\u043d\u043e\u0435"'),
+            json_decode('"\u041f\u043e\u043b\u043d\u043e\u0435\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435"'),
+        ];
+
+        return $this->firstFilled([
+            $this->requisiteValue($xpath, $productNode, $printTitleKeys),
+            $this->firstChildValue($xpath, $productNode, $printTitleKeys),
+            $this->requisiteValue($xpath, $productNode, $fullNameKeys),
+            $this->firstChildValue($xpath, $productNode, $fullNameKeys),
+            $this->resolveProductTitle($xpath, $productNode, $fallback),
             $fallback,
         ]);
     }

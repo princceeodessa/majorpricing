@@ -1,10 +1,11 @@
 @php
     $price = $product->priceForProfile();
+    $publicTitle = $product->publicTitle();
     $rootCategory = $product->category?->parent ?? $product->category;
     $detailLine = $product->description
         ? \Illuminate\Support\Str::limit(str_replace("\n", ' / ', $product->description), 108)
         : ($product->vendor_code ? 'Артикул: '.$product->vendor_code : ($product->brand_name ?: ''));
-    $visualMark = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($product->title, 0, 2));
+    $visualMark = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($publicTitle, 0, 2));
     $imageUrl = $product->image_path ? asset($product->image_path) : null;
     $productAccents = ['#d11117', '#c81e1e', '#b91c1c', '#991b1b', '#be123c', '#7f1d1d'];
     $productAccent = $productAccents[($rootCategory?->id ?? $product->id ?? 0) % count($productAccents)];
@@ -27,7 +28,7 @@
                 @if ($imageUrl)
                     <img
                         src="{{ $imageUrl }}"
-                        alt="{{ $product->title }}"
+                        alt="{{ $publicTitle }}"
                         class="catalog-product-card__image"
                         loading="lazy"
                         decoding="async"
@@ -44,7 +45,7 @@
         <div>
             <p class="catalog-product-card__eyebrow">{{ $product->category?->name ?? 'Раздел каталога' }}</p>
             <a href="{{ route('products.show', $product) }}" class="catalog-product-card__title-link">
-                <h3 class="catalog-product-card__title">{{ $product->title }}</h3>
+                <h3 class="catalog-product-card__title">{{ $publicTitle }}</h3>
             </a>
             @if (filled($detailLine))
                 <p class="catalog-product-card__description">{{ $detailLine }}</p>

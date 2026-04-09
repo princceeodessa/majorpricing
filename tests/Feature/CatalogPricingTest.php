@@ -117,4 +117,33 @@ class CatalogPricingTest extends TestCase
         $response->assertSeeText('Оптовая');
         $response->assertDontSeeText('44,45');
     }
+    public function test_product_page_uses_print_title_as_public_name(): void
+    {
+        $user = User::factory()->create([
+            'login' => 'print-title-viewer',
+            'email' => 'print-title-viewer@example.com',
+        ]);
+
+        $category = Category::query()->create([
+            'name' => 'РљР°СЂРЅРёР·С‹',
+            'slug' => 'karnizy',
+            'sort_order' => 0,
+            'accent_color' => '#f97316',
+        ]);
+
+        $product = Product::query()->create([
+            'category_id' => $category->id,
+            'title' => 'РљР°СЂРЅРёР· РЅР°РєР»Р°РґРЅРѕР№ РџР’РҐ 2-С… СЂСЏРґРЅС‹Р№ СЃ РїРѕРІРѕСЂРѕС‚РѕРј Р‘РµР»С‹Р№ 160',
+            'name' => '160 РєР°СЂРЅРёР· РќРљ РљР›РђРЎРЎРРљ 2 Р‘Р•Р›Р«Р™ РІ РёРЅРґ. СѓРї. РЈР»СЊС‚СЂР°РєРѕРјРїР»РµРєС‚',
+            'slug' => 'karniz-nakladnoy-belyy-160',
+            'price_from' => 508,
+            'sort_order' => 0,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('products.show', $product));
+
+        $response->assertOk();
+        $response->assertSeeText('РљР°СЂРЅРёР· РЅР°РєР»Р°РґРЅРѕР№ РџР’РҐ 2-С… СЂСЏРґРЅС‹Р№ СЃ РїРѕРІРѕСЂРѕС‚РѕРј Р‘РµР»С‹Р№ 160');
+        $response->assertDontSeeText('160 РєР°СЂРЅРёР· РќРљ РљР›РђРЎРЎРРљ 2 Р‘Р•Р›Р«Р™ РІ РёРЅРґ. СѓРї. РЈР»СЊС‚СЂР°РєРѕРјРїР»РµРєС‚');
+    }
 }

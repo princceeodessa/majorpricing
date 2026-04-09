@@ -55,7 +55,7 @@
                         <div class="catalog-cart-item">
                             <div class="catalog-cart-item__visual">
                                 @if ($product?->image_path)
-                                    <img src="{{ asset($product->image_path) }}" alt="{{ $product->title }}" class="catalog-cart-item__image">
+                                                <img src="{{ asset($product->image_path) }}" alt="{{ $product->publicTitle() }}" class="catalog-cart-item__image">
                                 @else
                                     {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($product?->title ?? 'PR', 0, 2)) }}
                                 @endif
@@ -65,7 +65,7 @@
                                 <div>
                                     <p class="catalog-cart-item__eyebrow">{{ $product?->category?->name ?? 'Каталог' }}</p>
                                     @if ($product)
-                                        <a href="{{ route('products.show', $product) }}" class="catalog-cart-item__title">{{ $product->title }}</a>
+                                            <a href="{{ route('products.show', $product) }}" class="catalog-cart-item__title">{{ $product->publicTitle() }}</a>
                                     @else
                                         <p class="catalog-cart-item__title">Товар из каталога</p>
                                     @endif

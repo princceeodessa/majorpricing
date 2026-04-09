@@ -106,6 +106,16 @@ class Product extends Model
         return $prices->first();
     }
 
+    public function publicTitle(): string
+    {
+        return trim((string) ($this->title ?: $this->name ?: ''));
+    }
+
+    public function fullTitle(): string
+    {
+        return trim((string) ($this->name ?: $this->title ?: ''));
+    }
+
     public function publicUnitLabel(): ?string
     {
         return filled($this->measurement_label)
