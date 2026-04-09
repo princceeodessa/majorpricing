@@ -132,6 +132,30 @@ class OneCExchangeTest extends TestCase
         }
     }
 
+    public function test_one_c_catalog_import_uses_full_name_requisite_with_space_as_public_title(): void
+    {
+        $sessionKey = 'catalog-full-name-space';
+        $storage = app(OneCExchangeStorage::class);
+        $service = app(OneCCatalogExchangeService::class);
+
+        $storage->clearType($sessionKey, 'catalog');
+
+        try {
+            $storage->resetUploadState($sessionKey, 'catalog');
+            $storage->appendFile($sessionKey, 'catalog', 'import.xml', $this->catalogImportXmlWithFullNameSpaceRequisite());
+            $storage->appendFile($sessionKey, 'catalog', 'offers.xml', $this->catalogOffersXml());
+
+            $service->import($sessionKey);
+
+            $product = Product::query()->where('one_c_id', 'product-guid-1')->firstOrFail();
+
+            $this->assertSame(json_decode('"\u041f\u0440\u043e\u0444\u0438\u043b\u044c M \u043f\u0435\u0447\u0430\u0442\u044c"', true), $product->title);
+            $this->assertSame(json_decode('"\u041f\u0440\u043e\u0444\u0438\u043b\u044c M"', true), $product->name);
+        } finally {
+            $storage->clearType($sessionKey, 'catalog');
+        }
+    }
+
     public function test_one_c_import_merges_existing_excel_catalog_records_instead_of_creating_duplicates(): void
     {
         config()->set('integrations.one_c.username', 'site-exchange');
@@ -446,6 +470,16 @@ XML;
 </КоммерческаяИнформация>
 XML;
     }
+
+    private function catalogImportXmlWithFullNameSpaceRequisite(): string
+    {
+        return str_replace(
+            json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435\u0414\u043b\u044f\u041f\u0435\u0447\u0430\u0442\u0438"', true),
+            json_decode('"\u041f\u043e\u043b\u043d\u043e\u0435 \u043d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435"', true),
+            $this->catalogImportXml(),
+        );
+    }
+
     private function mergingCatalogImportXml(): string
     {
         return <<<'XML'
