@@ -7,6 +7,8 @@ use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 class CatalogController extends Controller
 {
@@ -89,13 +91,14 @@ class CatalogController extends Controller
 
                 $previewProduct = $previewCandidates->first(fn ($product): bool => filled($product->image_path))
                     ?? $previewCandidates->first();
+                $categoryCover = $this->resolveCategoryCover($category->name);
 
                 $category->setAttribute(
                     'catalog_products_count',
                     $categoryIds->sum(fn (int $categoryId): int => (int) ($productCounts[$categoryId] ?? 0)),
                 );
-                $category->setAttribute('catalog_preview_image', $previewProduct?->image_path);
-                $category->setAttribute('catalog_preview_title', $previewProduct?->title);
+                $category->setAttribute('catalog_preview_image', $categoryCover ?? $previewProduct?->image_path);
+                $category->setAttribute('catalog_preview_title', $categoryCover ? $category->name : $previewProduct?->title);
             });
 
             $featuredProducts = Product::query()
@@ -132,5 +135,103 @@ class CatalogController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function resolveCategoryCover(?string $categoryName): ?string
+    {
+        if (blank($categoryName)) {
+            return null;
+        }
+
+        $imageMap = $this->categoryCoverMap();
+        $keys = collect([
+            $this->normalizeCategoryCoverKey($categoryName),
+            $this->normalizeCategoryCoverKey(Str::transliterate((string) $categoryName)),
+        ])->filter()->unique()->values();
+
+        foreach ($keys as $key) {
+            if (isset($imageMap[$key])) {
+                return $imageMap[$key];
+            }
+
+            $aliasTarget = $this->categoryCoverAliases()[$key] ?? null;
+
+            if ($aliasTarget && isset($imageMap[$aliasTarget])) {
+                return $imageMap[$aliasTarget];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function categoryCoverMap(): array
+    {
+        static $map = null;
+
+        if (is_array($map)) {
+            return $map;
+        }
+
+        $directory = public_path('catalog-media/category-covers');
+
+        if (! File::isDirectory($directory)) {
+            return $map = [];
+        }
+
+        $map = [];
+
+        foreach (File::files($directory) as $file) {
+            if (! in_array(strtolower($file->getExtension()), ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'], true)) {
+                continue;
+            }
+
+            $stem = pathinfo($file->getFilename(), PATHINFO_FILENAME);
+            $relativePath = 'catalog-media/category-covers/'.$file->getFilename();
+
+            foreach ([
+                $this->normalizeCategoryCoverKey($stem),
+                $this->normalizeCategoryCoverKey(Str::transliterate($stem)),
+            ] as $key) {
+                if ($key !== '') {
+                    $map[$key] = $relativePath;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function categoryCoverAliases(): array
+    {
+        return [
+            'алформ' => 'alform',
+            'komandaa5' => 'komanda5',
+            'командаа5' => 'команда5',
+            'командаa5' => 'команда5',
+            'решеткидиффузоры' => 'решеткидифузорып',
+            'решеткидифузоры' => 'решеткидифузорып',
+            'решеткидиффузорып' => 'решеткидифузорып',
+            'решеткидифузорып' => 'решеткидифузорып',
+            'расходка' => 'расходныематериалы',
+            'инструмент' => 'ручнойинструмент',
+            'платформы' => 'платформып',
+        ];
+    }
+
+    private function normalizeCategoryCoverKey(?string $value): string
+    {
+        $value = mb_strtolower(trim((string) $value));
+
+        if ($value === '') {
+            return '';
+        }
+
+        return preg_replace('/[^\p{L}\p{N}]+/u', '', $value) ?? '';
     }
 }

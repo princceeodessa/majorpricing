@@ -4870,7 +4870,7 @@ html {
         min-height: 58px;
         padding: 0 1.35rem;
         border-radius: 16px;
-        background: #4a4a4a;
+        background: #6b7280;
         color: #fff;
         font-size: 0.98rem;
         font-weight: 700;
@@ -4891,7 +4891,7 @@ html {
     .catalog-header-catalog-menu[open] .catalog-header-catalog-trigger,
     .catalog-header-catalog-trigger:hover,
     .catalog-header-catalog-trigger.is-active {
-        background: #2f2f2f;
+        background: #525866;
         transform: translateY(-1px);
         box-shadow: 0 22px 34px -24px rgba(17, 18, 22, 0.42);
     }
@@ -4919,9 +4919,10 @@ html {
         min-height: 42px;
         width: fit-content;
         border-radius: 999px;
-        background: #111216;
+        border: 1px solid rgba(203, 213, 225, 0.98);
+        background: #eef2f6;
         padding: 0 1rem;
-        color: #fff;
+        color: #384152;
         font-size: 0.86rem;
         font-weight: 700;
     }
