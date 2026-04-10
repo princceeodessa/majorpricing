@@ -23,6 +23,7 @@ class Product extends Model
         'brand_name',
         'measurement_label',
         'measurement_value',
+        'stock_quantity',
         'description',
         'source_sheet',
         'source_row',
@@ -37,6 +38,7 @@ class Product extends Model
     protected $casts = [
         'has_video' => 'boolean',
         'price_from' => 'decimal:2',
+        'stock_quantity' => 'decimal:3',
         'source_row' => 'integer',
         'sort_order' => 'integer',
     ];
@@ -165,6 +167,48 @@ class Product extends Model
         return filled($this->measurement_label)
             ? trim((string) $this->measurement_label)
             : (filled($this->measurement_value) ? trim((string) $this->measurement_value) : null);
+    }
+
+    public function hasStockQuantity(): bool
+    {
+        return $this->stock_quantity !== null;
+    }
+
+    public function stockQuantityNumber(): ?float
+    {
+        return $this->stock_quantity !== null
+            ? (float) $this->stock_quantity
+            : null;
+    }
+
+    public function formattedStockQuantity(): ?string
+    {
+        $quantity = $this->stockQuantityNumber();
+
+        if ($quantity === null) {
+            return null;
+        }
+
+        $formatted = number_format($quantity, 3, ',', ' ');
+        $formatted = preg_replace('/0+$/', '', $formatted) ?? $formatted;
+        $formatted = preg_replace('/,$/', '', $formatted) ?? $formatted;
+
+        return $formatted === '' ? '0' : $formatted;
+    }
+
+    public function stockSummary(): ?string
+    {
+        $quantity = $this->formattedStockQuantity();
+
+        if ($quantity === null) {
+            return null;
+        }
+
+        $unitLabel = $this->publicUnitLabel();
+
+        return $unitLabel
+            ? trim($quantity.' '.mb_strtolower($unitLabel))
+            : $quantity;
     }
 
     /**

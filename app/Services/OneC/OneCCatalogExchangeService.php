@@ -301,6 +301,11 @@ class OneCCatalogExchangeService
                 continue;
             }
 
+            $stockQuantity = $this->normalizeDecimal($this->firstChildValue(
+                $xpath,
+                $offerNode,
+                ['Количество', 'РљРѕР»РёС‡РµСЃС‚РІРѕ']
+            ));
             $resolvedMinimums = [];
             $publicMinimums = [];
             $priceNodes = $this->queryChildren(
@@ -350,13 +355,20 @@ class OneCCatalogExchangeService
                 $count++;
             }
 
+            $productPayload = [];
+
+            if ($stockQuantity !== null) {
+                $productPayload['stock_quantity'] = $stockQuantity;
+            }
+
             if ($resolvedMinimums !== []) {
                 $chosenMinimums = $publicMinimums !== [] ? $publicMinimums : $resolvedMinimums;
                 ksort($chosenMinimums);
+                $productPayload['price_from'] = reset($chosenMinimums);
+            }
 
-                $product->forceFill([
-                    'price_from' => reset($chosenMinimums),
-                ])->save();
+            if ($productPayload !== []) {
+                $product->forceFill($productPayload)->save();
             }
         }
 
@@ -782,6 +794,7 @@ class OneCCatalogExchangeService
                 'brand_name' => $target->brand_name ?: $duplicate->brand_name,
                 'measurement_label' => $target->measurement_label ?: $duplicate->measurement_label,
                 'measurement_value' => $target->measurement_value ?: $duplicate->measurement_value,
+                'stock_quantity' => $target->stock_quantity ?? $duplicate->stock_quantity,
                 'description' => $target->description ?: $duplicate->description,
                 'image_path' => $target->image_path ?: $duplicate->image_path,
                 'category_id' => $target->category_id ?: $category?->id ?: $duplicate->category_id,

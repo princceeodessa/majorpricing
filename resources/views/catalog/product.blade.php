@@ -8,6 +8,7 @@
         $comparePrice = $product->comparePrice();
         $category = $product->category;
         $unitLabel = $product->publicUnitLabel();
+        $stockSummary = $product->stockSummary();
         $fallbackImageUrl = asset('brand/product-placeholder.png');
         $imageUrl = $product->image_path ? asset($product->image_path) : $fallbackImageUrl;
         $productFacts = collect([
@@ -16,6 +17,7 @@
             ['label' => 'Код', 'value' => $product->one_c_code],
             ['label' => 'Ед. изм.', 'value' => $unitLabel],
             ['label' => 'Бренд', 'value' => $product->brand_name],
+            ['label' => 'В наличии', 'value' => $stockSummary],
         ])->filter(fn (array $item) => filled($item['value']))->values();
         $description = trim((string) $product->description);
     @endphp
@@ -83,6 +85,10 @@
 
                     <p class="catalog-product-price-block__profile">{{ $price?->label ?? 'Цена' }}</p>
                 </div>
+
+                @if ($stockSummary)
+                    <p class="catalog-product-price-block__availability">В наличии: {{ $stockSummary }}</p>
+                @endif
 
                 <div class="catalog-product-secondary-actions">
                     @include('partials.favorite-toggle', ['product' => $product, 'showLabel' => true, 'sizeClass' => 'catalog-favorite-form--wide'])
