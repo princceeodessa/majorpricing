@@ -43,9 +43,13 @@ class AuthenticatedSessionController extends Controller
         Auth::login($user, (bool) ($credentials['remember'] ?? false));
         $request->session()->regenerate();
 
-        $defaultRoute = $user->isManager()
-            ? route('account.show')
-            : route('catalog.index');
+        if ($user->isAdmin()) {
+            $defaultRoute = route('admin.onec.show');
+        } elseif ($user->isManager()) {
+            $defaultRoute = route('account.show');
+        } else {
+            $defaultRoute = route('catalog.index');
+        }
 
         return redirect()->intended($defaultRoute);
     }

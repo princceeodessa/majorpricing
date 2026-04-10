@@ -12,13 +12,13 @@ class SupportMessageController extends Controller
     {
         $client = $request->user()->loadMissing('manager');
 
-        abort_if($client->isManager(), 403);
+        abort_if($client->canManageClients(), 403);
 
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:2000'],
         ]);
 
-        abort_unless($client->manager?->isManager(), 403);
+        abort_unless($client->manager?->canManageClients(), 403);
 
         SupportMessage::query()->create([
             'client_id' => $client->id,
@@ -36,23 +36,30 @@ class SupportMessageController extends Controller
     {
         $manager = $request->user();
 
-        abort_unless($manager->isManager(), 403);
+        abort_unless($manager->canManageClients(), 403);
 
         $validated = $request->validate([
             'client_id' => ['required', 'integer'],
             'message' => ['required', 'string', 'max:2000'],
+            'redirect_to' => ['nullable', 'string', 'in:account,chats'],
         ]);
 
-        $client = $manager->managedClients()
+        $client = $manager->visibleClients()
             ->whereKey($validated['client_id'])
             ->firstOrFail();
 
         SupportMessage::query()->create([
             'client_id' => $client->id,
-            'manager_id' => $manager->id,
+            'manager_id' => $client->manager_id ?: $manager->id,
             'sender_id' => $manager->id,
             'message' => trim($validated['message']),
         ]);
+
+        if (($validated['redirect_to'] ?? null) === 'chats') {
+            return redirect()
+                ->route('manager.chats.index', ['client' => $client])
+                ->with('status', 'Ответ клиенту отправлен.');
+        }
 
         return redirect()
             ->route('account.show')

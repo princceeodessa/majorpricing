@@ -62,7 +62,7 @@
                     <h2 class="mt-4 font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Параметры обмена</h2>
                 </div>
                 @if ($catalogPackages->isNotEmpty())
-                    <form action="{{ route('manager.onec.catalog.import') }}" method="POST">
+                    <form action="{{ route('admin.onec.catalog.import') }}" method="POST">
                         @csrf
                         <input type="hidden" name="session_key" value="{{ $catalogPackages->first()['session_key'] }}">
                         <button type="submit" class="action-button">Импортировать последний каталог</button>
@@ -158,7 +158,7 @@
 
                                     <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
                                         @foreach ($package['files'] as $filename)
-                                            <a href="{{ route('manager.onec.catalog.file', ['session_key' => $package['session_key'], 'filename' => $filename]) }}" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 transition hover:border-slate-300 hover:bg-white hover:text-slate-900">{{ $filename }}</a>
+                                            <a href="{{ route('admin.onec.catalog.file', ['session_key' => $package['session_key'], 'filename' => $filename]) }}" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 transition hover:border-slate-300 hover:bg-white hover:text-slate-900">{{ $filename }}</a>
                                         @endforeach
                                     </div>
 
@@ -173,20 +173,20 @@
 
                                 <div class="flex flex-wrap gap-3">
                                     @if (in_array('import.xml', $package['files'], true))
-                                        <a href="{{ route('manager.onec.catalog.file', ['session_key' => $package['session_key'], 'filename' => 'import.xml']) }}" class="soft-badge {{ $package['has_import'] ? '' : 'opacity-60' }}">import.xml</a>
+                                        <a href="{{ route('admin.onec.catalog.file', ['session_key' => $package['session_key'], 'filename' => 'import.xml']) }}" class="soft-badge {{ $package['has_import'] ? '' : 'opacity-60' }}">import.xml</a>
                                     @else
                                         <span class="soft-badge opacity-60">import.xml</span>
                                     @endif
 
                                     @if (in_array('offers.xml', $package['files'], true))
-                                        <a href="{{ route('manager.onec.catalog.file', ['session_key' => $package['session_key'], 'filename' => 'offers.xml']) }}" class="soft-badge {{ $package['has_offers'] ? '' : 'opacity-60' }}">offers.xml</a>
+                                        <a href="{{ route('admin.onec.catalog.file', ['session_key' => $package['session_key'], 'filename' => 'offers.xml']) }}" class="soft-badge {{ $package['has_offers'] ? '' : 'opacity-60' }}">offers.xml</a>
                                     @else
                                         <span class="soft-badge opacity-60">offers.xml</span>
                                     @endif
 
-                                    <a href="{{ route('manager.onec.catalog.package.download', ['session_key' => $package['session_key']]) }}" class="soft-badge">Скачать пакет</a>
+                                    <a href="{{ route('admin.onec.catalog.package.download', ['session_key' => $package['session_key']]) }}" class="soft-badge">Скачать пакет</a>
 
-                                    <form action="{{ route('manager.onec.catalog.import') }}" method="POST">
+                                    <form action="{{ route('admin.onec.catalog.import') }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="session_key" value="{{ $package['session_key'] }}">
                                         <button type="submit" class="ghost-button">Импортировать</button>

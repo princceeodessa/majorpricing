@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -28,6 +29,7 @@ use Illuminate\Notifications\Notifiable;
     'price_profile_id',
     'is_active',
     'is_manager',
+    'is_admin',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -48,7 +50,22 @@ class User extends Authenticatable
     public function managedClients(): HasMany
     {
         return $this->hasMany(User::class, 'manager_id')
+            ->clients()
+            ->orderByDesc('id');
+    }
+
+    public function scopeClients(Builder $query): Builder
+    {
+        return $query
             ->where('is_manager', false)
+            ->where('is_admin', false);
+    }
+
+    public function visibleClients(): Builder
+    {
+        return self::query()
+            ->clients()
+            ->when(! $this->isAdmin(), fn (Builder $query) => $query->where('manager_id', $this->id))
             ->orderByDesc('id');
     }
 
@@ -94,6 +111,16 @@ class User extends Authenticatable
         return (bool) $this->is_manager;
     }
 
+    public function isAdmin(): bool
+    {
+        return (bool) $this->is_admin;
+    }
+
+    public function canManageClients(): bool
+    {
+        return $this->isManager() || $this->isAdmin();
+    }
+
     public function contactPeopleList(): array
     {
         return $this->normalizeStringList($this->contact_people, $this->contact_person);
@@ -125,6 +152,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'is_active' => 'boolean',
             'is_manager' => 'boolean',
+            'is_admin' => 'boolean',
             'contact_people' => 'array',
             'messengers' => 'array',
             'password' => 'hashed',

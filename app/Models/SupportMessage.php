@@ -39,6 +39,6 @@ class SupportMessage extends Model
 
     public function isFromManager(): bool
     {
-        return (int) $this->sender_id === (int) $this->manager_id;
+        return (int) $this->sender_id !== (int) $this->client_id;
     }
 }

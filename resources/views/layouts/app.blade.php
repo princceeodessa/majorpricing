@@ -118,6 +118,28 @@
                                     <span class="catalog-header-icon-link__label">Кабинет</span>
                                 </a>
 
+                                @if (auth()->user()?->canManageClients())
+                                    <a href="{{ route('manager.chats.index') }}" class="catalog-header-icon-link {{ request()->routeIs('manager.chats.*') ? 'is-active' : '' }}">
+                                        <span class="catalog-header-icon-link__icon">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M5 6.5A3.5 3.5 0 0 1 8.5 3h7A3.5 3.5 0 0 1 19 6.5v5A3.5 3.5 0 0 1 15.5 15H11l-4.8 4v-4.4A3.5 3.5 0 0 1 5 11.9Z" />
+                                            </svg>
+                                        </span>
+                                        <span class="catalog-header-icon-link__label">Чаты</span>
+                                    </a>
+                                @endif
+
+                                @if (auth()->user()?->isAdmin())
+                                    <a href="{{ route('admin.onec.show') }}" class="catalog-header-icon-link {{ request()->routeIs('admin.onec.*') ? 'is-active' : '' }}">
+                                        <span class="catalog-header-icon-link__icon">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M4.5 7.5h15M7.5 4.5v15M16.5 4.5v15M5.5 18.5h13" />
+                                            </svg>
+                                        </span>
+                                        <span class="catalog-header-icon-link__label">1С</span>
+                                    </a>
+                                @endif
+
                                 <a href="{{ route('favorites.index') }}" class="catalog-header-icon-link {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}">
                                     <span class="catalog-header-icon-link__icon">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">

@@ -28,8 +28,8 @@ class AccountController extends Controller
             'processingOrders' => 0,
         ];
 
-        if ($user->isManager()) {
-            $managedUsers = $user->managedClients()
+        if ($user->canManageClients()) {
+            $managedUsers = $user->visibleClients()
                 ->with(['addresses', 'supportMessages.sender'])
                 ->withCount('orders')
                 ->get();

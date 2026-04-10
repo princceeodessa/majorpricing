@@ -14,6 +14,21 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         User::query()->updateOrCreate(
+            ['login' => 'admin'],
+            [
+                'name' => 'Администратор',
+                'company' => 'ПОТОЛКОВЫЧ',
+                'email' => 'admin@potolkovych.local',
+                'email_verified_at' => now(),
+                'password' => 'PotolkovychDemo123!',
+                'price_profile_id' => null,
+                'is_active' => true,
+                'is_manager' => false,
+                'is_admin' => true,
+            ],
+        );
+
+        User::query()->updateOrCreate(
             ['login' => 'manager'],
             [
                 'name' => 'Каталог Менеджер',
@@ -24,6 +39,7 @@ class DatabaseSeeder extends Seeder
                 'price_profile_id' => null,
                 'is_active' => true,
                 'is_manager' => true,
+                'is_admin' => false,
             ],
         );
 
@@ -38,20 +54,7 @@ class DatabaseSeeder extends Seeder
                 'price_profile_id' => null,
                 'is_active' => true,
                 'is_manager' => false,
-            ],
-        );
-
-        User::query()->updateOrCreate(
-            ['login' => 'vip'],
-            [
-                'name' => 'VIP Клиент',
-                'company' => 'Ключевой заказчик',
-                'email' => 'vip@potolkovych.local',
-                'email_verified_at' => now(),
-                'password' => 'PotolkovychDemo123!',
-                'price_profile_id' => null,
-                'is_active' => true,
-                'is_manager' => false,
+                'is_admin' => false,
             ],
         );
 

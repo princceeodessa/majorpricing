@@ -89,4 +89,49 @@ class SupportChatTest extends TestCase
             'message' => 'Попытка чужого ответа.',
         ]);
     }
+
+    public function test_manager_chats_page_shows_only_assigned_clients(): void
+    {
+        $manager = User::factory()->create([
+            'login' => 'manager-chat-page',
+            'email' => 'manager-chat-page@example.com',
+            'is_manager' => true,
+        ]);
+
+        $otherManager = User::factory()->create([
+            'login' => 'manager-chat-other',
+            'email' => 'manager-chat-other@example.com',
+            'is_manager' => true,
+        ]);
+
+        $client = User::factory()->create([
+            'name' => 'Клиент в чате',
+            'login' => 'client-chat-page',
+            'email' => 'client-chat-page@example.com',
+            'manager_id' => $manager->id,
+            'is_manager' => false,
+        ]);
+
+        User::factory()->create([
+            'name' => 'Чужой клиент',
+            'login' => 'client-chat-other',
+            'email' => 'client-chat-other@example.com',
+            'manager_id' => $otherManager->id,
+            'is_manager' => false,
+        ]);
+
+        SupportMessage::query()->create([
+            'client_id' => $client->id,
+            'manager_id' => $manager->id,
+            'sender_id' => $client->id,
+            'message' => 'Нужна консультация по заказу.',
+        ]);
+
+        $this->actingAs($manager)
+            ->get(route('manager.chats.index'))
+            ->assertOk()
+            ->assertSee('Клиент в чате')
+            ->assertSee('Нужна консультация по заказу.')
+            ->assertDontSee('Чужой клиент');
+    }
 }

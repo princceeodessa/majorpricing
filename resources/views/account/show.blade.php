@@ -5,7 +5,7 @@
 @section('content')
     @php($user = auth()->user())
 
-    @if ($user->isManager())
+    @if ($user->canManageClients())
         @php($managerContactPeople = old('contact_people', []))
         @php($managerMessengers = old('messengers', []))
         @php($managerContactPeople = is_array($managerContactPeople) && count(array_filter($managerContactPeople, fn ($item) => filled($item))) > 0 ? array_values($managerContactPeople) : [''])
@@ -41,7 +41,10 @@
 
                 <div class="catalog-account-hero__actions">
                     <a href="{{ route('orders.index') }}" class="action-button">Открыть заказы клиентов</a>
-                    <a href="{{ route('manager.onec.show') }}" class="ghost-button">Диагностика 1С</a>
+                    <a href="{{ route('manager.chats.index') }}" class="ghost-button">Чаты клиентов</a>
+                    @if ($user->isAdmin())
+                        <a href="{{ route('admin.onec.show') }}" class="ghost-button">Диагностика 1С</a>
+                    @endif
                 </div>
             </div>
 

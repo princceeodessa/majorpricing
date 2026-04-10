@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureIntegrationToken;
+use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureManager;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             '1c_exchange.php',
         ]);
         $middleware->alias([
+            'admin' => EnsureAdmin::class,
             'integration.token' => EnsureIntegrationToken::class,
             'manager' => EnsureManager::class,
         ]);

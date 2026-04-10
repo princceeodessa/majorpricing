@@ -8,6 +8,7 @@ use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\ManagerChatController;
 use App\Http\Controllers\OneCExchangeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
@@ -34,24 +35,27 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/account/users', [ManagerUserController::class, 'store'])
         ->middleware('manager')
         ->name('manager.users.store');
-    Route::get('/manager/1c', [OneCDiagnosticsController::class, 'show'])
+    Route::get('/manager/chats/{client?}', [ManagerChatController::class, 'index'])
         ->middleware('manager')
-        ->name('manager.onec.show');
-    Route::get('/manager/1c/catalog/file', [OneCDiagnosticsController::class, 'showCatalogFile'])
-        ->middleware('manager')
-        ->name('manager.onec.catalog.file');
-    Route::get('/manager/1c/catalog/file/download', [OneCDiagnosticsController::class, 'downloadCatalogFile'])
-        ->middleware('manager')
-        ->name('manager.onec.catalog.file.download');
-    Route::get('/manager/1c/catalog/package/download', [OneCDiagnosticsController::class, 'downloadCatalogPackage'])
-        ->middleware('manager')
-        ->name('manager.onec.catalog.package.download');
-    Route::post('/manager/1c/catalog/import', [OneCDiagnosticsController::class, 'importCatalog'])
-        ->middleware('manager')
-        ->name('manager.onec.catalog.import');
+        ->name('manager.chats.index');
     Route::post('/manager/support/messages', [SupportMessageController::class, 'storeForManager'])
         ->middleware('manager')
         ->name('manager.support.messages.store');
+    Route::get('/admin/1c', [OneCDiagnosticsController::class, 'show'])
+        ->middleware('admin')
+        ->name('admin.onec.show');
+    Route::get('/admin/1c/catalog/file', [OneCDiagnosticsController::class, 'showCatalogFile'])
+        ->middleware('admin')
+        ->name('admin.onec.catalog.file');
+    Route::get('/admin/1c/catalog/file/download', [OneCDiagnosticsController::class, 'downloadCatalogFile'])
+        ->middleware('admin')
+        ->name('admin.onec.catalog.file.download');
+    Route::get('/admin/1c/catalog/package/download', [OneCDiagnosticsController::class, 'downloadCatalogPackage'])
+        ->middleware('admin')
+        ->name('admin.onec.catalog.package.download');
+    Route::post('/admin/1c/catalog/import', [OneCDiagnosticsController::class, 'importCatalog'])
+        ->middleware('admin')
+        ->name('admin.onec.catalog.import');
     Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
     Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
     Route::post('/products/{product:slug}/cart', [CartController::class, 'store'])->name('cart.store');

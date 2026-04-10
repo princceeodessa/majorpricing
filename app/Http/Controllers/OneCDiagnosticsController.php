@@ -118,7 +118,7 @@ class OneCDiagnosticsController extends Controller
 
         if ($files->isEmpty()) {
             return redirect()
-                ->route('manager.onec.show')
+                ->route('admin.onec.show')
                 ->with('status', 'Пакет каталога не найден. Сначала выполните выгрузку товаров из 1С.');
         }
 
@@ -137,7 +137,7 @@ class OneCDiagnosticsController extends Controller
         }
 
         return redirect()
-            ->route('manager.onec.show')
+            ->route('admin.onec.show')
             ->with('status', $message)
             ->with('onec_import_report', $result);
     }
@@ -164,7 +164,7 @@ class OneCDiagnosticsController extends Controller
             'filename' => $filename,
             'content' => $content,
             'summary' => $this->summarizeXmlContent($content, $filename),
-            'backUrl' => route('manager.onec.show'),
+            'backUrl' => route('admin.onec.show'),
         ]);
     }
 

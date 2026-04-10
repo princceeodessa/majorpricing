@@ -14,13 +14,13 @@ class OrderController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
-        $isManager = $user->isManager();
+        $isManager = $user->canManageClients();
 
         $orders = Order::query()
             ->with(['user', 'items.product'])
             ->when(
                 $isManager,
-                fn ($query) => $query->whereHas('user', fn ($userQuery) => $userQuery->where('manager_id', $user->id)),
+                fn ($query) => $query->whereIn('user_id', $user->visibleClients()->select('id')),
                 fn ($query) => $query->where('user_id', $user->id)
             )
             ->latest('placed_at')
@@ -30,7 +30,7 @@ class OrderController extends Controller
         $baseQuery = Order::query();
 
         if ($isManager) {
-            $baseQuery->whereHas('user', fn ($userQuery) => $userQuery->where('manager_id', $user->id));
+            $baseQuery->whereIn('user_id', $user->visibleClients()->select('id'));
         } else {
             $baseQuery->where('user_id', $user->id);
         }
@@ -49,8 +49,13 @@ class OrderController extends Controller
 
     public function update(Request $request, Order $order): RedirectResponse
     {
-        abort_unless($request->user()->isManager(), 403);
-        abort_unless((int) $order->user?->manager_id === (int) $request->user()->id, 403);
+        $user = $request->user();
+
+        abort_unless($user->canManageClients(), 403);
+
+        if (! $user->isAdmin()) {
+            abort_unless((int) $order->user?->manager_id === (int) $user->id, 403);
+        }
 
         $validated = $request->validate([
             'status' => ['required', 'string', Rule::in(OrderStatuses::allowed())],

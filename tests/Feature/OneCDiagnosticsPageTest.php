@@ -12,17 +12,17 @@ class OneCDiagnosticsPageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_manager_can_open_one_c_diagnostics_page(): void
+    public function test_admin_can_open_one_c_diagnostics_page(): void
     {
         config()->set('integrations.one_c.username', 'site-exchange');
         config()->set('integrations.one_c.password', 'secret-1c');
 
-        $manager = User::factory()->create([
-            'is_manager' => true,
+        $admin = User::factory()->create([
+            'is_admin' => true,
             'is_active' => true,
         ]);
 
-        $response = $this->actingAs($manager)->get(route('manager.onec.show'));
+        $response = $this->actingAs($admin)->get(route('admin.onec.show'));
 
         $response->assertOk();
         $response->assertSee('Диагностика 1С');
@@ -38,14 +38,27 @@ class OneCDiagnosticsPageTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('manager.onec.show'))
+            ->get(route('admin.onec.show'))
             ->assertForbidden();
     }
 
-    public function test_manager_can_import_catalog_from_received_one_c_package(): void
+    public function test_manager_cannot_open_one_c_diagnostics_page(): void
     {
         $manager = User::factory()->create([
             'is_manager' => true,
+            'is_admin' => false,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($manager)
+            ->get(route('admin.onec.show'))
+            ->assertForbidden();
+    }
+
+    public function test_admin_can_import_catalog_from_received_one_c_package(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
             'is_active' => true,
         ]);
 
@@ -103,11 +116,11 @@ XML);
 </КоммерческаяИнформация>
 XML);
 
-        $this->actingAs($manager)
-            ->post(route('manager.onec.catalog.import'), [
+        $this->actingAs($admin)
+            ->post(route('admin.onec.catalog.import'), [
                 'session_key' => $sessionKey,
             ])
-            ->assertRedirect(route('manager.onec.show'));
+            ->assertRedirect(route('admin.onec.show'));
 
         $this->assertDatabaseHas('categories', [
             'one_c_id' => 'group-root',
@@ -127,8 +140,8 @@ XML);
 
     public function test_diagnostics_page_marks_offers_only_package_as_incomplete(): void
     {
-        $manager = User::factory()->create([
-            'is_manager' => true,
+        $admin = User::factory()->create([
+            'is_admin' => true,
             'is_active' => true,
         ]);
 
@@ -142,16 +155,16 @@ XML);
 </РљРѕРјРјРµСЂС‡РµСЃРєР°СЏРРЅС„РѕСЂРјР°С†РёСЏ>
 XML);
 
-        $this->actingAs($manager)
-            ->get(route('manager.onec.show'))
+        $this->actingAs($admin)
+            ->get(route('admin.onec.show'))
             ->assertOk()
             ->assertSee($sessionKey)
             ->assertSee('Нет import.xml');
     }
-    public function test_manager_can_preview_received_catalog_file(): void
+    public function test_admin_can_preview_received_catalog_file(): void
     {
-        $manager = User::factory()->create([
-            'is_manager' => true,
+        $admin = User::factory()->create([
+            'is_admin' => true,
             'is_active' => true,
         ]);
 
@@ -183,8 +196,8 @@ XML);
 </РљРѕРјРјРµСЂС‡РµСЃРєР°СЏРРЅС„РѕСЂРјР°С†РёСЏ>
 XML);
 
-        $this->actingAs($manager)
-            ->get(route('manager.onec.catalog.file', [
+        $this->actingAs($admin)
+            ->get(route('admin.onec.catalog.file', [
                 'session_key' => $sessionKey,
                 'filename' => 'offers.xml',
             ]))
@@ -195,10 +208,10 @@ XML);
             ->assertSee('product-guid-1');
     }
 
-    public function test_manager_can_download_received_catalog_file(): void
+    public function test_admin_can_download_received_catalog_file(): void
     {
-        $manager = User::factory()->create([
-            'is_manager' => true,
+        $admin = User::factory()->create([
+            'is_admin' => true,
             'is_active' => true,
         ]);
 
@@ -212,7 +225,7 @@ XML);
 </КоммерческаяИнформация>
 XML);
 
-        $response = $this->actingAs($manager)->get(route('manager.onec.catalog.file.download', [
+        $response = $this->actingAs($admin)->get(route('admin.onec.catalog.file.download', [
             'session_key' => $sessionKey,
             'filename' => 'import.xml',
         ]));
@@ -221,10 +234,10 @@ XML);
         $response->assertHeader('content-disposition', 'attachment; filename=import.xml');
     }
 
-    public function test_manager_can_download_catalog_package_archive(): void
+    public function test_admin_can_download_catalog_package_archive(): void
     {
-        $manager = User::factory()->create([
-            'is_manager' => true,
+        $admin = User::factory()->create([
+            'is_admin' => true,
             'is_active' => true,
         ]);
 
@@ -245,7 +258,7 @@ XML);
 </КоммерческаяИнформация>
 XML);
 
-        $response = $this->actingAs($manager)->get(route('manager.onec.catalog.package.download', [
+        $response = $this->actingAs($admin)->get(route('admin.onec.catalog.package.download', [
             'session_key' => $sessionKey,
         ]));
 

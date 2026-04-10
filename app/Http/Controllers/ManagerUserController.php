@@ -66,6 +66,7 @@ class ManagerUserController extends Controller
             'price_profile_id' => null,
             'is_active' => $request->boolean('is_active', true),
             'is_manager' => false,
+            'is_admin' => false,
             'email_verified_at' => now(),
         ]);
 
