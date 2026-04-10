@@ -24,6 +24,7 @@ class IntegrationCatalogController extends Controller
         ]);
 
         $products = Product::query()
+            ->visibleInCatalog()
             ->with(['category.parent', 'prices'])
             ->when(
                 filled($validated['updated_since'] ?? null),
@@ -57,13 +58,15 @@ class IntegrationCatalogController extends Controller
     public function categories(Request $request): JsonResponse
     {
         $productCounts = Product::query()
+            ->visibleInCatalog()
             ->selectRaw('category_id, COUNT(*) as aggregate')
             ->groupBy('category_id')
             ->pluck('aggregate', 'category_id');
 
         $categories = Category::query()
+            ->visibleInCatalog()
             ->roots()
-            ->with('children')
+            ->with(['children' => fn ($query) => $query->visibleInCatalog()])
             ->get();
 
         return response()->json([

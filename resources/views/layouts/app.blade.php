@@ -199,5 +199,7 @@
                 @yield('content')
             </main>
         </div>
+
+        @include('partials.support-widget')
     </body>
 </html>

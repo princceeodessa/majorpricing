@@ -18,11 +18,13 @@ class CatalogController extends Controller
 
         if ($request->filled('category')) {
             $selectedCategory = Category::query()
+                ->visibleInCatalog()
                 ->where('slug', $request->string('category')->toString())
-                ->first();
+                ->firstOrFail();
         }
 
         $products = Product::query()
+            ->visibleInCatalog()
             ->with(['category.parent', 'prices'])
             ->when(
                 $selectedCategory,
@@ -51,8 +53,9 @@ class CatalogController extends Controller
 
         if (! $hasSearch) {
             $rootCategories = Category::query()
+                ->visibleInCatalog()
                 ->roots()
-                ->with('children')
+                ->with(['children' => fn ($query) => $query->visibleInCatalog()])
                 ->get();
 
             $catalogCategoryIds = $rootCategories
@@ -61,12 +64,14 @@ class CatalogController extends Controller
                 ->values();
 
             $productCounts = Product::query()
+                ->visibleInCatalog()
                 ->selectRaw('category_id, COUNT(*) as aggregate')
                 ->whereIn('category_id', $catalogCategoryIds)
                 ->groupBy('category_id')
                 ->pluck('aggregate', 'category_id');
 
             $categoryPreviewProducts = Product::query()
+                ->visibleInCatalog()
                 ->select(['category_id', 'title', 'image_path', 'sort_order'])
                 ->whereIn('category_id', $catalogCategoryIds)
                 ->orderByRaw('image_path is null')
@@ -94,6 +99,7 @@ class CatalogController extends Controller
             });
 
             $featuredProducts = Product::query()
+                ->visibleInCatalog()
                 ->with(['category.parent', 'prices'])
                 ->orderByRaw('image_path is null')
                 ->orderByDesc('id')
@@ -108,8 +114,8 @@ class CatalogController extends Controller
             'rootCategories' => $rootCategories,
             'searchQuery' => $searchQuery,
             'selectedCategory' => $selectedCategory,
-            'totalProducts' => Product::query()->count(),
-            'totalSections' => Category::query()->count(),
+            'totalProducts' => Product::query()->visibleInCatalog()->count(),
+            'totalSections' => Category::query()->visibleInCatalog()->count(),
         ]);
     }
 
@@ -118,7 +124,7 @@ class CatalogController extends Controller
      */
     private function categoryTreeIds(Category $category): array
     {
-        $category->loadMissing('children');
+        $category->loadMissing(['children' => fn ($query) => $query->visibleInCatalog()]);
 
         return $category->children
             ->pluck('id')

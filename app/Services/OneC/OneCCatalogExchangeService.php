@@ -190,7 +190,7 @@ class OneCCatalogExchangeService
 
             $oneCId = $this->firstChildValue($xpath, $productNode, ['Ид', 'Р ВР Т‘']);
             $baseTitle = $this->firstChildValue($xpath, $productNode, ['Наименование', 'Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р Вµ']);
-            $title = $this->resolvePublicProductTitle($xpath, $productNode, $baseTitle);
+            $title = $this->resolvePublicProductTitle($xpath, $productNode);
 
             if (blank($oneCId) || blank($title)) {
                 continue;
@@ -427,17 +427,7 @@ class OneCCatalogExchangeService
         return $map;
     }
 
-    private function resolveProductTitle(DOMXPath $xpath, DOMElement $productNode, ?string $fallback): ?string
-    {
-        return $this->firstFilled([
-            $this->requisiteValue($xpath, $productNode, ['НаименованиеДляПечати', 'Наименование для печати']),
-            $this->firstChildValue($xpath, $productNode, ['НаименованиеДляПечати']),
-            $this->firstChildValue($xpath, $productNode, ['НаименованиеПолное', 'Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р ВµР СџР С•Р В»Р Р…Р С•Р Вµ']),
-            $fallback,
-        ]);
-    }
-
-    private function resolvePublicProductTitle(DOMXPath $xpath, DOMElement $productNode, ?string $fallback): ?string
+    private function resolvePublicProductTitle(DOMXPath $xpath, DOMElement $productNode): ?string
     {
         $printTitleKeys = [
             json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435\u0414\u043b\u044f\u041f\u0435\u0447\u0430\u0442\u0438"'),
@@ -454,7 +444,6 @@ class OneCCatalogExchangeService
                 [json_decode('"\u043f\u0435\u0447\u0430\u0442"'), json_decode('"\u043d\u0430\u0437\u0432"')],
                 [json_decode('"\u043f\u0435\u0447\u0430\u0442"')],
             ]),
-            $fallback,
         ]);
     }
 

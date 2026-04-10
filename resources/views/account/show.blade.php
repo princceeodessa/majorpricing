@@ -277,8 +277,6 @@
         @php($messengers = old('messengers', $user->messengersList()))
         @php($contactPeople = is_array($contactPeople) && count(array_filter($contactPeople, fn ($item) => filled($item))) > 0 ? array_values($contactPeople) : [''])
         @php($messengers = is_array($messengers) && count(array_filter($messengers, fn ($item) => filled($item))) > 0 ? array_values($messengers) : [''])
-        @php($threadMessages = $supportMessages->take(-8))
-
         <section class="catalog-account-grid">
             <div class="surface-card catalog-account-panel">
                 <div class="catalog-page-head">
@@ -411,41 +409,11 @@
                     @else
                         <p class="catalog-support-thread__empty">После назначения менеджера его контакты появятся здесь.</p>
                     @endif
-                </section>
-
-                <section class="surface-card catalog-account-panel catalog-support-card">
-                    <div class="catalog-support-card__head">
-                        <div>
-                            <span class="soft-badge">Поддержка</span>
-                            <h3>Вопрос менеджеру</h3>
-                        </div>
-                    </div>
 
                     @if ($assignedManager)
-                        <div class="catalog-support-thread">
-                            @forelse ($threadMessages as $message)
-                                <article class="catalog-support-message {{ $message->sender_id === $user->id ? 'is-own' : 'is-peer' }}">
-                                    <p>{{ $message->message }}</p>
-                                    <footer>
-                                        <span>{{ $message->sender_id === $user->id ? 'Вы' : $assignedManager->name }}</span>
-                                        <time datetime="{{ $message->created_at?->toIso8601String() }}">{{ $message->created_at?->format('d.m.Y H:i') }}</time>
-                                    </footer>
-                                </article>
-                            @empty
-                                <p class="catalog-support-thread__empty">Здесь появится переписка с вашим менеджером.</p>
-                            @endforelse
-                        </div>
-
-                        <form action="{{ route('account.support.messages.store') }}" method="POST" class="catalog-support-form">
-                            @csrf
-                            <textarea name="message" rows="4" placeholder="Напишите вопрос менеджеру"></textarea>
-                            @error('message')
-                                <p class="text-sm font-medium text-red-600">{{ $message }}</p>
-                            @enderror
-                            <button type="submit" class="action-button">Отправить сообщение</button>
-                        </form>
-                    @else
-                        <p class="catalog-support-thread__empty">Переписка станет доступна после назначения менеджера.</p>
+                        <p class="mt-4 text-sm leading-6 text-slate-500">
+                            Написать менеджеру можно из кнопки помощника в правом нижнем углу на любой странице сайта.
+                        </p>
                     @endif
                 </section>
             </div>

@@ -13,6 +13,8 @@ class ProductController extends Controller
 {
     public function show(Request $request, Product $product): View
     {
+        abort_unless($product->isVisibleInCatalog(), 404);
+
         $product->loadMissing(['category.children', 'category.parent.children', 'category.parent', 'prices']);
         $cartQuantity = (int) $request->user()->cartItems()->where('product_id', $product->id)->value('quantity');
 
@@ -35,6 +37,7 @@ class ProductController extends Controller
         $tokens = $this->extractSearchTokens($product);
 
         $candidates = Product::query()
+            ->visibleInCatalog()
             ->with(['category.parent', 'prices'])
             ->whereKeyNot($product->id)
             ->where(function (Builder $query) use ($product, $rootCategoryIds, $tokens): void {
@@ -53,7 +56,7 @@ class ProductController extends Controller
                 foreach ($tokens as $token) {
                     $query
                         ->orWhere('title', 'like', "%{$token}%")
-                        ->orWhere('name', 'like', "%{$token}%");
+                        ->orWhere('description', 'like', "%{$token}%");
                 }
             })
             ->limit(48)
@@ -91,7 +94,7 @@ class ProductController extends Controller
             $score += 8;
         }
 
-        $haystack = Str::lower(trim($candidate->title.' '.$candidate->name.' '.$candidate->description));
+        $haystack = Str::lower(trim($candidate->title.' '.$candidate->description));
         $score += $tokens
             ->filter(fn (string $token): bool => Str::contains($haystack, $token))
             ->count() * 6;
@@ -119,7 +122,7 @@ class ProductController extends Controller
             'комплект',
         ];
 
-        return collect(preg_split('/[^\p{L}\p{N}]+/u', Str::lower(trim($product->title.' '.$product->name))))
+        return collect(preg_split('/[^\p{L}\p{N}]+/u', Str::lower(trim($product->title))))
             ->filter(fn (?string $token): bool => filled($token) && mb_strlen($token) >= 4)
             ->reject(fn (string $token): bool => in_array($token, $stopWords, true))
             ->unique()

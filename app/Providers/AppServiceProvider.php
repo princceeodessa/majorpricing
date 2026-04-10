@@ -33,17 +33,28 @@ class AppServiceProvider extends ServiceProvider
                 $headerFavoritesCount = 0;
                 $headerOrdersCount = 0;
                 $favoriteProductIds = [];
+                $supportWidgetEnabled = false;
+                $supportWidgetManager = null;
+                $supportWidgetMessages = collect();
 
                 if (Schema::hasTable('categories')) {
                     $navCategories = Category::query()
+                        ->visibleInCatalog()
                         ->whereNull('parent_id')
+                        ->with(['children' => fn ($query) => $query->visibleInCatalog()])
                         ->orderBy('sort_order')
                         ->get();
                 }
 
                 if (auth()->check()) {
+                    $authUser = auth()->user();
+
                     if (Schema::hasTable('cart_items')) {
                         $cartItems = CartItem::query()
+                            ->when(
+                                Schema::hasTable('products') && Schema::hasTable('categories'),
+                                fn ($query) => $query->whereHas('product', fn ($productQuery) => $productQuery->visibleInCatalog()),
+                            )
                             ->where('user_id', auth()->id())
                             ->get(['product_id', 'quantity']);
 
@@ -56,6 +67,10 @@ class AppServiceProvider extends ServiceProvider
 
                     if (Schema::hasTable('favorite_items')) {
                         $favoriteProductIds = FavoriteItem::query()
+                            ->when(
+                                Schema::hasTable('products') && Schema::hasTable('categories'),
+                                fn ($query) => $query->whereHas('product', fn ($productQuery) => $productQuery->visibleInCatalog()),
+                            )
                             ->where('user_id', auth()->id())
                             ->orderByDesc('id')
                             ->pluck('product_id')
@@ -70,6 +85,18 @@ class AppServiceProvider extends ServiceProvider
                             ->where('user_id', auth()->id())
                             ->count();
                     }
+
+                    if (
+                        $authUser
+                        && ! $authUser->canManageClients()
+                        && Schema::hasTable('support_messages')
+                    ) {
+                        $authUser->loadMissing(['manager', 'supportMessages.sender']);
+
+                        $supportWidgetManager = $authUser->manager;
+                        $supportWidgetMessages = $authUser->supportMessages;
+                        $supportWidgetEnabled = $supportWidgetManager?->canManageClients() ?? false;
+                    }
                 }
 
                 return [
@@ -79,6 +106,9 @@ class AppServiceProvider extends ServiceProvider
                     'headerFavoritesCount' => $headerFavoritesCount,
                     'headerOrdersCount' => $headerOrdersCount,
                     'favoriteProductIds' => $favoriteProductIds,
+                    'supportWidgetEnabled' => $supportWidgetEnabled,
+                    'supportWidgetManager' => $supportWidgetManager,
+                    'supportWidgetMessages' => $supportWidgetMessages,
                 ];
             });
 

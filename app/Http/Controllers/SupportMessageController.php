@@ -28,7 +28,7 @@ class SupportMessageController extends Controller
         ]);
 
         return redirect()
-            ->route('account.show')
+            ->to($request->headers->get('referer') ?: route('account.show'))
             ->with('status', 'Сообщение менеджеру отправлено.');
     }
 

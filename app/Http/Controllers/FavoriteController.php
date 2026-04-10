@@ -21,7 +21,7 @@ class FavoriteController extends Controller
 
         $favoriteProducts = $favoriteItems
             ->pluck('product')
-            ->filter()
+            ->filter(fn (?Product $product): bool => $product?->isVisibleInCatalog() ?? false)
             ->values();
 
         return view('favorites.index', [
@@ -32,6 +32,8 @@ class FavoriteController extends Controller
 
     public function store(Request $request, Product $product): RedirectResponse|JsonResponse
     {
+        abort_unless($product->isVisibleInCatalog(), 404);
+
         FavoriteItem::query()->firstOrCreate([
             'user_id' => $request->user()->id,
             'product_id' => $product->id,
@@ -61,6 +63,7 @@ class FavoriteController extends Controller
     private function jsonResponse(Request $request, Product $product, bool $favorited): JsonResponse
     {
         $favoritesCount = FavoriteItem::query()
+            ->whereHas('product', fn ($query) => $query->visibleInCatalog())
             ->where('user_id', $request->user()->id)
             ->count();
 

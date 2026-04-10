@@ -79,12 +79,40 @@ class Product extends Model
         return $query->where(function (Builder $builder) use ($needle): void {
             $builder
                 ->where('title', 'like', $needle)
-                ->orWhere('name', 'like', $needle)
                 ->orWhere('description', 'like', $needle)
                 ->orWhere('vendor_code', 'like', $needle)
                 ->orWhere('one_c_code', 'like', $needle)
                 ->orWhere('brand_name', 'like', $needle);
         });
+    }
+
+    public function scopeVisibleInCatalog(Builder $query): Builder
+    {
+        $query
+            ->whereNotNull($query->qualifyColumn('title'))
+            ->where($query->qualifyColumn('title'), '<>', '');
+
+        $hiddenCategoryIds = Category::hiddenFromCatalogIds();
+
+        if ($hiddenCategoryIds === []) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $builder) use ($hiddenCategoryIds, $query): void {
+            $builder
+                ->whereNull($query->qualifyColumn('category_id'))
+                ->orWhereNotIn($query->qualifyColumn('category_id'), $hiddenCategoryIds);
+        });
+    }
+
+    public function isVisibleInCatalog(): bool
+    {
+        if (blank($this->title)) {
+            return false;
+        }
+
+        return $this->category_id === null
+            || ! in_array((int) $this->category_id, Category::hiddenFromCatalogIds(), true);
     }
 
     public function priceForProfile(): ?ProductPrice
@@ -154,7 +182,9 @@ class Product extends Model
 
     public function publicTitle(): string
     {
-        return trim((string) ($this->title ?: $this->name ?: ''));
+        $title = trim((string) $this->title);
+
+        return $title !== '' ? $title : 'Товар';
     }
 
     public function fullTitle(): string

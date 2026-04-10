@@ -47,6 +47,8 @@ class CartController extends Controller
 
     public function store(Request $request, Product $product): RedirectResponse|JsonResponse
     {
+        abort_unless($product->isVisibleInCatalog(), 404);
+
         $validated = $request->validate([
             'quantity' => ['nullable', 'integer', 'min:1', 'max:999'],
         ]);
@@ -65,6 +67,8 @@ class CartController extends Controller
 
     public function updateProduct(Request $request, Product $product): RedirectResponse|JsonResponse
     {
+        abort_unless($product->isVisibleInCatalog(), 404);
+
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1', 'max:999'],
         ]);
@@ -190,7 +194,7 @@ class CartController extends Controller
                 OrderItem::query()->create([
                     'order_id' => $order->id,
                     'product_id' => $product?->id,
-                    'product_title' => $product?->title ?? 'Товар из каталога',
+                    'product_title' => $product?->publicTitle() ?? 'Товар из каталога',
                     'product_slug' => $product?->slug,
                     'quantity' => $cartItem->quantity,
                     'price_label' => $resolvedPrice?->label ?? 'Цена',
@@ -221,6 +225,7 @@ class CartController extends Controller
         /** @var EloquentCollection<int, CartItem> $cartItems */
         $cartItems = CartItem::query()
             ->with(['product.category.parent', 'product.prices'])
+            ->whereHas('product', fn ($query) => $query->visibleInCatalog())
             ->where('user_id', $user->id)
             ->latest('id')
             ->get();
@@ -254,6 +259,7 @@ class CartController extends Controller
     private function cartMutationResponse(Request $request, Product $product, int $quantity, string $message): RedirectResponse|JsonResponse
     {
         $cartCount = (int) CartItem::query()
+            ->whereHas('product', fn ($query) => $query->visibleInCatalog())
             ->where('user_id', $request->user()->id)
             ->sum('quantity');
 

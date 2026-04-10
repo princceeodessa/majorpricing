@@ -808,6 +808,79 @@ const setupInfiniteFeeds = () => {
     });
 };
 
+const setupSupportWidget = () => {
+    const widget = document.querySelector('[data-support-widget]');
+
+    if (!(widget instanceof HTMLElement)) {
+        return;
+    }
+
+    const dialog = widget.querySelector('[role="dialog"]');
+    const body = widget.querySelector('[data-support-widget-body]');
+    const textarea = widget.querySelector('textarea[name="message"]');
+    const openButtons = Array.from(document.querySelectorAll('[data-support-widget-open]'));
+    const closeButtons = Array.from(widget.querySelectorAll('[data-support-widget-close]'));
+
+    const syncBodyScroll = () => {
+        if (body instanceof HTMLElement) {
+            body.scrollTop = body.scrollHeight;
+        }
+    };
+
+    const openWidget = () => {
+        widget.classList.remove('hidden');
+        document.body.classList.add('catalog-support-widget-open');
+        syncBodyScroll();
+
+        window.setTimeout(() => {
+            if (textarea instanceof HTMLTextAreaElement) {
+                textarea.focus();
+            } else if (dialog instanceof HTMLElement) {
+                dialog.focus();
+            }
+        }, 40);
+    };
+
+    const closeWidget = () => {
+        widget.classList.add('hidden');
+        document.body.classList.remove('catalog-support-widget-open');
+    };
+
+    openButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            openWidget();
+        });
+    });
+
+    closeButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            closeWidget();
+        });
+    });
+
+    widget.addEventListener('click', (event) => {
+        if (!(event.target instanceof HTMLElement)) {
+            return;
+        }
+
+        if (event.target.hasAttribute('data-support-widget-close')) {
+            closeWidget();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !widget.classList.contains('hidden')) {
+            closeWidget();
+        }
+    });
+
+    if (widget.dataset.supportWidgetDefaultOpen === '1') {
+        openWidget();
+    } else {
+        syncBodyScroll();
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     setupFavoriteToggles();
     setupPriceFilters();
@@ -819,4 +892,5 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCategoryRails();
     setupRepeatables();
     setupInfiniteFeeds();
+    setupSupportWidget();
 });

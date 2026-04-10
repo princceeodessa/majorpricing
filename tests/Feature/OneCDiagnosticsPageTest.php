@@ -82,6 +82,7 @@ class OneCDiagnosticsPageTest extends TestCase
         <Ид>product-guid-1</Ид>
         <Артикул>PF-001</Артикул>
         <Наименование>Профиль M</Наименование>
+        <НаименованиеДляПечати>Профиль M печать</НаименованиеДляПечати>
         <Группы>
           <Ид>group-root</Ид>
         </Группы>
@@ -129,7 +130,7 @@ XML);
 
         $this->assertDatabaseHas('products', [
             'one_c_id' => 'product-guid-1',
-            'title' => 'Профиль M',
+            'title' => 'Профиль M печать',
             'vendor_code' => 'PF-001',
         ]);
 

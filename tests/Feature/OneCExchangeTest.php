@@ -147,10 +147,9 @@ class OneCExchangeTest extends TestCase
 
             $service->import($sessionKey);
 
-            $product = Product::query()->where('one_c_id', 'product-guid-1')->firstOrFail();
-
-            $this->assertSame(json_decode('"\u041f\u0440\u043e\u0444\u0438\u043b\u044c M"', true), $product->title);
-            $this->assertSame(json_decode('"\u041f\u0440\u043e\u0444\u0438\u043b\u044c M"', true), $product->name);
+            $this->assertDatabaseMissing('products', [
+                'one_c_id' => 'product-guid-1',
+            ]);
         } finally {
             $storage->clearType($sessionKey, 'catalog');
         }

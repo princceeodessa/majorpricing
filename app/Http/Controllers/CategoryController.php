@@ -13,7 +13,9 @@ class CategoryController extends Controller
 {
     public function show(Request $request, Category $category): View|JsonResponse
     {
-        $category->loadMissing(['parent', 'children']);
+        abort_if($category->isHiddenFromCatalog(), 404);
+
+        $category->loadMissing(['parent', 'children' => fn ($query) => $query->visibleInCatalog()]);
 
         $selectedSection = null;
         $categoryIds = [$category->id];
@@ -25,6 +27,8 @@ class CategoryController extends Controller
                 $selectedSection = $category->children
                     ->firstWhere('slug', $request->string('section')->toString());
 
+                abort_unless($selectedSection, 404);
+
                 if ($selectedSection) {
                     $categoryIds = [$selectedSection->id];
                 }
@@ -32,6 +36,7 @@ class CategoryController extends Controller
         }
 
         $catalogQuery = Product::query()
+            ->visibleInCatalog()
             ->whereIn('category_id', $categoryIds)
             ->search($request->string('q')->toString());
 
@@ -74,6 +79,7 @@ class CategoryController extends Controller
         $hasActivePriceFilter = $hasPriceBounds && ($request->filled('price_min') || $request->filled('price_max'));
 
         $products = Product::query()
+            ->visibleInCatalog()
             ->with(['category.parent', 'prices'])
             ->whereIn('category_id', $categoryIds)
             ->search($request->string('q')->toString())
@@ -106,6 +112,7 @@ class CategoryController extends Controller
         }
 
         $sectionCounts = Product::query()
+            ->visibleInCatalog()
             ->selectRaw('category_id, COUNT(*) as aggregate')
             ->whereIn('category_id', $category->children->pluck('id')->all())
             ->groupBy('category_id')
