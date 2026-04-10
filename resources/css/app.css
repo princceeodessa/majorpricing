@@ -8372,3 +8372,76 @@ html {
         width: 100%;
     }
 }
+
+.catalog-header-logo {
+    width: min(38vw, 198px) !important;
+    min-height: 42px !important;
+    border-radius: 1rem !important;
+}
+
+.catalog-header-catalog-trigger {
+    background: #6b7280 !important;
+    color: #ffffff !important;
+    min-width: 120px !important;
+}
+
+.catalog-header-catalog-menu[open] .catalog-header-catalog-trigger,
+.catalog-header-catalog-trigger:hover,
+.catalog-header-catalog-trigger.is-active {
+    background: #555d6a !important;
+    color: #ffffff !important;
+    border-color: rgba(107, 114, 128, 0.35) !important;
+    box-shadow: 0 20px 34px -26px rgba(71, 85, 105, 0.34) !important;
+}
+
+.catalog-header-icon-link {
+    gap: 0.42rem !important;
+    min-width: 68px !important;
+    padding: 0.4rem 0.35rem !important;
+}
+
+.catalog-header-icon-link__icon {
+    width: 1.45rem !important;
+    height: 1.45rem !important;
+}
+
+.catalog-header-icon-link__icon svg {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.catalog-header-icon-link__label {
+    font-size: 0.8rem !important;
+    line-height: 1.1 !important;
+}
+
+.catalog-header-icon-link__badge {
+    min-width: 1.15rem !important;
+    height: 1.15rem !important;
+    padding: 0 0.2rem !important;
+    font-size: 0.66rem !important;
+}
+
+@media (max-width: 720px) {
+    .catalog-header-logo {
+        width: min(54vw, 184px) !important;
+    }
+
+    .catalog-header-catalog-trigger {
+        min-width: 108px !important;
+    }
+
+    .catalog-header-icon-link {
+        min-width: 0 !important;
+        padding: 0.42rem 0.2rem !important;
+    }
+
+    .catalog-header-icon-link__icon {
+        width: 1.28rem !important;
+        height: 1.28rem !important;
+    }
+
+    .catalog-header-icon-link__label {
+        font-size: 0.72rem !important;
+    }
+}
