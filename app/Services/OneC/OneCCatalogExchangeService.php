@@ -435,6 +435,10 @@ class OneCCatalogExchangeService
             json_decode('"\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435\u0414\u043b\u044f\u041f\u0435\u0447\u0430\u0442\u0438"'),
             json_decode('"\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0434\u043b\u044f \u043f\u0435\u0447\u0430\u0442\u0438"'),
         ];
+        $fullNameKeys = [
+            json_decode('"\u041f\u043e\u043b\u043d\u043e\u0435\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435"'),
+            json_decode('"\u041f\u043e\u043b\u043d\u043e\u0435 \u043d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435"'),
+        ];
 
         return $this->firstFilled([
             $this->requisiteValue($xpath, $productNode, $printTitleKeys),
@@ -444,6 +448,8 @@ class OneCCatalogExchangeService
                 [json_decode('"\u043f\u0435\u0447\u0430\u0442"'), json_decode('"\u043d\u0430\u0437\u0432"')],
                 [json_decode('"\u043f\u0435\u0447\u0430\u0442"')],
             ]),
+            $this->requisiteValue($xpath, $productNode, $fullNameKeys),
+            $this->firstChildValue($xpath, $productNode, $fullNameKeys),
         ]);
     }
 

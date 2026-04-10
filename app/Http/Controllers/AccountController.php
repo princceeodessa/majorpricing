@@ -30,7 +30,7 @@ class AccountController extends Controller
 
         if ($user->canManageClients()) {
             $managedUsers = $user->visibleClients()
-                ->with(['addresses', 'supportMessages.sender'])
+                ->with('addresses')
                 ->withCount('orders')
                 ->get();
 

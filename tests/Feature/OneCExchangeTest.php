@@ -132,7 +132,7 @@ class OneCExchangeTest extends TestCase
         }
     }
 
-    public function test_one_c_catalog_import_does_not_use_full_name_requisite_as_public_title(): void
+    public function test_one_c_catalog_import_uses_full_name_requisite_as_public_title_when_print_title_is_missing(): void
     {
         $sessionKey = 'catalog-full-name-space';
         $storage = app(OneCExchangeStorage::class);
@@ -147,8 +147,9 @@ class OneCExchangeTest extends TestCase
 
             $service->import($sessionKey);
 
-            $this->assertDatabaseMissing('products', [
+            $this->assertDatabaseHas('products', [
                 'one_c_id' => 'product-guid-1',
+                'title' => 'Профиль M печать',
             ]);
         } finally {
             $storage->clearType($sessionKey, 'catalog');

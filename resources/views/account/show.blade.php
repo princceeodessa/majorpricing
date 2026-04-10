@@ -17,7 +17,7 @@
                 <h1 class="access-dashboard-hero__title">Ваши клиенты, обращения и заказы в одном месте.</h1>
                 <p class="access-dashboard-hero__text">
                     Каждый новый клиент автоматически закрепляется за менеджером, который его создал. Здесь видны все контакты клиентов,
-                    история их сообщений и заказы, за которые вы отвечаете.
+                    адреса доставки и заказы, за которые вы отвечаете.
                 </p>
 
                 <div class="access-dashboard-stats">
@@ -53,7 +53,7 @@
                     <span class="soft-badge">Новый доступ</span>
                     <h2 class="access-user-create__title">Добавление пользователя</h2>
                     <p class="access-user-create__text">
-                        Клиент автоматически закрепится за вами. После создания он увидит ваши контакты в своем кабинете и сможет писать вам вопросы.
+                        Клиент автоматически закрепится за вами. После создания он увидит ваши контакты в своем кабинете.
                     </p>
                 </div>
 
@@ -186,22 +186,28 @@
                     Пока нет клиентов, закрепленных за вами.
                 </div>
             @else
-                <div class="access-users-grid mt-5">
+                <div class="access-clients-list mt-5">
                     @foreach ($managedUsers as $managedUser)
                         @php($managedContacts = $managedUser->contactPeopleList())
                         @php($managedMessengers = $managedUser->messengersList())
-                        @php($managedSupportMessages = $managedUser->supportMessages->take(-6))
+                        <details class="surface-card access-client-disclosure">
+                            <summary class="access-client-disclosure__summary">
+                                <div class="access-client-disclosure__summary-main">
+                                    <div class="access-client-disclosure__summary-title">
+                                        <span class="soft-badge">{{ $managedUser->is_active ? 'Активен' : 'Отключен' }}</span>
+                                        <h3>{{ $managedUser->name }}</h3>
+                                    </div>
 
-                        <article class="surface-card access-user-card">
-                            <div class="access-user-card__head">
-                                <div>
-                                    <span class="soft-badge">{{ $managedUser->is_active ? 'Активен' : 'Отключен' }}</span>
-                                    <h3>{{ $managedUser->name }}</h3>
+                                    <div class="access-client-disclosure__summary-meta">
+                                        <span>{{ $managedUser->company ?: $managedUser->login }}</span>
+                                        <strong>{{ $managedUser->orders_count }} заказов</strong>
+                                    </div>
                                 </div>
-                                <strong class="access-user-card__role">{{ $managedUser->orders_count }} заказов</strong>
-                            </div>
 
-                            <div class="access-user-card__meta">
+                                <span class="access-client-disclosure__summary-toggle">Подробнее</span>
+                            </summary>
+
+                            <div class="access-user-card__meta access-client-disclosure__body">
                                 <div>
                                     <span>Компания</span>
                                     <strong>{{ $managedUser->company ?: 'Не указана' }}</strong>
@@ -238,36 +244,10 @@
                                 </div>
                             </div>
 
-                            <div class="catalog-support-card catalog-support-card--compact">
-                                <div class="catalog-support-card__head">
-                                    <div>
-                                        <span class="soft-badge">Поддержка</span>
-                                        <h4>Диалог с клиентом</h4>
-                                    </div>
-                                </div>
-
-                                <div class="catalog-support-thread catalog-support-thread--compact">
-                                    @forelse ($managedSupportMessages as $message)
-                                        <article class="catalog-support-message {{ $message->sender_id === $user->id ? 'is-own' : 'is-peer' }}">
-                                            <p>{{ $message->message }}</p>
-                                            <footer>
-                                                <span>{{ $message->sender_id === $user->id ? 'Вы' : $managedUser->name }}</span>
-                                                <time datetime="{{ $message->created_at?->toIso8601String() }}">{{ $message->created_at?->format('d.m.Y H:i') }}</time>
-                                            </footer>
-                                        </article>
-                                    @empty
-                                        <p class="catalog-support-thread__empty">Клиент пока не писал вам сообщений.</p>
-                                    @endforelse
-                                </div>
-
-                                <form action="{{ route('manager.support.messages.store') }}" method="POST" class="catalog-support-form">
-                                    @csrf
-                                    <input type="hidden" name="client_id" value="{{ $managedUser->id }}">
-                                    <textarea name="message" rows="3" placeholder="Ответ клиенту"></textarea>
-                                    <button type="submit" class="action-button">Отправить ответ</button>
-                                </form>
+                            <div class="access-client-disclosure__actions">
+                                <a href="{{ route('manager.chats.index', ['client' => $managedUser]) }}" class="ghost-button">Открыть чат</a>
                             </div>
-                        </article>
+                        </details>
                     @endforeach
                 </div>
             @endif

@@ -118,7 +118,7 @@ class AccountPageTest extends TestCase
     {
         $manager = User::factory()->create([
             'name' => 'Менеджер',
-            'company' => 'MAJOR',
+            'company' => 'ПОТОЛКОВЫЧ',
             'login' => 'manager-demo',
             'email' => 'manager-demo@example.com',
             'is_manager' => true,
@@ -158,7 +158,8 @@ class AccountPageTest extends TestCase
             ->assertOk()
             ->assertSee('Мои клиенты')
             ->assertSee('Клиент А')
-            ->assertSee('Когда сможете подтвердить заявку?')
+            ->assertSee('Открыть чат')
+            ->assertDontSee('Когда сможете подтвердить заявку?')
             ->assertDontSee('Клиент Б');
     }
 }
