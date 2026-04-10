@@ -11,7 +11,7 @@
     $imageUrl = $hasRealImage ? asset($product->image_path) : $fallbackImageUrl;
     $unitLabel = $product->publicUnitLabel();
     $stockSummary = $product->stockSummary();
-    $productAccents = ['#d11117', '#c81e1e', '#b91c1c', '#991b1b', '#be123c', '#7f1d1d'];
+    $productAccents = ['#163459', '#1f4f7a', '#255f91', '#2f6f9f', '#3c7fae', '#0f2947'];
     $productAccent = $productAccents[($rootCategory?->id ?? $product->id ?? 0) % count($productAccents)];
     $cartQuantity = (int) (($cartProductQuantities[$product->id] ?? 0));
 @endphp

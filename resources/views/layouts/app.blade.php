@@ -12,7 +12,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $metaTitle }}</title>
         <meta name="description" content="{{ $metaDescription }}">
-        <meta name="theme-color" content="#203f68">
+        <meta name="theme-color" content="#163459">
 
         <link rel="canonical" href="{{ $metaUrl }}">
         <link rel="icon" type="image/png" sizes="500x506" href="{{ asset('brand/potolkovych-emblem.png') }}">

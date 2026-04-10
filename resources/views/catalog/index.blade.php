@@ -24,7 +24,7 @@
                             <a
                                 href="{{ route('categories.show', $category) }}"
                                 class="catalog-category-card reveal-card"
-                                style="animation-delay: {{ $index * 70 }}ms; --category-accent: {{ $category->accent_color ?? '#d11117' }};"
+                                style="animation-delay: {{ $index * 70 }}ms; --category-accent: {{ $category->accent_color ?? '#163459' }};"
                             >
                                 <div class="catalog-category-card__copy">
                                     <div class="catalog-category-card__head">
