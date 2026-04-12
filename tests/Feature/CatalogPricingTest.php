@@ -115,8 +115,9 @@ class CatalogPricingTest extends TestCase
         $response->assertOk();
         $response->assertSeeText('35,00');
         $response->assertSeeText('38,89');
-        $response->assertSeeText('Оптовая');
-        $response->assertSeeText('Оптовая БЕЗНАЛ');
+        $response->assertSeeText('Со скидкой');
+        $response->assertDontSeeText('Оптовая');
+        $response->assertDontSeeText('Оптовая БЕЗНАЛ');
         $response->assertDontSeeText('44,45');
     }
 

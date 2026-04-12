@@ -68,7 +68,6 @@
                     @if ($comparePrice?->min_amount !== null)
                         <p class="catalog-product-price-block__compare">
                             {{ \Illuminate\Support\Number::format((float) $comparePrice->min_amount, 2, locale: 'ru') }} ₽
-                            <span>{{ $comparePrice->label }}</span>
                         </p>
                     @endif
 
@@ -83,7 +82,7 @@
                         <p class="catalog-product-price-block__value catalog-product-price-block__value--empty">Цена по запросу</p>
                     @endif
 
-                    <p class="catalog-product-price-block__profile">{{ $price?->label ?? 'Цена' }}</p>
+                    <p class="catalog-product-price-block__profile">{{ $price?->min_amount !== null ? 'Со скидкой' : 'Цена' }}</p>
                 </div>
 
                 @if ($stockSummary)
