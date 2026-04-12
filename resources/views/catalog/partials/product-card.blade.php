@@ -64,11 +64,10 @@
 
         <div class="catalog-product-card__footer">
             <div>
-                <p class="catalog-product-card__price-label">{{ $price?->label ?? 'Цена' }}</p>
+                <p class="catalog-product-card__price-label">{{ $price?->min_amount !== null ? 'Со скидкой' : 'Цена' }}</p>
                 @if ($comparePrice?->min_amount !== null)
                     <p class="catalog-product-card__compare-price">
                         {{ \Illuminate\Support\Number::format((float) $comparePrice->min_amount, 2, locale: 'ru') }} ₽
-                        <span>{{ $comparePrice->label }}</span>
                     </p>
                 @endif
                 @if ($price?->min_amount !== null)
