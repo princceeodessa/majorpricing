@@ -12,6 +12,7 @@ use App\Http\Controllers\ManagerChatController;
 use App\Http\Controllers\OneCExchangeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\RegistrationRequestController;
 use App\Http\Controllers\SupportMessageController;
 use App\Http\Controllers\UserAddressController;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
+    Route::get('/register-request', [RegistrationRequestController::class, 'create'])->name('registration-requests.create');
+    Route::post('/register-request', [RegistrationRequestController::class, 'store'])->name('registration-requests.store');
 });
 
 Route::match(['GET', 'POST'], '/1c/exchange', OneCExchangeController::class)->name('onec.exchange');
@@ -35,6 +38,9 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/account/users', [ManagerUserController::class, 'store'])
         ->middleware('manager')
         ->name('manager.users.store');
+    Route::post('/account/registration-requests/{registrationRequest}/approve', [RegistrationRequestController::class, 'approve'])
+        ->middleware('manager')
+        ->name('manager.registration-requests.approve');
     Route::get('/manager/chats/{client?}', [ManagerChatController::class, 'index'])
         ->middleware('manager')
         ->name('manager.chats.index');

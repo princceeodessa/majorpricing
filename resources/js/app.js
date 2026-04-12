@@ -829,7 +829,6 @@ const setupSupportWidget = () => {
 
     const openWidget = () => {
         widget.classList.remove('hidden');
-        document.body.classList.add('catalog-support-widget-open');
         syncBodyScroll();
 
         window.setTimeout(() => {
@@ -843,7 +842,6 @@ const setupSupportWidget = () => {
 
     const closeWidget = () => {
         widget.classList.add('hidden');
-        document.body.classList.remove('catalog-support-widget-open');
     };
 
     openButtons.forEach((button) => {

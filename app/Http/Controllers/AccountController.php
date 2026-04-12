@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\RegistrationRequest;
+use App\Models\User;
 use App\Support\OrderStatuses;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -19,6 +21,8 @@ class AccountController extends Controller
         ]);
 
         $managedUsers = collect();
+        $managers = collect();
+        $pendingRegistrationRequests = collect();
         $supportMessages = $user->supportMessages;
         $managementStats = [
             'totalUsers' => 0,
@@ -26,6 +30,7 @@ class AccountController extends Controller
             'disabledUsers' => 0,
             'newOrders' => 0,
             'processingOrders' => 0,
+            'pendingRequests' => 0,
         ];
 
         if ($user->canManageClients()) {
@@ -33,6 +38,17 @@ class AccountController extends Controller
                 ->with('addresses')
                 ->withCount('orders')
                 ->get();
+
+            $pendingRegistrationRequests = RegistrationRequest::query()
+                ->pending()
+                ->latest('id')
+                ->get();
+
+            $managers = User::query()
+                ->where('is_manager', true)
+                ->orderBy('name')
+                ->orderBy('id')
+                ->get(['id', 'name', 'email']);
 
             $managedUserIds = $managedUsers->modelKeys();
 
@@ -48,11 +64,14 @@ class AccountController extends Controller
                     ->whereIn('user_id', $managedUserIds)
                     ->whereIn('status', OrderStatuses::inProgress())
                     ->count(),
+                'pendingRequests' => $pendingRegistrationRequests->count(),
             ];
         }
 
         return view('account.show', [
             'managedUsers' => $managedUsers,
+            'managers' => $managers,
+            'pendingRegistrationRequests' => $pendingRegistrationRequests,
             'userAddresses' => $user->addresses,
             'managementStats' => $managementStats,
             'assignedManager' => $user->manager,

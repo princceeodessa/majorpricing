@@ -140,7 +140,7 @@
                                     </a>
                                 @endif
 
-                                <a href="{{ route('favorites.index') }}" class="catalog-header-icon-link {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}">
+                                <a href="{{ route('favorites.index') }}" class="catalog-header-icon-link catalog-header-icon-link--mobile-hidden {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}">
                                     <span class="catalog-header-icon-link__icon">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
                                             <path d="M12 20.2 4.9 13.4a4.5 4.5 0 0 1 6.4-6.3L12 7.8l.7-.7a4.5 4.5 0 1 1 6.4 6.3Z" />
@@ -150,7 +150,7 @@
                                     <span class="catalog-header-icon-link__label">Избранное</span>
                                 </a>
 
-                                <a href="{{ route('orders.index') }}" class="catalog-header-icon-link {{ request()->routeIs('orders.*') ? 'is-active' : '' }}">
+                                <a href="{{ route('orders.index') }}" class="catalog-header-icon-link catalog-header-icon-link--mobile-hidden {{ request()->routeIs('orders.*') ? 'is-active' : '' }}">
                                     <span class="catalog-header-icon-link__icon">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
                                             <rect x="5" y="4.5" width="14" height="15" rx="2.3" />
@@ -161,7 +161,7 @@
                                     <span class="catalog-header-icon-link__label">Заказы</span>
                                 </a>
 
-                                <a href="{{ route('cart.index') }}" class="catalog-header-icon-link {{ request()->routeIs('cart.*') ? 'is-active' : '' }}">
+                                <a href="{{ route('cart.index') }}" class="catalog-header-icon-link catalog-header-icon-link--mobile-hidden {{ request()->routeIs('cart.*') ? 'is-active' : '' }}">
                                     <span class="catalog-header-icon-link__icon">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
                                             <path d="M4 7h15l-1.3 8.2a2 2 0 0 1-2 1.7H8.4a2 2 0 0 1-2-1.6L4.8 5.5H2.5" />
@@ -198,6 +198,62 @@
 
                 @yield('content')
             </main>
+
+            @if (auth()->check())
+                <nav class="catalog-mobile-nav" aria-label="Основная навигация">
+                    <a href="{{ route('catalog.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('catalog.index', 'categories.*', 'products.*') ? 'is-active' : '' }}">
+                        <span class="catalog-mobile-nav__icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 10.5 12 4l8 6.5v8.2a1.3 1.3 0 0 1-1.3 1.3h-3.9v-6.1H9.2V20H5.3A1.3 1.3 0 0 1 4 18.7Z" />
+                            </svg>
+                        </span>
+                        <span class="catalog-mobile-nav__label">Главная</span>
+                    </a>
+
+                    <a href="{{ route('favorites.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}">
+                        <span class="catalog-mobile-nav__icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 20.2 4.9 13.4a4.5 4.5 0 0 1 6.4-6.3L12 7.8l.7-.7a4.5 4.5 0 1 1 6.4 6.3Z" />
+                            </svg>
+                            <strong class="catalog-mobile-nav__badge" data-favorites-count>{{ $headerFavoritesCount ?? 0 }}</strong>
+                        </span>
+                        <span class="catalog-mobile-nav__label">Избранное</span>
+                    </a>
+
+                    <a href="{{ route('orders.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('orders.*') ? 'is-active' : '' }}">
+                        <span class="catalog-mobile-nav__icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <rect x="5" y="4.5" width="14" height="15" rx="2.3" />
+                                <path d="M8 9.5h8M8 13h8M8 16.5h5" />
+                            </svg>
+                            <strong class="catalog-mobile-nav__badge">{{ $headerOrdersCount ?? 0 }}</strong>
+                        </span>
+                        <span class="catalog-mobile-nav__label">Заказы</span>
+                    </a>
+
+                    <a href="{{ route('cart.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('cart.*') ? 'is-active' : '' }}">
+                        <span class="catalog-mobile-nav__icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 7h15l-1.3 8.2a2 2 0 0 1-2 1.7H8.4a2 2 0 0 1-2-1.6L4.8 5.5H2.5" />
+                                <circle cx="9.2" cy="20" r="1.3" />
+                                <circle cx="16.4" cy="20" r="1.3" />
+                            </svg>
+                            <strong class="catalog-mobile-nav__badge" data-cart-count>{{ $headerCartCount ?? 0 }}</strong>
+                        </span>
+                        <span class="catalog-mobile-nav__label">Корзина</span>
+                    </a>
+
+                    <a href="{{ route('account.show') }}" class="catalog-mobile-nav__link {{ request()->routeIs('account.*') ? 'is-active' : '' }}">
+                        <span class="catalog-mobile-nav__icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="8" r="3.5" />
+                                <path d="M5.5 19.5c1.9-3.3 4.2-4.9 6.5-4.9s4.6 1.6 6.5 4.9" />
+                            </svg>
+                        </span>
+                        <span class="catalog-mobile-nav__label">Кабинет</span>
+                    </a>
+                </nav>
+            @endif
         </div>
 
         @include('partials.support-widget')

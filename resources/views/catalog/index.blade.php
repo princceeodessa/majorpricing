@@ -66,7 +66,7 @@
                 <h2 class="catalog-section-title">Новинки</h2>
             </div>
 
-            <div class="catalog-grid mt-5">
+            <div class="catalog-grid catalog-grid--home-rail mt-5">
                 @foreach ($featuredProducts->take(4) as $index => $product)
                     @include('catalog.partials.product-card', ['product' => $product, 'delay' => $index * 90])
                 @endforeach

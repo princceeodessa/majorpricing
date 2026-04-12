@@ -7,12 +7,20 @@ use App\Models\UserAddress;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ManagerUserController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
+        $creator = $request->user();
+        $accountType = $request->input('account_type', 'client');
+
+        abort_unless(in_array($accountType, ['client', 'manager'], true), 422);
+        abort_if($accountType === 'manager' && ! $creator?->isAdmin(), 403);
+
         $validated = $request->validate([
+            'account_type' => ['nullable', Rule::in(['client', 'manager'])],
             'name' => ['required', 'string', 'max:255'],
             'company' => ['nullable', 'string', 'max:255'],
             'contact_person' => ['nullable', 'string', 'max:255'],
@@ -26,6 +34,7 @@ class ManagerUserController extends Controller
             'login' => ['required', 'string', 'max:255', 'alpha_dash', Rule::unique(User::class, 'login')],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'manager_id' => ['nullable', 'integer'],
             'is_active' => ['nullable', 'boolean'],
         ], [
             'name.required' => 'Укажите имя пользователя.',
@@ -39,6 +48,8 @@ class ManagerUserController extends Controller
             'password.min' => 'Пароль должен содержать минимум 8 символов.',
             'password.confirmed' => 'Подтверждение пароля не совпадает.',
         ]);
+
+        $assignedManagerId = $this->resolveAssignedManagerId($request, $accountType, $validated['manager_id'] ?? null);
 
         $contactPeople = $this->normalizeStringList([
             ...($validated['contact_people'] ?? []),
@@ -62,15 +73,15 @@ class ManagerUserController extends Controller
             'login' => $validated['login'],
             'email' => $validated['email'],
             'password' => $validated['password'],
-            'manager_id' => $request->user()->id,
+            'manager_id' => $assignedManagerId,
             'price_profile_id' => null,
             'is_active' => $request->boolean('is_active', true),
-            'is_manager' => false,
+            'is_manager' => $accountType === 'manager',
             'is_admin' => false,
             'email_verified_at' => now(),
         ]);
 
-        if (filled($validated['delivery_address'] ?? null)) {
+        if ($accountType === 'client' && filled($validated['delivery_address'] ?? null)) {
             UserAddress::query()->create([
                 'user_id' => $user->id,
                 'title' => 'Основной адрес',
@@ -82,7 +93,9 @@ class ManagerUserController extends Controller
 
         return redirect()
             ->route('account.show')
-            ->with('status', 'Пользователь добавлен. Доступ готов к выдаче.');
+            ->with('status', $accountType === 'manager'
+                ? 'Менеджер создан.'
+                : 'Пользователь добавлен. Доступ готов к выдаче.');
     }
 
     /**
@@ -97,5 +110,43 @@ class ManagerUserController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function resolveAssignedManagerId(Request $request, string $accountType, mixed $managerId): ?int
+    {
+        $creator = $request->user();
+
+        if ($accountType === 'manager') {
+            return null;
+        }
+
+        if ($creator?->isManager()) {
+            return $creator->id;
+        }
+
+        if (! $creator?->isAdmin()) {
+            abort(403);
+        }
+
+        $managerId = (int) $managerId;
+
+        if ($managerId < 1) {
+            throw ValidationException::withMessages([
+                'manager_id' => 'Для клиента нужно выбрать менеджера.',
+            ]);
+        }
+
+        $exists = User::query()
+            ->whereKey($managerId)
+            ->where('is_manager', true)
+            ->exists();
+
+        if (! $exists) {
+            throw ValidationException::withMessages([
+                'manager_id' => 'Выберите действующего менеджера.',
+            ]);
+        }
+
+        return $managerId;
     }
 }
