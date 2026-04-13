@@ -19,7 +19,11 @@
                 <div class="catalog-category-showcase__viewport" data-category-rail-track>
                     <div class="catalog-category-showcase__track">
                         @foreach ($rootCategories as $index => $category)
-                            @php($previewImage = $category->catalog_preview_image ? asset($category->catalog_preview_image) : null)
+                            @php
+                                $previewImage = $category->catalog_preview_image
+                                    ? asset($category->catalog_preview_image)
+                                    : null;
+                            @endphp
 
                             <a
                                 href="{{ route('categories.show', $category) }}"
@@ -65,12 +69,14 @@
             <div>
                 <h2 class="catalog-section-title">{{ ($hasSearch ?? false) ? 'Результаты поиска' : 'Каталог товаров' }}</h2>
                 @if ($hasSearch ?? false)
-                    @php($resultsCount = $products->total())
-                    @php($resultsLabel = match (true) {
-                        $resultsCount % 10 === 1 && $resultsCount % 100 !== 11 => 'товар',
-                        in_array($resultsCount % 10, [2, 3, 4], true) && !in_array($resultsCount % 100, [12, 13, 14], true) => 'товара',
-                        default => 'товаров',
-                    })
+                    @php
+                        $resultsCount = $products->total();
+                        $resultsLabel = match (true) {
+                            $resultsCount % 10 === 1 && $resultsCount % 100 !== 11 => 'товар',
+                            in_array($resultsCount % 10, [2, 3, 4], true) && !in_array($resultsCount % 100, [12, 13, 14], true) => 'товара',
+                            default => 'товаров',
+                        };
+                    @endphp
                     <p class="mt-2 text-sm leading-6 text-slate-600">
                         По запросу «{{ $searchQuery }}» найдено {{ $resultsCount }} {{ $resultsLabel }}.
                     </p>
