@@ -17,6 +17,8 @@ class CatalogController extends Controller
         $selectedCategory = null;
         $searchQuery = trim($request->string('q')->toString());
         $hasSearch = filled($searchQuery);
+        $feed = $request->string('feed')->toString();
+        $feed = in_array($feed, ['new', 'hit', 'in_stock'], true) ? $feed : 'new';
 
         if ($request->filled('category')) {
             $selectedCategory = Category::query()
@@ -25,16 +27,34 @@ class CatalogController extends Controller
                 ->firstOrFail();
         }
 
-        $products = Product::query()
+        $productsQuery = Product::query()
             ->visibleInCatalog()
             ->with(['category.parent', 'prices'])
             ->when(
                 $selectedCategory,
                 fn ($query) => $query->whereIn('category_id', $this->categoryTreeIds($selectedCategory)),
             )
-            ->search($searchQuery)
-            ->orderByRaw('price_from is null')
-            ->orderBy('title')
+            ->search($searchQuery);
+
+        match ($feed) {
+            'hit' => $productsQuery
+                ->withCount('orderItems')
+                ->orderByDesc('order_items_count')
+                ->orderByRaw('price_from is null')
+                ->orderByDesc('stock_quantity')
+                ->orderBy('title'),
+            'in_stock' => $productsQuery
+                ->whereNotNull('stock_quantity')
+                ->where('stock_quantity', '>', 0)
+                ->orderByDesc('stock_quantity')
+                ->orderByRaw('price_from is null')
+                ->orderBy('title'),
+            default => $productsQuery
+                ->orderByRaw('image_path is null')
+                ->orderByDesc('id'),
+        };
+
+        $products = $productsQuery
             ->paginate(18)
             ->withQueryString();
 
@@ -51,8 +71,6 @@ class CatalogController extends Controller
         }
 
         $rootCategories = collect();
-        $featuredProducts = collect();
-
         if (! $hasSearch) {
             $rootCategories = Category::query()
                 ->visibleInCatalog()
@@ -100,18 +118,10 @@ class CatalogController extends Controller
                 $category->setAttribute('catalog_preview_image', $categoryCover ?? $previewProduct?->image_path);
                 $category->setAttribute('catalog_preview_title', $categoryCover ? $category->name : $previewProduct?->title);
             });
-
-            $featuredProducts = Product::query()
-                ->visibleInCatalog()
-                ->with(['category.parent', 'prices'])
-                ->orderByRaw('image_path is null')
-                ->orderByDesc('id')
-                ->limit(8)
-                ->get();
         }
 
         return view('catalog.index', [
-            'featuredProducts' => $featuredProducts,
+            'feed' => $feed,
             'hasSearch' => $hasSearch,
             'products' => $products,
             'rootCategories' => $rootCategories,

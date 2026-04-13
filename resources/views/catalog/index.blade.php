@@ -60,22 +60,8 @@
         </section>
     @endif
 
-    @if (!($hasSearch ?? false) && $featuredProducts->isNotEmpty())
-        <section class="mt-10">
-            <div class="catalog-section-head catalog-section-head--clean">
-                <h2 class="catalog-section-title">Новинки</h2>
-            </div>
-
-            <div class="catalog-grid catalog-grid--home-rail mt-5">
-                @foreach ($featuredProducts->take(4) as $index => $product)
-                    @include('catalog.partials.product-card', ['product' => $product, 'delay' => $index * 90])
-                @endforeach
-            </div>
-        </section>
-    @endif
-
     <section class="mt-10">
-        <div class="catalog-section-head catalog-section-head--clean">
+        <div class="catalog-section-head catalog-section-head--clean catalog-section-head--with-filters">
             <div>
                 <h2 class="catalog-section-title">{{ ($hasSearch ?? false) ? 'Результаты поиска' : 'Каталог товаров' }}</h2>
                 @if ($hasSearch ?? false)
@@ -89,6 +75,25 @@
                         По запросу «{{ $searchQuery }}» найдено {{ $resultsCount }} {{ $resultsLabel }}.
                     </p>
                 @endif
+            </div>
+
+            @php
+                $feedLinks = [
+                    'new' => 'Новинки',
+                    'hit' => 'Хит',
+                    'in_stock' => 'В наличии',
+                ];
+            @endphp
+
+            <div class="catalog-feed-filters" aria-label="Сортировка каталога">
+                @foreach ($feedLinks as $feedKey => $feedLabel)
+                    <a
+                        href="{{ route('catalog.index', array_merge(request()->except('page', 'feed'), ['feed' => $feedKey])) }}"
+                        class="catalog-feed-filter {{ ($feed ?? 'new') === $feedKey ? 'is-active' : '' }}"
+                    >
+                        {{ $feedLabel }}
+                    </a>
+                @endforeach
             </div>
         </div>
 
