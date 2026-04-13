@@ -22,6 +22,7 @@ class AccountController extends Controller
 
         $managedUsers = collect();
         $managers = collect();
+        $availableManagers = collect();
         $pendingRegistrationRequests = collect();
         $supportMessages = $user->supportMessages;
         $managementStats = [
@@ -46,9 +47,15 @@ class AccountController extends Controller
 
             $managers = User::query()
                 ->where('is_manager', true)
+                ->withCount('managedClients')
+                ->orderByDesc('is_active')
                 ->orderBy('name')
                 ->orderBy('id')
-                ->get(['id', 'name', 'email']);
+                ->get(['id', 'name', 'email', 'phone', 'messengers', 'is_active']);
+
+            $availableManagers = $managers
+                ->where('is_active', true)
+                ->values();
 
             $managedUserIds = $managedUsers->modelKeys();
 
@@ -71,6 +78,7 @@ class AccountController extends Controller
         return view('account.show', [
             'managedUsers' => $managedUsers,
             'managers' => $managers,
+            'availableManagers' => $availableManagers,
             'pendingRegistrationRequests' => $pendingRegistrationRequests,
             'userAddresses' => $user->addresses,
             'managementStats' => $managementStats,
