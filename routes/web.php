@@ -70,7 +70,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/products/{product:slug}/favorite', [FavoriteController::class, 'store'])->name('favorites.store');
     Route::delete('/products/{product:slug}/favorite', [FavoriteController::class, 'destroy'])->name('favorites.destroy');
     Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
-    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::get('/notifications/poll', [NotificationsController::class, 'poll'])->name('notifications.poll');\n    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
     Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
     Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
@@ -78,3 +78,4 @@ Route::middleware('auth')->group(function (): void {
     Route::patch('/orders/{order}', [OrderController::class, 'update'])->middleware('manager')->name('orders.update');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
+

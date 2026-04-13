@@ -65,7 +65,7 @@
                     @php($discountLineAmount = $cartItem->getAttribute('discount_line_amount'))
                     @php($hasDiscount = $baseUnitAmount !== null && $discountUnitAmount !== null && $baseUnitAmount > $discountUnitAmount)
 
-                    <article class="surface-card reveal-card p-5 sm:p-6">
+                    <article class="surface-card reveal-card p-5 sm:p-6" data-cart-item data-cart-item-id="{{ $cartItem->id }}">
                         <div class="catalog-cart-item">
                             <div class="catalog-cart-item__visual">
                                 <img
@@ -283,4 +283,5 @@
         </section>
     @endif
 @endsection
+
 

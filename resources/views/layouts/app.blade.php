@@ -13,6 +13,7 @@
         <title>{{ $metaTitle }}</title>
         <meta name="description" content="{{ $metaDescription }}">
         <meta name="theme-color" content="#163459">
+        <meta name="notifications-poll" content="{{ route('notifications.poll') }}">
 
         <link rel="canonical" href="{{ $metaUrl }}">
         <link rel="icon" type="image/png" sizes="500x506" href="{{ asset('brand/potolkovych-emblem.png') }}">
@@ -258,5 +259,6 @@
         @include('partials.support-widget')
     </body>
 </html>
+
 
 

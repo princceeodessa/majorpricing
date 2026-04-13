@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class SupportMessageController extends Controller
 {
-    public function storeForClient(Request $request): RedirectResponse
+    public function storeForClient(Request $request): RedirectResponse|JsonResponse
     {
         $client = $request->user()->loadMissing('manager');
 
@@ -26,6 +26,13 @@ class SupportMessageController extends Controller
             'sender_id' => $client->id,
             'message' => trim($validated['message']),
         ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'Сообщение менеджеру отправлено.',
+                'sentAt' => now()->format('d.m.Y H:i'),
+            ]);
+        }
 
         return redirect()
             ->to($request->headers->get('referer') ?: route('account.show'))
@@ -66,3 +73,4 @@ class SupportMessageController extends Controller
             ->with('status', 'Ответ клиенту отправлен.');
     }
 }
+

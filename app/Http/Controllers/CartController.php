@@ -101,7 +101,7 @@ class CartController extends Controller
         return $this->cartMutationResponse($request, $product, 0, 'Товар удален из корзины.');
     }
 
-    public function update(Request $request, CartItem $cartItem): RedirectResponse
+    public function update(Request $request, CartItem $cartItem): RedirectResponse|JsonResponse
     {
         $this->ensureOwner($request, $cartItem);
 
@@ -112,6 +112,27 @@ class CartController extends Controller
         $cartItem->update([
             'quantity' => (int) $validated['quantity'],
         ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            $paymentMethod = $this->normalizePaymentMethod($request->input('payment_method'));
+            [$cartItems, $summary] = $this->resolveCartState($request->user(), $paymentMethod);
+
+            $resolvedItem = $cartItems->firstWhere('id', $cartItem->id);
+            $cartCount = (int) $cartItems->sum('quantity');
+
+            return response()->json([
+                'itemId' => $cartItem->id,
+                'quantity' => $cartItem->quantity,
+                'cartCount' => $cartCount,
+                'summary' => $summary,
+                'item' => $resolvedItem ? [
+                    'base_unit_amount' => $resolvedItem->getAttribute('base_unit_amount'),
+                    'discount_unit_amount' => $resolvedItem->getAttribute('discount_unit_amount'),
+                    'base_line_amount' => $resolvedItem->getAttribute('base_line_amount'),
+                    'discount_line_amount' => $resolvedItem->getAttribute('discount_line_amount'),
+                ] : null,
+            ]);
+        }
 
         return back()->with('status', 'Количество в корзине обновлено.');
     }
@@ -316,3 +337,5 @@ class CartController extends Controller
         return back()->with('status', $message);
     }
 }
+
+

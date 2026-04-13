@@ -1,4 +1,4 @@
-import './bootstrap';
+﻿import './bootstrap';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -28,14 +28,14 @@ const syncFavoriteForms = (productId, favorited, favoritesCount, storeUrl, destr
             return;
         }
 
-        const ariaLabel = favorited ? 'Убрать из избранного' : 'Добавить в избранное';
+        const ariaLabel = favorited ? 'РЈР±СЂР°С‚СЊ РёР· РёР·Р±СЂР°РЅРЅРѕРіРѕ' : 'Р”РѕР±Р°РІРёС‚СЊ РІ РёР·Р±СЂР°РЅРЅРѕРµ';
 
         button.classList.toggle('is-active', favorited);
         button.setAttribute('aria-label', ariaLabel);
         button.setAttribute('title', ariaLabel);
 
         if (label) {
-            label.textContent = favorited ? 'В избранном' : 'В избранное';
+            label.textContent = favorited ? 'Р’ РёР·Р±СЂР°РЅРЅРѕРј' : 'Р’ РёР·Р±СЂР°РЅРЅРѕРµ';
         }
     });
 
@@ -711,7 +711,7 @@ const setupInfiniteFeeds = () => {
             }
         };
 
-        const showFallback = (label = 'Показать еще') => {
+        const showFallback = (label = 'РџРѕРєР°Р·Р°С‚СЊ РµС‰Рµ') => {
             if (button instanceof HTMLButtonElement) {
                 button.textContent = label;
                 button.classList.remove('hidden');
@@ -771,7 +771,7 @@ const setupInfiniteFeeds = () => {
                     if (observer) {
                         requestAnimationFrame(() => observer.observe(trigger));
                     } else {
-                        showFallback('Показать еще');
+                        showFallback('РџРѕРєР°Р·Р°С‚СЊ РµС‰Рµ');
                     }
 
                     return;
@@ -780,7 +780,7 @@ const setupInfiniteFeeds = () => {
                 stopFeed();
             } catch (error) {
                 setLoadingState(false);
-                showFallback('Повторить загрузку');
+                showFallback('РџРѕРІС‚РѕСЂРёС‚СЊ Р·Р°РіСЂСѓР·РєСѓ');
             }
         };
 
@@ -803,7 +803,7 @@ const setupInfiniteFeeds = () => {
 
             observer.observe(trigger);
         } else {
-            showFallback('Показать еще');
+            showFallback('РџРѕРєР°Р·Р°С‚СЊ РµС‰Рµ');
         }
     });
 };
@@ -872,6 +872,76 @@ const setupSupportWidget = () => {
         }
     });
 
+    const form = widget.querySelector('form');
+    const submitButton = form?.querySelector('button[type="submit"]');
+
+    if (form instanceof HTMLFormElement) {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (!(textarea instanceof HTMLTextAreaElement)) {
+                return;
+            }
+
+            const message = textarea.value.trim();
+            if (!message) {
+                return;
+            }
+
+            if (submitButton instanceof HTMLButtonElement) {
+                submitButton.disabled = true;
+            }
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: formData,
+                    credentials: 'same-origin',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Support message failed');
+                }
+
+                const payload = await response.json();
+                const thread = body instanceof HTMLElement ? body : null;
+
+                if (thread) {
+                    const wrapper = document.createElement('article');
+                    wrapper.className = 'catalog-support-widget__message is-own';
+
+                    wrapper.innerHTML = `
+                        <div class="catalog-support-widget__bubble">
+                            <p>${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+                            <footer>
+                                <span>Вы</span>
+                                <time>${payload.sentAt || ''}</time>
+                            </footer>
+                        </div>
+                    `;
+
+                    const empty = thread.querySelector('.catalog-support-widget__empty');
+                    empty?.remove();
+                    thread.append(wrapper);
+                    syncBodyScroll();
+                }
+
+                textarea.value = '';
+            } catch (error) {
+                pushToast('Ошибка', 'Сообщение не отправлено. Попробуйте еще раз.');
+            } finally {
+                if (submitButton instanceof HTMLButtonElement) {
+                    submitButton.disabled = false;
+                }
+            }
+        });
+    }
     if (widget.dataset.supportWidgetDefaultOpen === '1') {
         openWidget();
     } else {
@@ -883,13 +953,13 @@ const formatRubles = (amount) => {
     const value = Number.parseFloat(`${amount ?? ''}`);
 
     if (!Number.isFinite(value)) {
-        return 'По запросу';
+        return 'РџРѕ Р·Р°РїСЂРѕСЃСѓ';
     }
 
     return `${new Intl.NumberFormat('ru-RU', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-    }).format(value)} ₽`;
+    }).format(value)} в‚Ѕ`;
 };
 
 const setupCartPaymentModes = () => {
@@ -913,7 +983,7 @@ const setupCartPaymentModes = () => {
 
         scope.querySelectorAll('[data-cart-price-label]').forEach((node) => {
             if (node instanceof HTMLElement) {
-                node.textContent = isCash ? 'Со скидкой' : 'Без скидки';
+                node.textContent = isCash ? 'РЎРѕ СЃРєРёРґРєРѕР№' : 'Р‘РµР· СЃРєРёРґРєРё';
             }
         });
 
@@ -933,7 +1003,7 @@ const setupCartPaymentModes = () => {
             }
 
             const nextAmount = isCash ? node.dataset.discountTotal : node.dataset.baseTotal;
-            node.textContent = `Итого: ${formatRubles(nextAmount)}`;
+            node.textContent = `РС‚РѕРіРѕ: ${formatRubles(nextAmount)}`;
         });
 
         scope.querySelectorAll('[data-cart-compare-price]').forEach((node) => {
@@ -953,7 +1023,7 @@ const setupCartPaymentModes = () => {
 
         scope.querySelectorAll('.catalog-cart-item__payment-note').forEach((node) => {
             if (node instanceof HTMLElement) {
-                node.textContent = isCash ? 'Наличный расчет' : 'Безналичный расчет';
+                node.textContent = isCash ? 'РќР°Р»РёС‡РЅС‹Р№ СЂР°СЃС‡РµС‚' : 'Р‘РµР·РЅР°Р»РёС‡РЅС‹Р№ СЂР°СЃС‡РµС‚';
             }
         });
     };
@@ -962,59 +1032,293 @@ const setupCartPaymentModes = () => {
     sync();
 };
 
-const setupCartQuantityAutosubmit = () => {
-    const timers = new WeakMap();
+const setupCartInlineUpdates = () => {
+    const scope = document.querySelector('[data-cart-payment-scope]');
 
-    const scheduleSubmit = (form) => {
+    if (!(scope instanceof HTMLElement)) {
+        return;
+    }
+
+    const getPaymentMethod = () => {
+        const selected = scope.querySelector('[data-cart-payment-method]:checked');
+        return selected instanceof HTMLInputElement ? selected.value : 'bank_transfer';
+    };
+
+    const updateSummary = (summary) => {
+        if (!summary || typeof summary !== 'object') {
+            return;
+        }
+
+        const setText = (selector, value) => {
+            scope.querySelectorAll(selector).forEach((node) => {
+                if (node instanceof HTMLElement) {
+                    node.textContent = `${value}`;
+                }
+            });
+        };
+
+        if (summary.items_count !== undefined) {
+            setText('[data-cart-items-count]', summary.items_count);
+        }
+
+        if (summary.total_quantity !== undefined) {
+            setText('[data-cart-total-quantity]', summary.total_quantity);
+        }
+
+        if (summary.priced_items_count !== undefined) {
+            setText('[data-cart-priced-count]', summary.priced_items_count);
+        }
+
+        if (summary.unpriced_items_count !== undefined) {
+            setText('[data-cart-unpriced-count]', summary.unpriced_items_count);
+        }
+
+        scope.querySelectorAll('[data-cart-hero-total], [data-cart-summary-total]').forEach((node) => {
+            if (!(node instanceof HTMLElement)) {
+                return;
+            }
+
+            const nextAmount = summary.payment_method === 'cash'
+                ? summary.discount_total_amount
+                : summary.base_total_amount;
+            node.textContent = formatRubles(nextAmount);
+        });
+    };
+
+    const updateItemPricing = (itemRoot, payload) => {
+        if (!(itemRoot instanceof HTMLElement) || !payload || typeof payload !== 'object') {
+            return;
+        }
+
+        const paymentMethod = getPaymentMethod();
+        const isCash = paymentMethod === 'cash';
+
+        const unit = itemRoot.querySelector('[data-cart-unit-price]');
+        const line = itemRoot.querySelector('[data-cart-line-total]');
+        const compare = itemRoot.querySelector('[data-cart-compare-price]');
+
+        if (unit instanceof HTMLElement) {
+            if (payload.base_unit_amount !== undefined) {
+                unit.dataset.basePrice = `${payload.base_unit_amount ?? ''}`;
+            }
+            if (payload.discount_unit_amount !== undefined) {
+                unit.dataset.discountPrice = `${payload.discount_unit_amount ?? ''}`;
+            }
+
+            const nextAmount = isCash ? unit.dataset.discountPrice : unit.dataset.basePrice;
+            unit.textContent = formatRubles(nextAmount);
+            unit.classList.toggle('catalog-cart-item__price-value--accent', isCash);
+        }
+
+        if (line instanceof HTMLElement) {
+            if (payload.base_line_amount !== undefined) {
+                line.dataset.baseTotal = `${payload.base_line_amount ?? ''}`;
+            }
+            if (payload.discount_line_amount !== undefined) {
+                line.dataset.discountTotal = `${payload.discount_line_amount ?? ''}`;
+            }
+
+            const nextAmount = isCash ? line.dataset.discountTotal : line.dataset.baseTotal;
+            line.textContent = `Итого: ${formatRubles(nextAmount)}`;
+        }
+
+        if (compare instanceof HTMLElement) {
+            compare.classList.toggle('hidden', !isCash);
+        }
+
+        itemRoot.querySelectorAll('[data-cart-price-label]').forEach((node) => {
+            if (node instanceof HTMLElement) {
+                node.textContent = isCash ? 'Со скидкой' : 'Без скидки';
+            }
+        });
+    };
+
+    const sendUpdate = async (form) => {
         if (!(form instanceof HTMLFormElement)) {
             return;
         }
 
+        const itemRoot = form.closest('[data-cart-item]');
+        const formData = new FormData(form);
+        formData.append('payment_method', getPaymentMethod());
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData,
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('Cart update failed');
+            }
+
+            const payload = await response.json();
+
+            if (payload.cartCount !== undefined) {
+                document.querySelectorAll('[data-cart-count]').forEach((node) => {
+                    node.textContent = `${payload.cartCount}`;
+                });
+            }
+
+            if (payload.item && itemRoot) {
+                updateItemPricing(itemRoot, payload.item);
+            }
+
+            if (payload.summary) {
+                updateSummary(payload.summary);
+            }
+        } catch (error) {
+            pushToast('Ошибка', 'Не удалось обновить корзину. Проверьте соединение.');
+        }
+    };
+
+    const timers = new WeakMap();
+
+    const schedule = (form) => {
         const existing = timers.get(form);
         if (existing) {
             clearTimeout(existing);
         }
-
-        const timeout = window.setTimeout(() => {
-            if (typeof form.requestSubmit === 'function') {
-                form.requestSubmit();
-            } else {
-                HTMLFormElement.prototype.submit.call(form);
-            }
-        }, 250);
-
+        const timeout = window.setTimeout(() => sendUpdate(form), 180);
         timers.set(form, timeout);
     };
 
-    document.addEventListener('click', (event) => {
+    scope.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement) || !form.matches('[data-cart-qty-form]')) {
+            return;
+        }
+
+        event.preventDefault();
+        schedule(form);
+    });
+
+    scope.addEventListener('click', (event) => {
         const button = event.target instanceof Element
             ? event.target.closest('[data-qty-dec], [data-qty-inc]')
             : null;
-
         if (!(button instanceof HTMLElement)) {
             return;
         }
 
         const form = button.closest('[data-cart-qty-form]');
         if (form instanceof HTMLFormElement) {
-            scheduleSubmit(form);
+            schedule(form);
         }
     });
 
-    document.addEventListener('change', (event) => {
+    scope.addEventListener('change', (event) => {
         const input = event.target;
-
         if (!(input instanceof HTMLInputElement) || !input.matches('[data-qty-input]')) {
             return;
         }
 
         const form = input.closest('[data-cart-qty-form]');
         if (form instanceof HTMLFormElement) {
-            scheduleSubmit(form);
+            schedule(form);
         }
     });
 };
+const escapeHtml = (value) => `${value ?? ''}`
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+const pushToast = (title, body) => {
+    const toast = document.createElement('div');
+    toast.className = 'catalog-toast';
+    toast.setAttribute('data-toast', '');
 
+    toast.innerHTML = `
+        <div class="catalog-toast__content">
+            <strong>${escapeHtml(title)}</strong>
+            <p>${escapeHtml(body)}</p>
+        </div>
+        <button type="button" class="catalog-toast__close" data-toast-close aria-label="Закрыть">&times;</button>
+    `;
+
+    document.body.append(toast);
+
+    window.setTimeout(() => {
+        toast.remove();
+    }, 6500);
+};
+
+const setupNotificationsPoller = () => {
+    const meta = document.querySelector('meta[name="notifications-poll"]');
+    if (!(meta instanceof HTMLMetaElement) || !meta.content) {
+        return;
+    }
+
+    const url = meta.content;
+    const messageKey = 'potolkovych:lastMessageAt';
+    const orderKey = 'potolkovych:lastOrderAt';
+
+    let lastMessageAt = window.localStorage.getItem(messageKey);
+    let lastOrderAt = window.localStorage.getItem(orderKey);
+
+    const poll = async (initial = false) => {
+        const params = new URLSearchParams();
+        if (lastMessageAt) {
+            params.set('since_message', lastMessageAt);
+        }
+        if (lastOrderAt) {
+            params.set('since_order', lastOrderAt);
+        }
+
+        try {
+            const response = await fetch(`${url}?${params.toString()}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+
+            if (!lastMessageAt && data.latest_message_at) {
+                lastMessageAt = data.latest_message_at;
+                window.localStorage.setItem(messageKey, lastMessageAt);
+            } else if (data.message && data.message.created_at) {
+                if (!initial) {
+                    const countLabel = data.new_messages_count > 1 ? ` (${data.new_messages_count})` : '';
+                    pushToast('Новое сообщение' + countLabel, data.message.preview || 'Откройте чат с менеджером.');
+                }
+                lastMessageAt = data.message.created_at;
+                window.localStorage.setItem(messageKey, lastMessageAt);
+            }
+
+            if (!lastOrderAt && data.latest_order_at) {
+                lastOrderAt = data.latest_order_at;
+                window.localStorage.setItem(orderKey, lastOrderAt);
+            } else if (data.order && data.order.updated_at) {
+                if (!initial) {
+                    const number = data.order.number ? ` ${data.order.number}` : '';
+                    const status = data.order.status_label || data.order.status || '';
+                    pushToast('Статус заказа' + number, status ? `Новый статус: ${status}` : 'Статус заказа обновлен.');
+                }
+                lastOrderAt = data.order.updated_at;
+                window.localStorage.setItem(orderKey, lastOrderAt);
+            }
+        } catch (error) {
+            // silent
+        }
+    };
+
+    poll(true);
+    window.setInterval(() => poll(false), 20000);
+};
 const setupToasts = () => {
     document.addEventListener('click', (event) => {
         const button = event.target instanceof Element
@@ -1051,8 +1355,8 @@ const setupAccountRoleForms = () => {
 
             if (heading instanceof HTMLElement) {
                 heading.textContent = role === 'manager'
-                    ? (form.dataset.managerTitle || 'Создать менеджера')
-                    : (form.dataset.clientTitle || 'Создать клиента');
+                    ? (form.dataset.managerTitle || 'РЎРѕР·РґР°С‚СЊ РјРµРЅРµРґР¶РµСЂР°')
+                    : (form.dataset.clientTitle || 'РЎРѕР·РґР°С‚СЊ РєР»РёРµРЅС‚Р°');
             }
 
             if (description instanceof HTMLElement) {
@@ -1063,8 +1367,8 @@ const setupAccountRoleForms = () => {
 
             if (submit instanceof HTMLElement) {
                 submit.textContent = role === 'manager'
-                    ? (form.dataset.managerSubmit || 'Создать менеджера')
-                    : (form.dataset.clientSubmit || 'Создать клиента');
+                    ? (form.dataset.managerSubmit || 'РЎРѕР·РґР°С‚СЊ РјРµРЅРµРґР¶РµСЂР°')
+                    : (form.dataset.clientSubmit || 'РЎРѕР·РґР°С‚СЊ РєР»РёРµРЅС‚Р°');
             }
 
             presetButtons.forEach((button) => {
@@ -1118,10 +1422,25 @@ document.addEventListener('DOMContentLoaded', () => {
     setupRepeatables();
     setupAccountRoleForms();
     setupCartPaymentModes();
-    setupCartQuantityAutosubmit();
+    setupCartInlineUpdates();
     setupInfiniteFeeds();
     setupSupportWidget();
     setupToasts();
+    setupNotificationsPoller();
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
