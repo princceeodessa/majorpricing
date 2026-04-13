@@ -36,7 +36,7 @@ class AccountController extends Controller
 
         if ($user->canManageClients()) {
             $managedUsers = $user->visibleClients()
-                ->with('addresses')
+                ->with(['addresses', 'manager'])
                 ->withCount('orders')
                 ->get();
 

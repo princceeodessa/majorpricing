@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\RegistrationRequest;
 use App\Models\SupportMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,14 +43,15 @@ class AccountPageTest extends TestCase
         $this->actingAs($user)
             ->get('/account')
             ->assertOk()
-            ->assertSee('Профиль клиента')
-            ->assertSee('Ваш менеджер')
+            ->assertSee('Личный кабинет')
+            ->assertSee('Менеджер')
             ->assertSee('Мария Менеджер')
             ->assertSee('@manager_major')
-            ->assertSee('Вопрос менеджеру')
+            ->assertSee('Открыть чат с менеджером')
             ->assertSee('Добрый день, подскажите адрес разгрузки.')
-            ->assertSee('Адреса для заявок')
-            ->assertDontSee('Добавление пользователя');
+            ->assertSee('Данные профиля')
+            ->assertSee('Адреса')
+            ->assertDontSee('Создать менеджера');
     }
 
     public function test_regular_user_can_update_profile_contacts(): void
@@ -156,10 +158,47 @@ class AccountPageTest extends TestCase
         $this->actingAs($manager)
             ->get('/account')
             ->assertOk()
-            ->assertSee('Мои клиенты')
+            ->assertSee('Клиенты и заявки')
+            ->assertSee('Создать клиента')
             ->assertSee('Клиент А')
             ->assertSee('Открыть чат')
             ->assertDontSee('Когда сможете подтвердить заявку?')
             ->assertDontSee('Клиент Б');
+    }
+
+    public function test_admin_sees_manager_creation_ui_and_pending_registration_requests(): void
+    {
+        $admin = User::factory()->create([
+            'name' => 'Администратор',
+            'login' => 'admin-demo',
+            'email' => 'admin-demo@example.com',
+            'is_admin' => true,
+        ]);
+
+        User::factory()->create([
+            'name' => 'Менеджер Каталога',
+            'login' => 'manager-admin-view',
+            'email' => 'manager-admin-view@example.com',
+            'is_manager' => true,
+        ]);
+
+        RegistrationRequest::query()->create([
+            'name' => 'Новый партнер',
+            'company' => 'ООО Новый партнер',
+            'login' => 'new-partner',
+            'email' => 'new-partner@example.com',
+            'password' => 'StrongPass123',
+            'status' => RegistrationRequest::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('Панель администратора')
+            ->assertSee('Создать клиента')
+            ->assertSee('Создать менеджера')
+            ->assertSee('Заявки на подтверждение')
+            ->assertSee('Новый партнер')
+            ->assertSee('Менеджеры');
     }
 }

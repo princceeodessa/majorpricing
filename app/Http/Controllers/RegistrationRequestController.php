@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class RegistrationRequestController extends Controller
 {
@@ -185,10 +186,22 @@ class RegistrationRequestController extends Controller
 
         $managerId = (int) $managerId;
 
-        abort_unless(
-            User::query()->whereKey($managerId)->where('is_manager', true)->exists(),
-            422
-        );
+        if ($managerId < 1) {
+            throw ValidationException::withMessages([
+                'manager_id' => 'Для заявки нужно выбрать менеджера.',
+            ]);
+        }
+
+        $exists = User::query()
+            ->whereKey($managerId)
+            ->where('is_manager', true)
+            ->exists();
+
+        if (! $exists) {
+            throw ValidationException::withMessages([
+                'manager_id' => 'Выберите действующего менеджера.',
+            ]);
+        }
 
         return $managerId;
     }

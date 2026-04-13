@@ -37,8 +37,7 @@ class CartAndOrdersTest extends TestCase
             ->get(route('cart.index'))
             ->assertOk()
             ->assertSeeText('Оформление заказа')
-            ->assertSeeText('Подтверждаю заявку')
-            ->assertDontSeeText('Открыть профиль');
+            ->assertSeeText('Подтверждаю заявку');
     }
 
     public function test_user_can_manage_product_card_cart_asynchronously(): void
@@ -134,6 +133,7 @@ class CartAndOrdersTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'user_id' => $user->id,
             'status' => 'new',
+            'payment_method' => 'bank_transfer',
             'items_count' => 1,
             'price_profile_name' => null,
             'customer_name' => 'Иван Клиент',
@@ -148,15 +148,6 @@ class CartAndOrdersTest extends TestCase
             'product_title' => $product->title,
             'quantity' => 2,
         ]);
-        $this->assertDatabaseHas('users', [
-            'id' => $user->id,
-            'name' => 'Иван Клиент',
-            'company' => 'ООО Объект',
-            'contact_person' => 'Алексей',
-            'phone' => '+7 999 111-22-33',
-            'telegram' => '@majorbuyer',
-            'delivery_address' => 'Саратов, ул. Тестовая, 5',
-        ]);
 
         $order = Order::query()->firstOrFail();
 
@@ -166,6 +157,64 @@ class CartAndOrdersTest extends TestCase
             ->assertSeeText($order->number)
             ->assertSeeText($product->title)
             ->assertSeeText('Проверить наличие на складе');
+    }
+
+    public function test_cart_uses_base_price_by_default_and_cash_checkout_applies_discount_price(): void
+    {
+        [$user, $product] = $this->createUserAndProduct(
+            priceLabel: Product::primaryPublicPriceLabel(),
+            profileColumn: 9,
+            unitPrice: 1854,
+        );
+
+        ProductPrice::query()->create([
+            'product_id' => $product->id,
+            'column_index' => 10,
+            'label' => Product::comparePublicPriceLabel(),
+            'display_value' => number_format(2068, 2, ',', ''),
+            'min_amount' => 2068,
+        ]);
+
+        CartItem::query()->create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'quantity' => 2,
+        ]);
+
+        $address = UserAddress::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Основной объект',
+            'address' => 'Саратов, ул. Монтажная, 7',
+            'is_default' => true,
+            'sort_order' => 0,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('cart.index'))
+            ->assertOk()
+            ->assertSeeText('Без скидки')
+            ->assertSeeText('Безналичный расчет');
+
+        $this->actingAs($user)
+            ->post(route('cart.checkout'), [
+                'user_address_id' => $address->id,
+                'payment_method' => 'cash',
+            ])
+            ->assertRedirect(route('orders.index'));
+
+        $order = Order::query()->latest('id')->firstOrFail();
+
+        $this->assertSame('cash', $order->payment_method);
+        $this->assertSame('3708.00', (string) $order->subtotal_amount);
+        $this->assertSame('3708.00', (string) $order->total_amount);
+
+        $this->assertDatabaseHas('order_items', [
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'price_label' => Product::primaryPublicPriceLabel(),
+            'unit_price' => 1854,
+            'line_total' => 3708,
+        ]);
     }
 
     public function test_manager_can_update_order_status_and_comment(): void

@@ -9208,6 +9208,10 @@ html {
 }
 
 @media (max-width: 640px) {
+    .catalog-account-role-switch {
+        grid-template-columns: 1fr;
+    }
+
     .catalog-main {
         padding-bottom: 7.75rem !important;
     }
@@ -9387,4 +9391,133 @@ html {
     .catalog-header-actions--figma {
         grid-template-columns: repeat(2, minmax(0, auto)) !important;
     }
+}
+
+.catalog-product-card__meta--in-stock,
+.catalog-product-price-block__availability--in-stock {
+    color: #0f766e !important;
+    font-weight: 700 !important;
+}
+
+.catalog-product-card__meta--attention,
+.catalog-product-price-block__availability--attention {
+    color: #c2410c !important;
+    font-weight: 700 !important;
+}
+
+.catalog-cart-item__compare-price {
+    margin: 0 0 0.35rem;
+    color: #94a3b8;
+    font-size: 0.92rem;
+    font-weight: 600;
+    text-decoration: line-through;
+}
+
+.catalog-cart-item__price-value--accent {
+    color: var(--brand-primary) !important;
+}
+
+.catalog-cart-item__payment-note {
+    margin-top: 0.45rem;
+    color: #64748b;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.catalog-payment-options {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.catalog-payment-option {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.9rem;
+    align-items: flex-start;
+    border: 1px solid rgba(226, 228, 234, 0.96);
+    border-radius: 1.2rem;
+    background: rgba(255, 255, 255, 0.96);
+    padding: 0.9rem 1rem;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.catalog-payment-option input {
+    margin-top: 0.2rem;
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--brand-primary);
+}
+
+.catalog-payment-option__content {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.catalog-payment-option__content strong {
+    color: #111216;
+    font-size: 0.96rem;
+    font-weight: 700;
+}
+
+.catalog-payment-option__content small {
+    color: #64748b;
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.catalog-payment-option:has(input:checked) {
+    border-color: rgba(47, 111, 159, 0.42);
+    box-shadow: 0 0 0 4px rgba(47, 111, 159, 0.12);
+    background: rgba(239, 246, 255, 0.82);
+}
+
+.catalog-account-role-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.catalog-account-role-switch__button {
+    display: grid;
+    gap: 0.35rem;
+    align-content: start;
+    min-height: 100%;
+    padding: 1rem 1.05rem;
+    border: 1px solid rgba(226, 232, 240, 0.92);
+    border-radius: 1.35rem;
+    background: rgba(255, 255, 255, 0.94);
+    text-align: left;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
+}
+
+.catalog-account-role-switch__button strong {
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.catalog-account-role-switch__button small {
+    color: #64748b;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.catalog-account-role-switch__button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(47, 111, 159, 0.32);
+    box-shadow: 0 20px 34px -30px rgba(15, 23, 42, 0.18);
+}
+
+.catalog-account-role-switch__button.is-active {
+    border-color: rgba(22, 52, 89, 0.42);
+    background: rgba(239, 246, 255, 0.88);
+    box-shadow: 0 0 0 4px rgba(22, 52, 89, 0.08);
+}
+
+.catalog-account-role-switch__eyebrow {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
 }

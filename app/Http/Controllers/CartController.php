@@ -18,6 +18,9 @@ use Illuminate\Validation\Rule;
 
 class CartController extends Controller
 {
+    private const PAYMENT_METHOD_BANK_TRANSFER = 'bank_transfer';
+    private const PAYMENT_METHOD_CASH = 'cash';
+
     public function __construct(
         private readonly ErpOrderSyncService $erpOrderSyncService,
     ) {
@@ -27,7 +30,9 @@ class CartController extends Controller
     {
         $request->user()->loadMissing('addresses');
 
-        [$cartItems, $summary] = $this->resolveCartState($request->user());
+        $selectedPaymentMethod = $this->normalizePaymentMethod(old('payment_method'));
+        [$cartItems, $summary] = $this->resolveCartState($request->user(), $selectedPaymentMethod);
+
         $selectedAddress = old('user_address_id')
             ? $request->user()->addresses->firstWhere('id', (int) old('user_address_id'))
             : $request->user()->addresses->firstWhere('is_default', true);
@@ -42,6 +47,8 @@ class CartController extends Controller
             'user' => $request->user(),
             'userAddresses' => $request->user()->addresses,
             'selectedAddressId' => $selectedAddress?->id,
+            'selectedPaymentMethod' => $selectedPaymentMethod,
+            'paymentMethods' => $this->paymentMethods(),
         ]);
     }
 
@@ -128,6 +135,7 @@ class CartController extends Controller
                     fn ($query) => $query->where('user_id', $request->user()->id)
                 ),
             ],
+            'payment_method' => ['nullable', Rule::in(array_keys($this->paymentMethods()))],
             'comment' => ['nullable', 'string', 'max:1500'],
         ], [
             'user_address_id.required' => 'Выберите адрес доставки из профиля.',
@@ -137,7 +145,8 @@ class CartController extends Controller
         $user = $request->user();
         $user->loadMissing('addresses');
 
-        [$cartItems, $summary] = $this->resolveCartState($user);
+        $paymentMethod = $this->normalizePaymentMethod($validated['payment_method'] ?? null);
+        [$cartItems, $summary] = $this->resolveCartState($user, $paymentMethod);
 
         if ($cartItems->isEmpty()) {
             return redirect()->route('cart.index')->with('status', 'Корзина пока пуста.');
@@ -161,10 +170,11 @@ class CartController extends Controller
             'customer_delivery_address' => $selectedAddress->formattedLabel(),
         ];
 
-        $order = DB::transaction(function () use ($user, $validated, $cartItems, $summary, $contactSnapshot): Order {
+        $order = DB::transaction(function () use ($user, $validated, $cartItems, $summary, $contactSnapshot, $paymentMethod): Order {
             $order = Order::query()->create([
                 'user_id' => $user->id,
                 'status' => 'new',
+                'payment_method' => $paymentMethod,
                 'integration_status' => 'pending',
                 'items_count' => (int) $summary['items_count'],
                 'subtotal_amount' => $summary['total_amount'],
@@ -218,9 +228,9 @@ class CartController extends Controller
     }
 
     /**
-     * @return array{0: EloquentCollection<int, CartItem>, 1: array{items_count:int,total_quantity:int,total_amount:float,priced_items_count:int,unpriced_items_count:int}}
+     * @return array{0: EloquentCollection<int, CartItem>, 1: array{items_count:int,total_quantity:int,total_amount:float,base_total_amount:float,discount_total_amount:float,payment_method:string,priced_items_count:int,unpriced_items_count:int}}
      */
-    private function resolveCartState(User $user): array
+    private function resolveCartState(User $user, string $paymentMethod = self::PAYMENT_METHOD_BANK_TRANSFER): array
     {
         /** @var EloquentCollection<int, CartItem> $cartItems */
         $cartItems = CartItem::query()
@@ -230,25 +240,56 @@ class CartController extends Controller
             ->latest('id')
             ->get();
 
-        $cartItems->each(function (CartItem $cartItem): void {
-            $price = $cartItem->product?->priceForProfile();
-            $unitAmount = $price?->min_amount !== null ? (float) $price->min_amount : null;
-            $lineAmount = $unitAmount !== null ? round($unitAmount * $cartItem->quantity, 2) : null;
+        $cartItems->each(function (CartItem $cartItem) use ($paymentMethod): void {
+            $discountPrice = $cartItem->product?->publicPrice();
+            $basePrice = $cartItem->product?->priceForPaymentMethod(self::PAYMENT_METHOD_BANK_TRANSFER);
+            $resolvedPrice = $cartItem->product?->priceForPaymentMethod($paymentMethod);
 
-            $cartItem->setAttribute('resolved_price', $price);
-            $cartItem->setAttribute('resolved_unit_amount', $unitAmount);
-            $cartItem->setAttribute('resolved_line_amount', $lineAmount);
+            $discountUnitAmount = $discountPrice?->min_amount !== null ? (float) $discountPrice->min_amount : null;
+            $baseUnitAmount = $basePrice?->min_amount !== null ? (float) $basePrice->min_amount : null;
+            $resolvedUnitAmount = $resolvedPrice?->min_amount !== null ? (float) $resolvedPrice->min_amount : null;
+
+            $cartItem->setAttribute('discount_price', $discountPrice);
+            $cartItem->setAttribute('base_price', $basePrice);
+            $cartItem->setAttribute('discount_unit_amount', $discountUnitAmount);
+            $cartItem->setAttribute('base_unit_amount', $baseUnitAmount);
+            $cartItem->setAttribute('discount_line_amount', $discountUnitAmount !== null ? round($discountUnitAmount * $cartItem->quantity, 2) : null);
+            $cartItem->setAttribute('base_line_amount', $baseUnitAmount !== null ? round($baseUnitAmount * $cartItem->quantity, 2) : null);
+            $cartItem->setAttribute('resolved_price', $resolvedPrice);
+            $cartItem->setAttribute('resolved_unit_amount', $resolvedUnitAmount);
+            $cartItem->setAttribute('resolved_line_amount', $resolvedUnitAmount !== null ? round($resolvedUnitAmount * $cartItem->quantity, 2) : null);
         });
 
         $summary = [
             'items_count' => $cartItems->count(),
             'total_quantity' => (int) $cartItems->sum('quantity'),
             'total_amount' => round((float) $cartItems->sum(fn (CartItem $item): float => (float) ($item->getAttribute('resolved_line_amount') ?? 0)), 2),
+            'base_total_amount' => round((float) $cartItems->sum(fn (CartItem $item): float => (float) ($item->getAttribute('base_line_amount') ?? 0)), 2),
+            'discount_total_amount' => round((float) $cartItems->sum(fn (CartItem $item): float => (float) ($item->getAttribute('discount_line_amount') ?? 0)), 2),
+            'payment_method' => $paymentMethod,
             'priced_items_count' => $cartItems->filter(fn (CartItem $item): bool => $item->getAttribute('resolved_line_amount') !== null)->count(),
             'unpriced_items_count' => $cartItems->filter(fn (CartItem $item): bool => $item->getAttribute('resolved_line_amount') === null)->count(),
         ];
 
         return [$cartItems, $summary];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function paymentMethods(): array
+    {
+        return [
+            self::PAYMENT_METHOD_BANK_TRANSFER => 'Безналичный расчет',
+            self::PAYMENT_METHOD_CASH => 'Наличный расчет',
+        ];
+    }
+
+    private function normalizePaymentMethod(?string $paymentMethod): string
+    {
+        return array_key_exists((string) $paymentMethod, $this->paymentMethods())
+            ? (string) $paymentMethod
+            : self::PAYMENT_METHOD_BANK_TRANSFER;
     }
 
     private function ensureOwner(Request $request, CartItem $cartItem): void

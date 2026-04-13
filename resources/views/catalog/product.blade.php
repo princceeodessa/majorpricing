@@ -8,7 +8,8 @@
         $comparePrice = $product->comparePrice();
         $category = $product->category;
         $unitLabel = $product->publicUnitLabel();
-        $stockSummary = $product->stockSummary();
+        $availabilityLabel = $product->availabilityLabel();
+        $availabilityTone = $product->availabilityTone();
         $fallbackImageUrl = asset('brand/product-placeholder.png');
         $imageUrl = $product->image_path ? asset($product->image_path) : $fallbackImageUrl;
         $productFacts = collect([
@@ -17,7 +18,7 @@
             ['label' => 'Код', 'value' => $product->one_c_code],
             ['label' => 'Ед. изм.', 'value' => $unitLabel],
             ['label' => 'Бренд', 'value' => $product->brand_name],
-            ['label' => 'В наличии', 'value' => $stockSummary],
+            ['label' => 'Наличие', 'value' => $availabilityLabel],
         ])->filter(fn (array $item) => filled($item['value']))->values();
         $description = trim((string) $product->description);
     @endphp
@@ -85,9 +86,9 @@
                     <p class="catalog-product-price-block__profile">{{ $price?->min_amount !== null ? 'Со скидкой' : 'Цена' }}</p>
                 </div>
 
-                @if ($stockSummary)
-                    <p class="catalog-product-price-block__availability">В наличии: {{ $stockSummary }}</p>
-                @endif
+                <p class="catalog-product-price-block__availability catalog-product-price-block__availability--{{ $availabilityTone }}">
+                    {{ $availabilityLabel }}
+                </p>
 
                 <div class="catalog-product-secondary-actions">
                     @include('partials.favorite-toggle', ['product' => $product, 'showLabel' => true, 'sizeClass' => 'catalog-favorite-form--wide'])

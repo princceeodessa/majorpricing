@@ -180,6 +180,15 @@ class Product extends Model
             : null;
     }
 
+    public function priceForPaymentMethod(?string $paymentMethod): ?ProductPrice
+    {
+        if ($paymentMethod === 'cash') {
+            return $this->publicPrice();
+        }
+
+        return $this->comparePrice() ?? $this->publicPrice();
+    }
+
     public function publicTitle(): string
     {
         $title = trim((string) $this->title);
@@ -239,6 +248,25 @@ class Product extends Model
         return $unitLabel
             ? trim($quantity.' '.mb_strtolower($unitLabel))
             : $quantity;
+    }
+
+    public function isInStock(): bool
+    {
+        $quantity = $this->stockQuantityNumber();
+
+        return $quantity !== null && $quantity > 0;
+    }
+
+    public function availabilityLabel(): string
+    {
+        return $this->isInStock()
+            ? 'В наличии'
+            : 'Обратитесь к менеджеру для уточнения наличия';
+    }
+
+    public function availabilityTone(): string
+    {
+        return $this->isInStock() ? 'in-stock' : 'attention';
     }
 
     /**

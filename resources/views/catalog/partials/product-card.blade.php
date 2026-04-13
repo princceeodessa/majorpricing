@@ -10,7 +10,8 @@
     $hasRealImage = filled($product->image_path);
     $imageUrl = $hasRealImage ? asset($product->image_path) : $fallbackImageUrl;
     $unitLabel = $product->publicUnitLabel();
-    $stockSummary = $product->stockSummary();
+    $availabilityLabel = $product->availabilityLabel();
+    $availabilityTone = $product->availabilityTone();
     $productAccents = ['#163459', '#1f4f7a', '#255f91', '#2f6f9f', '#3c7fae', '#0f2947'];
     $productAccent = $productAccents[($rootCategory?->id ?? $product->id ?? 0) % count($productAccents)];
     $cartQuantity = (int) (($cartProductQuantities[$product->id] ?? 0));
@@ -51,15 +52,9 @@
             @if (filled($detailLine))
                 <p class="catalog-product-card__description">{{ $detailLine }}</p>
             @endif
-            @if ($stockSummary || $unitLabel)
-                <p class="catalog-product-card__meta">
-                    @if ($stockSummary)
-                        <span>В наличии: {{ $stockSummary }}</span>
-                    @elseif ($unitLabel)
-                        <span>Ед. изм.: {{ mb_strtolower($unitLabel) }}</span>
-                    @endif
-                </p>
-            @endif
+            <p class="catalog-product-card__meta catalog-product-card__meta--{{ $availabilityTone }}">
+                {{ $availabilityLabel }}
+            </p>
         </div>
 
         <div class="catalog-product-card__footer">

@@ -3,13 +3,15 @@
 @section('title', 'Корзина - ПОТОЛКОВЫЧ')
 
 @section('content')
+    @php($isCashPayment = $selectedPaymentMethod === 'cash')
+
     <section class="surface-card reveal-card catalog-page-hero p-6 sm:p-8">
         <div class="catalog-page-head">
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Корзина</p>
                 <h1 class="mt-2 font-['IBM_Plex_Sans'] text-4xl font-semibold tracking-tight text-slate-950">Оформление заказа</h1>
                 <p class="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-                    Проверьте позиции, выберите один из сохраненных адресов и подтвердите заявку менеджеру.
+                    Проверьте позиции, выберите адрес доставки и тип оплаты. При оплате наличными применяется цена со скидкой.
                 </p>
             </div>
 
@@ -24,7 +26,11 @@
                 </div>
                 <div class="catalog-stat-box">
                     <span>Сумма</span>
-                    <strong>
+                    <strong
+                        data-cart-hero-total
+                        data-base-total="{{ $summary['base_total_amount'] }}"
+                        data-discount-total="{{ $summary['discount_total_amount'] }}"
+                    >
                         @if ($summary['total_amount'] > 0)
                             {{ \Illuminate\Support\Number::format($summary['total_amount'], 2, locale: 'ru') }} ₽
                         @else
@@ -45,12 +51,19 @@
             <a href="{{ route('catalog.index') }}" class="catalog-buy-button mx-auto mt-6 w-fit">Вернуться в каталог</a>
         </div>
     @else
-        <section class="catalog-cart-layout mt-6">
+        <section class="catalog-cart-layout mt-6" data-cart-payment-scope>
             <div class="space-y-4">
                 @foreach ($cartItems as $cartItem)
                     @php($product = $cartItem->product)
                     @php($unitLabel = $product?->publicUnitLabel())
                     @php($fallbackImageUrl = asset('brand/product-placeholder.png'))
+                    @php($basePrice = $cartItem->getAttribute('base_price'))
+                    @php($discountPrice = $cartItem->getAttribute('discount_price'))
+                    @php($baseUnitAmount = $cartItem->getAttribute('base_unit_amount'))
+                    @php($discountUnitAmount = $cartItem->getAttribute('discount_unit_amount'))
+                    @php($baseLineAmount = $cartItem->getAttribute('base_line_amount'))
+                    @php($discountLineAmount = $cartItem->getAttribute('discount_line_amount'))
+                    @php($hasDiscount = $baseUnitAmount !== null && $discountUnitAmount !== null && $baseUnitAmount > $discountUnitAmount)
 
                     <article class="surface-card reveal-card p-5 sm:p-6">
                         <div class="catalog-cart-item">
@@ -68,7 +81,7 @@
                                 <div>
                                     <p class="catalog-cart-item__eyebrow">{{ $product?->category?->name ?? 'Каталог' }}</p>
                                     @if ($product)
-                                            <a href="{{ route('products.show', $product) }}" class="catalog-cart-item__title">{{ $product->publicTitle() }}</a>
+                                        <a href="{{ route('products.show', $product) }}" class="catalog-cart-item__title">{{ $product->publicTitle() }}</a>
                                     @else
                                         <p class="catalog-cart-item__title">Товар из каталога</p>
                                     @endif
@@ -110,17 +123,40 @@
                             </div>
 
                             <div class="catalog-cart-item__price">
-                                <p class="catalog-cart-item__price-label">{{ $cartItem->resolved_price?->label ?? 'Цена' }}</p>
-                                @if ($cartItem->resolved_unit_amount !== null)
-                                    <p class="catalog-cart-item__price-value">
-                                        {{ \Illuminate\Support\Number::format((float) $cartItem->resolved_unit_amount, 2, locale: 'ru') }} ₽
+                                <p class="catalog-cart-item__price-label" data-cart-price-label>
+                                    {{ $isCashPayment ? 'Со скидкой' : 'Без скидки' }}
+                                </p>
+
+                                @if ($hasDiscount)
+                                    <p class="catalog-cart-item__compare-price {{ $isCashPayment ? '' : 'hidden' }}" data-cart-compare-price>
+                                        {{ \Illuminate\Support\Number::format((float) $baseUnitAmount, 2, locale: 'ru') }} ₽
                                     </p>
-                                    <p class="catalog-cart-item__line-total">
-                                        Итого: {{ \Illuminate\Support\Number::format((float) $cartItem->resolved_line_amount, 2, locale: 'ru') }} ₽
+                                @endif
+
+                                @if ($baseUnitAmount !== null || $discountUnitAmount !== null)
+                                    <p
+                                        class="catalog-cart-item__price-value {{ $isCashPayment && $hasDiscount ? 'catalog-cart-item__price-value--accent' : '' }}"
+                                        data-cart-unit-price
+                                        data-base-price="{{ $baseUnitAmount }}"
+                                        data-discount-price="{{ $discountUnitAmount }}"
+                                    >
+                                        {{ \Illuminate\Support\Number::format((float) ($isCashPayment ? ($discountUnitAmount ?? $baseUnitAmount) : ($baseUnitAmount ?? $discountUnitAmount)), 2, locale: 'ru') }} ₽
+                                    </p>
+                                    <p
+                                        class="catalog-cart-item__line-total"
+                                        data-cart-line-total
+                                        data-base-total="{{ $baseLineAmount }}"
+                                        data-discount-total="{{ $discountLineAmount }}"
+                                    >
+                                        Итого: {{ \Illuminate\Support\Number::format((float) ($isCashPayment ? ($discountLineAmount ?? $baseLineAmount) : ($baseLineAmount ?? $discountLineAmount)), 2, locale: 'ru') }} ₽
                                     </p>
                                 @else
                                     <p class="catalog-cart-item__price-value catalog-cart-item__price-value--empty">Цена по запросу</p>
                                 @endif
+
+                                <p class="catalog-cart-item__payment-note">
+                                    {{ $isCashPayment ? 'Наличный расчет' : 'Безналичный расчет' }}
+                                </p>
                             </div>
                         </div>
                     </article>
@@ -156,13 +192,39 @@
                         @endif
                         <div class="catalog-summary-row is-total">
                             <span>Итого</span>
-                            <strong>
+                            <strong
+                                data-cart-summary-total
+                                data-base-total="{{ $summary['base_total_amount'] }}"
+                                data-discount-total="{{ $summary['discount_total_amount'] }}"
+                            >
                                 @if ($summary['total_amount'] > 0)
                                     {{ \Illuminate\Support\Number::format($summary['total_amount'], 2, locale: 'ru') }} ₽
                                 @else
                                     По запросу
                                 @endif
                             </strong>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="catalog-filter-title">Тип оплаты</label>
+
+                        <div class="catalog-payment-options">
+                            @foreach ($paymentMethods as $paymentMethod => $paymentMethodLabel)
+                                <label class="catalog-payment-option">
+                                    <input
+                                        type="radio"
+                                        name="payment_method"
+                                        value="{{ $paymentMethod }}"
+                                        data-cart-payment-method
+                                        @checked($selectedPaymentMethod === $paymentMethod)
+                                    >
+                                    <span class="catalog-payment-option__content">
+                                        <strong>{{ $paymentMethodLabel }}</strong>
+                                        <small>{{ $paymentMethod === 'cash' ? 'Применяется цена со скидкой.' : 'Показывается цена без скидки.' }}</small>
+                                    </span>
+                                </label>
+                            @endforeach
                         </div>
                     </div>
 

@@ -77,4 +77,40 @@ class ManagerUserManagementTest extends TestCase
             ])
             ->assertForbidden();
     }
+
+    public function test_admin_can_create_manager(): void
+    {
+        $admin = User::factory()->create([
+            'login' => 'admin-demo',
+            'email' => 'admin-demo@example.com',
+            'is_admin' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('manager.users.store'), [
+            'account_type' => 'manager',
+            'name' => 'Новый менеджер',
+            'company' => 'ПОТОЛКОВЫЧ',
+            'phone' => '+7 999 222-33-44',
+            'messengers' => ['@manager_new'],
+            'login' => 'new_manager',
+            'email' => 'new-manager@example.com',
+            'password' => 'StrongPass123',
+            'password_confirmation' => 'StrongPass123',
+            'is_active' => '1',
+        ]);
+
+        $response
+            ->assertRedirect(route('account.show'))
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseHas('users', [
+            'name' => 'Новый менеджер',
+            'login' => 'new_manager',
+            'email' => 'new-manager@example.com',
+            'manager_id' => null,
+            'is_manager' => true,
+            'is_admin' => false,
+            'is_active' => true,
+        ]);
+    }
 }

@@ -879,6 +879,166 @@ const setupSupportWidget = () => {
     }
 };
 
+const formatRubles = (amount) => {
+    const value = Number.parseFloat(`${amount ?? ''}`);
+
+    if (!Number.isFinite(value)) {
+        return 'По запросу';
+    }
+
+    return `${new Intl.NumberFormat('ru-RU', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(value)} ₽`;
+};
+
+const setupCartPaymentModes = () => {
+    const scope = document.querySelector('[data-cart-payment-scope]');
+
+    if (!(scope instanceof HTMLElement)) {
+        return;
+    }
+
+    const paymentInputs = Array.from(scope.querySelectorAll('[data-cart-payment-method]'))
+        .filter((input) => input instanceof HTMLInputElement);
+
+    if (paymentInputs.length === 0) {
+        return;
+    }
+
+    const sync = () => {
+        const selected = paymentInputs.find((input) => input.checked);
+        const paymentMethod = selected instanceof HTMLInputElement ? selected.value : 'bank_transfer';
+        const isCash = paymentMethod === 'cash';
+
+        scope.querySelectorAll('[data-cart-price-label]').forEach((node) => {
+            if (node instanceof HTMLElement) {
+                node.textContent = isCash ? 'Со скидкой' : 'Без скидки';
+            }
+        });
+
+        scope.querySelectorAll('[data-cart-unit-price]').forEach((node) => {
+            if (!(node instanceof HTMLElement)) {
+                return;
+            }
+
+            const nextAmount = isCash ? node.dataset.discountPrice : node.dataset.basePrice;
+            node.textContent = formatRubles(nextAmount);
+            node.classList.toggle('catalog-cart-item__price-value--accent', isCash);
+        });
+
+        scope.querySelectorAll('[data-cart-line-total]').forEach((node) => {
+            if (!(node instanceof HTMLElement)) {
+                return;
+            }
+
+            const nextAmount = isCash ? node.dataset.discountTotal : node.dataset.baseTotal;
+            node.textContent = `Итого: ${formatRubles(nextAmount)}`;
+        });
+
+        scope.querySelectorAll('[data-cart-compare-price]').forEach((node) => {
+            if (node instanceof HTMLElement) {
+                node.classList.toggle('hidden', !isCash);
+            }
+        });
+
+        scope.querySelectorAll('[data-cart-hero-total], [data-cart-summary-total]').forEach((node) => {
+            if (!(node instanceof HTMLElement)) {
+                return;
+            }
+
+            const nextAmount = isCash ? node.dataset.discountTotal : node.dataset.baseTotal;
+            node.textContent = formatRubles(nextAmount);
+        });
+
+        scope.querySelectorAll('.catalog-cart-item__payment-note').forEach((node) => {
+            if (node instanceof HTMLElement) {
+                node.textContent = isCash ? 'Наличный расчет' : 'Безналичный расчет';
+            }
+        });
+    };
+
+    paymentInputs.forEach((input) => input.addEventListener('change', sync));
+    sync();
+};
+
+const setupAccountRoleForms = () => {
+    document.querySelectorAll('[data-account-role-form]').forEach((form) => {
+        if (!(form instanceof HTMLElement)) {
+            return;
+        }
+
+        const select = form.querySelector('[data-account-role-select]');
+        const heading = form.parentElement?.querySelector('[data-account-role-heading]');
+        const description = form.parentElement?.querySelector('[data-account-role-description]');
+        const submit = form.querySelector('[data-account-role-submit]');
+        const presetButtons = Array.from(form.parentElement?.querySelectorAll('[data-account-role-preset]') ?? [])
+            .filter((button) => button instanceof HTMLButtonElement);
+
+        if (!(select instanceof HTMLSelectElement)) {
+            return;
+        }
+
+        const sync = () => {
+            const role = select.value === 'manager' ? 'manager' : 'client';
+
+            if (heading instanceof HTMLElement) {
+                heading.textContent = role === 'manager'
+                    ? (form.dataset.managerTitle || 'Создать менеджера')
+                    : (form.dataset.clientTitle || 'Создать клиента');
+            }
+
+            if (description instanceof HTMLElement) {
+                description.textContent = role === 'manager'
+                    ? (form.dataset.managerDescription || '')
+                    : (form.dataset.clientDescription || '');
+            }
+
+            if (submit instanceof HTMLElement) {
+                submit.textContent = role === 'manager'
+                    ? (form.dataset.managerSubmit || 'Создать менеджера')
+                    : (form.dataset.clientSubmit || 'Создать клиента');
+            }
+
+            presetButtons.forEach((button) => {
+                const isActive = button.dataset.accountRolePreset === role;
+
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            });
+
+            form.querySelectorAll('[data-account-role-section]').forEach((section) => {
+                if (!(section instanceof HTMLElement)) {
+                    return;
+                }
+
+                const sectionRole = section.dataset.accountRoleSection ?? 'all';
+                const isVisible = sectionRole === 'all' || sectionRole === role;
+
+                section.hidden = !isVisible;
+
+                section.querySelectorAll('input, select, textarea').forEach((field) => {
+                    if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
+                        field.disabled = !isVisible;
+                    }
+                });
+            });
+        };
+
+        presetButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const role = button.dataset.accountRolePreset === 'manager' ? 'manager' : 'client';
+
+                select.value = role;
+                sync();
+            });
+        });
+
+        select.addEventListener('change', sync);
+        sync();
+    });
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     setupFavoriteToggles();
     setupPriceFilters();
@@ -889,6 +1049,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCatalogMenus();
     setupCategoryRails();
     setupRepeatables();
+    setupAccountRoleForms();
+    setupCartPaymentModes();
     setupInfiniteFeeds();
     setupSupportWidget();
 });
