@@ -9779,3 +9779,14 @@ html {
     }
 }
 
+
+@media (max-width: 640px) {
+    .catalog-body.is-inner .catalog-site-header {
+        display: none !important;
+    }
+
+    .catalog-body.is-inner .catalog-main {
+        padding-top: 0 !important;
+    }
+}
+

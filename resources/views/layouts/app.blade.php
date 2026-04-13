@@ -40,7 +40,8 @@
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
     </head>
-    <body class="catalog-body">
+    @php($isHome = request()->routeIs('catalog.index'))
+    <body class="catalog-body {{ $isHome ? 'is-home' : 'is-inner' }}">
         <div class="catalog-backdrop"></div>
 
         <div class="catalog-shell">
@@ -257,4 +258,5 @@
         @include('partials.support-widget')
     </body>
 </html>
+
 
