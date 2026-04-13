@@ -99,10 +99,17 @@
                                 </div>
 
                                 <div class="catalog-cart-item__controls">
-                                    <form action="{{ route('cart.items.update', $cartItem) }}" method="POST" class="catalog-cart-qty-form">
+                                    <form
+                                        action="{{ route('cart.items.update', $cartItem) }}"
+                                        method="POST"
+                                        class="catalog-cart-qty-form catalog-qty-control"
+                                        data-cart-qty-form
+                                        data-qty
+                                    >
                                         @csrf
                                         @method('PATCH')
 
+                                        <button type="button" class="catalog-qty-control__button" data-qty-dec>-</button>
                                         <input
                                             type="number"
                                             min="1"
@@ -110,8 +117,9 @@
                                             name="quantity"
                                             value="{{ $cartItem->quantity }}"
                                             class="catalog-clean-input"
+                                            data-qty-input
                                         >
-                                        <button type="submit" class="catalog-reset-button">Обновить</button>
+                                        <button type="button" class="catalog-qty-control__button" data-qty-inc>+</button>
                                     </form>
 
                                     <form action="{{ route('cart.items.destroy', $cartItem) }}" method="POST">
@@ -275,3 +283,4 @@
         </section>
     @endif
 @endsection
+

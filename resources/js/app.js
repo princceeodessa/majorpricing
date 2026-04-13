@@ -962,6 +962,73 @@ const setupCartPaymentModes = () => {
     sync();
 };
 
+const setupCartQuantityAutosubmit = () => {
+    const timers = new WeakMap();
+
+    const scheduleSubmit = (form) => {
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        const existing = timers.get(form);
+        if (existing) {
+            clearTimeout(existing);
+        }
+
+        const timeout = window.setTimeout(() => {
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+            } else {
+                HTMLFormElement.prototype.submit.call(form);
+            }
+        }, 250);
+
+        timers.set(form, timeout);
+    };
+
+    document.addEventListener('click', (event) => {
+        const button = event.target instanceof Element
+            ? event.target.closest('[data-qty-dec], [data-qty-inc]')
+            : null;
+
+        if (!(button instanceof HTMLElement)) {
+            return;
+        }
+
+        const form = button.closest('[data-cart-qty-form]');
+        if (form instanceof HTMLFormElement) {
+            scheduleSubmit(form);
+        }
+    });
+
+    document.addEventListener('change', (event) => {
+        const input = event.target;
+
+        if (!(input instanceof HTMLInputElement) || !input.matches('[data-qty-input]')) {
+            return;
+        }
+
+        const form = input.closest('[data-cart-qty-form]');
+        if (form instanceof HTMLFormElement) {
+            scheduleSubmit(form);
+        }
+    });
+};
+
+const setupToasts = () => {
+    document.addEventListener('click', (event) => {
+        const button = event.target instanceof Element
+            ? event.target.closest('[data-toast-close]')
+            : null;
+
+        if (!(button instanceof HTMLElement)) {
+            return;
+        }
+
+        const toast = button.closest('[data-toast]');
+        toast?.remove();
+    });
+};
 const setupAccountRoleForms = () => {
     document.querySelectorAll('[data-account-role-form]').forEach((form) => {
         if (!(form instanceof HTMLElement)) {
@@ -1051,6 +1118,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupRepeatables();
     setupAccountRoleForms();
     setupCartPaymentModes();
+    setupCartQuantityAutosubmit();
     setupInfiniteFeeds();
     setupSupportWidget();
+    setupToasts();
 });
+
+

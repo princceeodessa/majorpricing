@@ -184,15 +184,13 @@
             @endif
 
             <main class="catalog-container catalog-main pb-16">
-                @if (session('status'))
-                    <div class="catalog-flash mb-4">
-                        {{ session('status') }}
-                    </div>
-                @endif
-
                 @if ($errors->any())
-                    <div class="catalog-flash catalog-flash--error mb-4">
-                        {{ $errors->first() }}
+                    <div class="catalog-toast catalog-toast--error" data-toast>
+                        <div class="catalog-toast__content">
+                            <strong>Ошибка</strong>
+                            <p>{{ $errors->first() }}</p>
+                        </div>
+                        <button type="button" class="catalog-toast__close" data-toast-close aria-label="Закрыть">?</button>
                     </div>
                 @endif
 
@@ -259,3 +257,4 @@
         @include('partials.support-widget')
     </body>
 </html>
+
