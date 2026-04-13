@@ -8,6 +8,7 @@ use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ManagerChatController;
 use App\Http\Controllers\NotificationsController;
 use App\Http\Controllers\OneCExchangeController;
@@ -18,7 +19,10 @@ use App\Http\Controllers\SupportMessageController;
 use App\Http\Controllers\UserAddressController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('guest')->group(function (): void {
+Route::get('/', [HomeController::class, 'show'])->name('home');
+Route::get('/sitemap.xml', [HomeController::class, 'sitemap'])->name('sitemap');
+
+Route::middleware(['guest', 'noindex'])->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::get('/register-request', [RegistrationRequestController::class, 'create'])->name('registration-requests.create');
@@ -29,7 +33,7 @@ Route::match(['GET', 'POST'], '/1c/exchange', OneCExchangeController::class)->na
 Route::match(['GET', 'POST'], '/1c_exchange.php', OneCExchangeController::class);
 
 Route::middleware('auth')->group(function (): void {
-    Route::get('/', [CatalogController::class, 'index'])->name('catalog.index');
+    Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
     Route::patch('/account', [AccountController::class, 'update'])->name('account.update');
     Route::post('/account/support/messages', [SupportMessageController::class, 'storeForClient'])->name('account.support.messages.store');

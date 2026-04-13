@@ -1,16 +1,16 @@
 {
-    "name": "ПОТОЛКОВЫЧ",
-    "short_name": "ПОТОЛКОВЫЧ",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#203f68",
-    "icons": [
-        {
-            "src": "/brand/potolkovych-emblem.png",
-            "sizes": "500x506",
-            "type": "image/png",
-            "purpose": "any maskable"
-        }
-    ]
+  "name": "??????????",
+  "short_name": "??????????",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#203f68",
+  "icons": [
+    {
+      "src": "/brand/potolkovych-emblem.png",
+      "sizes": "500x506",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }

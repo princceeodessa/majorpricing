@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureIntegrationToken;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureManager;
+use App\Http\Middleware\NoIndexResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(fn (Request $request) => route('login'));
-        $middleware->redirectUsersTo('/');
+        $middleware->redirectUsersTo('/catalog');
         $middleware->validateCsrfTokens(except: [
             '1c/exchange',
             '1c_exchange.php',
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureAdmin::class,
             'integration.token' => EnsureIntegrationToken::class,
             'manager' => EnsureManager::class,
+            'noindex' => NoIndexResponse::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
