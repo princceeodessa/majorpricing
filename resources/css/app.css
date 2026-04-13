@@ -9670,3 +9670,27 @@ html {
     }
 }
 
+
+@media (max-width: 640px) {
+    .catalog-header-brand {
+        flex-wrap: nowrap !important;
+    }
+
+    .catalog-header-logo {
+        flex: 1 1 auto !important;
+        width: auto !important;
+    }
+
+    .catalog-header-catalog-menu {
+        flex: 0 0 auto;
+    }
+
+    .catalog-header-actions--figma {
+        display: none !important;
+    }
+
+    .catalog-header-actions__logout {
+        display: none !important;
+    }
+}
+
