@@ -209,11 +209,12 @@ class ImportFigmaProductImagesCommand extends Command
         }
 
         $strongCandidateTokens = $this->strongTokens($candidateTokens);
+        $signatureCandidateTokens = $this->signatureTokens($candidateTokens);
 
         $scoredMatches = $products
             ->map(fn (Product $product): array => [
                 'product' => $product,
-                ...$this->scoreProductTokens($product, $candidateTokens, $strongCandidateTokens),
+                ...$this->scoreProductTokens($product, $candidateTokens, $strongCandidateTokens, $signatureCandidateTokens),
             ])
             ->filter(fn (array $row): bool => $row['score'] > 0)
             ->values();
@@ -225,6 +226,11 @@ class ImportFigmaProductImagesCommand extends Command
 
             return null;
         }
+
+        $maxSignatureMatched = (int) $scoredMatches->max('signature_matched');
+        $scoredMatches = $scoredMatches
+            ->filter(fn (array $row): bool => $row['signature_matched'] === $maxSignatureMatched)
+            ->values();
 
         $maxStrongMatched = (int) $scoredMatches->max('strong_matched');
         $scoredMatches = $scoredMatches
@@ -363,9 +369,10 @@ class ImportFigmaProductImagesCommand extends Command
     /**
      * @param  list<string>  $candidateTokens
      * @param  list<string>  $strongCandidateTokens
-     * @return array{score:int,strong_matched:int}
+     * @param  list<string>  $signatureCandidateTokens
+     * @return array{score:int,strong_matched:int,signature_matched:int}
      */
-    private function scoreProductTokens(Product $product, array $candidateTokens, array $strongCandidateTokens): array
+    private function scoreProductTokens(Product $product, array $candidateTokens, array $strongCandidateTokens, array $signatureCandidateTokens): array
     {
         $productTokens = collect($this->productRawValues($product))
             ->flatMap(fn (string $value): array => $this->tokenize($value))
@@ -374,12 +381,17 @@ class ImportFigmaProductImagesCommand extends Command
             ->all();
 
         if ($productTokens === [] || $candidateTokens === []) {
-            return ['score' => 0, 'strong_matched' => 0];
+            return ['score' => 0, 'strong_matched' => 0, 'signature_matched' => 0];
         }
 
         $shared = array_values(array_intersect($productTokens, $candidateTokens));
         if ($shared === []) {
-            return ['score' => 0, 'strong_matched' => 0];
+            return ['score' => 0, 'strong_matched' => 0, 'signature_matched' => 0];
+        }
+
+        $signatureMatched = count(array_intersect($productTokens, $signatureCandidateTokens));
+        if ($signatureCandidateTokens !== [] && $signatureMatched === 0) {
+            return ['score' => 0, 'strong_matched' => 0, 'signature_matched' => 0];
         }
 
         $score = 0;
@@ -411,16 +423,20 @@ class ImportFigmaProductImagesCommand extends Command
         }
 
         if ($strongSignals === 0 && count($shared) < 2) {
-            return ['score' => 0, 'strong_matched' => 0];
+            return ['score' => 0, 'strong_matched' => 0, 'signature_matched' => $signatureMatched];
         }
 
         if (count($shared) >= 3) {
             $score += 6;
         }
 
+        if ($signatureMatched > 0) {
+            $score += $signatureMatched * 16;
+        }
+
         if ($strongCandidateTokens !== []) {
             if ($strongMatched === 0) {
-                return ['score' => 0, 'strong_matched' => 0];
+                return ['score' => 0, 'strong_matched' => 0, 'signature_matched' => $signatureMatched];
             }
 
             $score += ($strongMatched * 20) - ($strongMissing * 12);
@@ -429,6 +445,7 @@ class ImportFigmaProductImagesCommand extends Command
         return [
             'score' => max(0, $score),
             'strong_matched' => $strongMatched,
+            'signature_matched' => $signatureMatched,
         ];
     }
 
@@ -465,8 +482,21 @@ class ImportFigmaProductImagesCommand extends Command
         $value = preg_replace('/[^0-9a-zа-я]+/iu', ' ', $value) ?? $value;
 
         $parts = preg_split('/\s+/u', trim($value)) ?: [];
+        $composed = [];
 
-        return collect($parts)
+        for ($i = 0; $i < count($parts) - 1; $i++) {
+            $left = $parts[$i];
+            $right = $parts[$i + 1];
+
+            if (
+                preg_match('/^[a-zа-я]{3,}$/u', $left) === 1
+                && preg_match('/^\d{1,3}[a-zа-я]?$/u', $right) === 1
+            ) {
+                $composed[] = $left.$right;
+            }
+        }
+
+        return collect(array_merge($parts, $composed))
             ->map(fn (string $token): string => $this->normalizeToken($token))
             ->filter(fn (string $token): bool => ! $this->isNoiseToken($token))
             ->unique()
@@ -521,13 +551,59 @@ class ImportFigmaProductImagesCommand extends Command
             ->all();
     }
 
+    /**
+     * @param  list<string>  $tokens
+     * @return list<string>
+     */
+    private function signatureTokens(array $tokens): array
+    {
+        return collect($tokens)
+            ->filter(function (string $token): bool {
+                if (preg_match('/\d/u', $token) === 1) {
+                    return mb_strlen($token) >= 2;
+                }
+
+                if (mb_strlen($token) < 5) {
+                    return false;
+                }
+
+                return ! in_array($token, [
+                    'профиль',
+                    'гардина',
+                    'блок',
+                    'питания',
+                    'алюминиевый',
+                    'безокраса',
+                    'черный',
+                    'белый',
+                    'матовый',
+                    'leds',
+                    'power',
+                    'alteza',
+                    'flexy',
+                    'parsek',
+                ], true);
+            })
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     private function isNoiseToken(string $token): bool
     {
         if ($token === '') {
             return true;
         }
 
-        if (mb_strlen($token) < 3 && preg_match('/^\d{3,}$/u', $token) !== 1) {
+        if (preg_match('/^\d{2,}$/u', $token) === 1) {
+            return false;
+        }
+
+        if (preg_match('/^\d+[a-zа-я]$/u', $token) === 1) {
+            return false;
+        }
+
+        if (mb_strlen($token) < 3) {
             return true;
         }
 
@@ -545,6 +621,9 @@ class ImportFigmaProductImagesCommand extends Command
             'шт',
             'для',
             'под',
+            'alteza',
+            'flexy',
+            'parsek',
         ], true);
     }
 
