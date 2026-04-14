@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use SplFileInfo;
 
-#[Signature('catalog:import-figma-images {path : Path to directory with exported Figma product images} {--overwrite : Replace existing product images} {--dry-run : Show matches without writing files}')]
+#[Signature('catalog:import-figma-images {path : Path to directory with exported Figma product images} {--overwrite : Replace existing product images} {--dry-run : Show matches without writing files} {--apply-ambiguous : Apply image to all matched variants when ambiguous}')]
 #[Description('Imports exported Figma product images and matches them to catalog products by code or title')]
 class ImportFigmaProductImagesCommand extends Command
 {
@@ -55,6 +55,7 @@ class ImportFigmaProductImagesCommand extends Command
         $matched = 0;
         $updated = 0;
         $skipped = 0;
+        $resolvedAmbiguous = 0;
         $unmatched = [];
         $ambiguous = [];
 
@@ -69,6 +70,45 @@ class ImportFigmaProductImagesCommand extends Command
             }
 
             if ($product instanceof Collection) {
+                if ($this->option('apply-ambiguous')) {
+                    $candidates = $product
+                        ->filter(function (Product $candidate): bool {
+                            if (! filled($candidate->image_path)) {
+                                return true;
+                            }
+
+                            return (bool) $this->option('overwrite');
+                        })
+                        ->values();
+
+                    if ($candidates->isNotEmpty()) {
+                        if ($this->option('dry-run')) {
+                            $updated += $candidates->count();
+                            $resolvedAmbiguous += $candidates->count();
+                            continue;
+                        }
+
+                        foreach ($candidates as $candidate) {
+                            $extension = mb_strtolower($file->getExtension());
+                            $baseName = $candidate->slug ?: Str::slug($candidate->publicTitle());
+                            $fileName = $candidate->id.'-'.($baseName !== '' ? $baseName : 'product').'.'.$extension;
+                            $targetRelativePath = 'catalog-media/figma/'.$fileName;
+                            $targetPath = public_path($targetRelativePath);
+
+                            File::copy($file->getPathname(), $targetPath);
+
+                            $candidate->forceFill([
+                                'image_path' => $targetRelativePath,
+                            ])->save();
+
+                            $updated++;
+                            $resolvedAmbiguous++;
+                        }
+
+                        continue;
+                    }
+                }
+
                 $ambiguous[] = [
                     'file' => $relativePath,
                     'products' => $product
@@ -110,6 +150,7 @@ class ImportFigmaProductImagesCommand extends Command
                 ['Файлов найдено', $files->count()],
                 ['Файлов обработано', $matched],
                 ['Изображений привязано', $updated],
+                ['Привязано по неоднозначным', $resolvedAmbiguous],
                 ['Пропущено (уже была картинка)', $skipped],
                 ['Не сопоставлено', count($unmatched)],
                 ['Неоднозначных совпадений', count($ambiguous)],
