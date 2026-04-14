@@ -61,15 +61,16 @@ class ImportFigmaProductImagesCommand extends Command
         foreach ($files as $file) {
             $matched++;
             $product = $this->resolveProductMatch($file, $sourcePath, $products, $exactIndex);
+            $relativePath = $this->relativePath($file, $sourcePath);
 
             if ($product === null) {
-                $unmatched[] = $file->getFilename();
+                $unmatched[] = $relativePath;
                 continue;
             }
 
             if ($product instanceof Collection) {
                 $ambiguous[] = [
-                    'file' => $file->getFilename(),
+                    'file' => $relativePath,
                     'products' => $product
                         ->take(4)
                         ->map(fn (Product $candidate): string => "#{$candidate->id} ".$candidate->publicTitle())
@@ -180,6 +181,7 @@ class ImportFigmaProductImagesCommand extends Command
     private function resolveProductMatch(SplFileInfo $file, string $sourcePath, Collection $products, array $exactIndex): Product|Collection|null
     {
         $normalizedCandidates = $this->candidateKeys($file, $sourcePath);
+        $exactAmbiguous = collect();
 
         foreach ($normalizedCandidates as $candidate) {
             $exactMatches = $exactIndex[$candidate] ?? collect();
@@ -189,45 +191,86 @@ class ImportFigmaProductImagesCommand extends Command
             }
 
             if ($exactMatches->count() > 1) {
-                return $exactMatches;
+                $exactAmbiguous = $exactAmbiguous
+                    ->merge($exactMatches)
+                    ->unique('id')
+                    ->values();
             }
         }
 
-        $partialMatches = $products
-            ->filter(function (Product $product) use ($normalizedCandidates): bool {
+        $scoredMatches = $products
+            ->map(function (Product $product) use ($normalizedCandidates): array {
+                $score = 0;
+
                 foreach ($this->productKeys($product) as $key) {
                     if ($key === '') {
                         continue;
                     }
 
                     foreach ($normalizedCandidates as $candidate) {
-                        if (
-                            (mb_strlen($candidate) >= 6 && str_contains($key, $candidate))
-                            || (mb_strlen($key) >= 6 && str_contains($candidate, $key))
-                        ) {
-                            return true;
+                        if ($candidate === '') {
+                            continue;
                         }
 
-                        if (
-                            mb_strlen($candidate) >= 4
-                            && ctype_digit($candidate)
-                            && str_contains($key, $candidate)
-                        ) {
-                            return true;
+                        $candidateLength = mb_strlen($candidate);
+                        $keyLength = mb_strlen($key);
+                        $contains = str_contains($key, $candidate) || str_contains($candidate, $key);
+
+                        if (! $contains) {
+                            continue;
                         }
+
+                        if ($candidateLength < 4 && $keyLength < 4) {
+                            continue;
+                        }
+
+                        $candidateScore = min($candidateLength, $keyLength);
+
+                        if (preg_match('/\d/u', $candidate) === 1) {
+                            $candidateScore += 8;
+                        }
+
+                        if ($candidateLength >= 12) {
+                            $candidateScore += 4;
+                        }
+
+                        $score = max($score, $candidateScore);
                     }
                 }
 
-                return false;
+                return [
+                    'product' => $product,
+                    'score' => $score,
+                ];
             })
+            ->filter(fn (array $row): bool => $row['score'] > 0)
             ->values();
 
-        if ($partialMatches->count() === 1) {
-            return $partialMatches->first();
+        if ($scoredMatches->isEmpty()) {
+            if ($exactAmbiguous->isNotEmpty()) {
+                return $exactAmbiguous;
+            }
+
+            return null;
         }
 
-        if ($partialMatches->count() > 1) {
-            return $partialMatches;
+        $maxScore = (int) $scoredMatches->max('score');
+        $bestMatches = $scoredMatches
+            ->filter(fn (array $row): bool => $row['score'] === $maxScore)
+            ->pluck('product')
+            ->unique('id')
+            ->values();
+
+        if ($bestMatches->count() === 1) {
+            return $bestMatches->first();
+        }
+
+        if ($bestMatches->count() > 1) {
+            return $bestMatches;
+        }
+
+        if ($exactAmbiguous->isNotEmpty()) {
+            return $exactAmbiguous;
         }
 
         return null;
@@ -256,7 +299,7 @@ class ImportFigmaProductImagesCommand extends Command
 
     private function stableSortKey(SplFileInfo $file, string $sourcePath): string
     {
-        $relativePath = ltrim(Str::replace('\\', '/', Str::after($file->getPathname(), $sourcePath)), '/');
+        $relativePath = $this->relativePath($file, $sourcePath);
         $stem = pathinfo($file->getFilename(), PATHINFO_FILENAME);
         $rank = preg_match('/^\d+$/', $stem) === 1 ? (int) $stem : 9999;
 
@@ -269,7 +312,7 @@ class ImportFigmaProductImagesCommand extends Command
     private function candidateKeys(SplFileInfo $file, string $sourcePath): array
     {
         $candidates = [];
-        $relativePath = ltrim(Str::replace('\\', '/', Str::after($file->getPathname(), $sourcePath)), '/');
+        $relativePath = $this->relativePath($file, $sourcePath);
         $stem = pathinfo($file->getFilename(), PATHINFO_FILENAME);
         $dir = trim((string) pathinfo($relativePath, PATHINFO_DIRNAME), './');
 
@@ -306,5 +349,10 @@ class ImportFigmaProductImagesCommand extends Command
         $value = preg_replace('/[^0-9a-zа-я]+/iu', '', $value) ?? $value;
 
         return trim($value);
+    }
+
+    private function relativePath(SplFileInfo $file, string $sourcePath): string
+    {
+        return ltrim(Str::replace('\\', '/', Str::after($file->getPathname(), $sourcePath)), '/');
     }
 }
