@@ -10078,3 +10078,26 @@ html {
         z-index: 40 !important;
     }
 }
+
+.catalog-product-card__image-wrap {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    padding: 0.55rem !important;
+}
+
+.catalog-product-card__image {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: contain !important;
+    object-position: center center !important;
+}
+
+@media (max-width: 640px) {
+    .catalog-product-card__image-wrap {
+        padding: 0.45rem !important;
+    }
+}
