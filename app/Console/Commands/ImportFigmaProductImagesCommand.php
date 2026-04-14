@@ -208,10 +208,12 @@ class ImportFigmaProductImagesCommand extends Command
             return $exactAmbiguous->isNotEmpty() ? $exactAmbiguous : null;
         }
 
+        $strongCandidateTokens = $this->strongTokens($candidateTokens);
+
         $scoredMatches = $products
             ->map(fn (Product $product): array => [
                 'product' => $product,
-                'score' => $this->scoreProductTokens($product, $candidateTokens),
+                ...$this->scoreProductTokens($product, $candidateTokens, $strongCandidateTokens),
             ])
             ->filter(fn (array $row): bool => $row['score'] > 0)
             ->values();
@@ -223,6 +225,11 @@ class ImportFigmaProductImagesCommand extends Command
 
             return null;
         }
+
+        $maxStrongMatched = (int) $scoredMatches->max('strong_matched');
+        $scoredMatches = $scoredMatches
+            ->filter(fn (array $row): bool => $row['strong_matched'] === $maxStrongMatched)
+            ->values();
 
         $maxScore = (int) $scoredMatches->max('score');
 
@@ -353,7 +360,12 @@ class ImportFigmaProductImagesCommand extends Command
             ->all();
     }
 
-    private function scoreProductTokens(Product $product, array $candidateTokens): int
+    /**
+     * @param  list<string>  $candidateTokens
+     * @param  list<string>  $strongCandidateTokens
+     * @return array{score:int,strong_matched:int}
+     */
+    private function scoreProductTokens(Product $product, array $candidateTokens, array $strongCandidateTokens): array
     {
         $productTokens = collect($this->productRawValues($product))
             ->flatMap(fn (string $value): array => $this->tokenize($value))
@@ -362,16 +374,18 @@ class ImportFigmaProductImagesCommand extends Command
             ->all();
 
         if ($productTokens === [] || $candidateTokens === []) {
-            return 0;
+            return ['score' => 0, 'strong_matched' => 0];
         }
 
         $shared = array_values(array_intersect($productTokens, $candidateTokens));
         if ($shared === []) {
-            return 0;
+            return ['score' => 0, 'strong_matched' => 0];
         }
 
         $score = 0;
         $strongSignals = 0;
+        $strongMatched = count(array_intersect($productTokens, $strongCandidateTokens));
+        $strongMissing = max(0, count($strongCandidateTokens) - $strongMatched);
 
         foreach ($shared as $token) {
             $length = mb_strlen($token);
@@ -397,14 +411,25 @@ class ImportFigmaProductImagesCommand extends Command
         }
 
         if ($strongSignals === 0 && count($shared) < 2) {
-            return 0;
+            return ['score' => 0, 'strong_matched' => 0];
         }
 
         if (count($shared) >= 3) {
             $score += 6;
         }
 
-        return $score;
+        if ($strongCandidateTokens !== []) {
+            if ($strongMatched === 0) {
+                return ['score' => 0, 'strong_matched' => 0];
+            }
+
+            $score += ($strongMatched * 20) - ($strongMissing * 12);
+        }
+
+        return [
+            'score' => max(0, $score),
+            'strong_matched' => $strongMatched,
+        ];
     }
 
     /**
@@ -454,11 +479,46 @@ class ImportFigmaProductImagesCommand extends Command
         $aliases = [
             'черн' => 'черный',
             'чёрн' => 'черный',
+            'черная' => 'черный',
+            'черное' => 'черный',
             'бел' => 'белый',
+            'белая' => 'белый',
+            'белое' => 'белый',
             'мат' => 'матовый',
+            'матовая' => 'матовый',
+            'матовое' => 'матовый',
+            'безокраса' => 'безокраса',
+            'безокрас' => 'безокраса',
         ];
 
         return $aliases[$token] ?? $token;
+    }
+
+    /**
+     * @param  list<string>  $tokens
+     * @return list<string>
+     */
+    private function strongTokens(array $tokens): array
+    {
+        return collect($tokens)
+            ->filter(function (string $token): bool {
+                if (preg_match('/^\d{3,}$/u', $token) === 1) {
+                    return true;
+                }
+
+                if (preg_match('/\d/u', $token) === 1 && mb_strlen($token) >= 3) {
+                    return true;
+                }
+
+                if (in_array($token, ['черный', 'белый', 'матовый', 'безокраса'], true)) {
+                    return true;
+                }
+
+                return mb_strlen($token) >= 7;
+            })
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function isNoiseToken(string $token): bool
