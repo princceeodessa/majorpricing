@@ -283,5 +283,3 @@
         </section>
     @endif
 @endsection
-
-
