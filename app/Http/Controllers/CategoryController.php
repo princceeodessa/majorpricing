@@ -94,8 +94,7 @@ class CategoryController extends Controller
                     ->where('price_from', '>=', $selectedPriceMin)
                     ->where('price_from', '<=', $selectedPriceMax),
             )
-            ->orderByRaw('price_from is null')
-            ->orderBy('title')
+            ->catalogPriorityOrder()
             ->paginate(24)
             ->withQueryString();
 

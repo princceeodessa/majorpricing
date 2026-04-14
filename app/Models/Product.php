@@ -105,6 +105,21 @@ class Product extends Model
         });
     }
 
+    public function scopeCatalogPriorityOrder(Builder $query): Builder
+    {
+        return $query
+            ->orderByRaw(
+                "CASE
+                    WHEN COALESCE(stock_quantity, 0) > 0
+                        AND COALESCE(NULLIF(image_path, ''), '') <> '' THEN 0
+                    WHEN COALESCE(stock_quantity, 0) > 0 THEN 1
+                    ELSE 2
+                END",
+            )
+            ->orderBy('title')
+            ->orderBy('id');
+    }
+
     public function isVisibleInCatalog(): bool
     {
         if (blank($this->title)) {

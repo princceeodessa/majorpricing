@@ -39,19 +39,13 @@ class CatalogController extends Controller
         match ($feed) {
             'hit' => $productsQuery
                 ->withCount('orderItems')
-                ->orderByDesc('order_items_count')
-                ->orderByRaw('price_from is null')
-                ->orderByDesc('stock_quantity')
-                ->orderBy('title'),
+                ->catalogPriorityOrder(),
             'in_stock' => $productsQuery
                 ->whereNotNull('stock_quantity')
                 ->where('stock_quantity', '>', 0)
-                ->orderByDesc('stock_quantity')
-                ->orderByRaw('price_from is null')
-                ->orderBy('title'),
+                ->catalogPriorityOrder(),
             default => $productsQuery
-                ->orderByRaw('image_path is null')
-                ->orderByDesc('id'),
+                ->catalogPriorityOrder(),
         };
 
         $products = $productsQuery
