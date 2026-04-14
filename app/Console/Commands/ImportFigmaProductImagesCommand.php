@@ -214,13 +214,14 @@ class ImportFigmaProductImagesCommand extends Command
 
                         $candidateLength = mb_strlen($candidate);
                         $keyLength = mb_strlen($key);
-                        $contains = str_contains($key, $candidate) || str_contains($candidate, $key);
 
-                        if (! $contains) {
+                        if ($candidateLength < 4 || $keyLength < 4) {
                             continue;
                         }
 
-                        if ($candidateLength < 4 && $keyLength < 4) {
+                        $contains = str_contains($key, $candidate) || str_contains($candidate, $key);
+
+                        if (! $contains) {
                             continue;
                         }
 
@@ -315,9 +316,12 @@ class ImportFigmaProductImagesCommand extends Command
         $relativePath = $this->relativePath($file, $sourcePath);
         $stem = pathinfo($file->getFilename(), PATHINFO_FILENAME);
         $dir = trim((string) pathinfo($relativePath, PATHINFO_DIRNAME), './');
+        $isGenericStem = preg_match('/^\d+(?:\s+\d+){0,2}$/u', $stem) === 1;
 
-        $candidates[] = $stem;
-        $candidates[] = pathinfo($relativePath, PATHINFO_FILENAME);
+        if (! $isGenericStem) {
+            $candidates[] = $stem;
+            $candidates[] = pathinfo($relativePath, PATHINFO_FILENAME);
+        }
 
         if ($dir !== '') {
             $dirSegments = array_values(array_filter(explode('/', $dir)));
@@ -329,8 +333,8 @@ class ImportFigmaProductImagesCommand extends Command
             }
         }
 
-        if (preg_match('/^\d+$/', $stem) === 1 && $dir !== '') {
-            $candidates[] = $dir;
+        if ($isGenericStem && $dir !== '') {
+            $candidates[] = $dir.' '.$stem;
         }
 
         return collect($candidates)
