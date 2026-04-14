@@ -32,6 +32,7 @@ class ImportFigmaProductImagesCommand extends Command
 
         $files = collect(File::allFiles($sourcePath))
             ->filter(fn (SplFileInfo $file): bool => in_array(mb_strtolower($file->getExtension()), self::IMAGE_EXTENSIONS, true))
+            ->sortBy(fn (SplFileInfo $file): string => $this->stableSortKey($file, $sourcePath))
             ->values();
 
         if ($files->isEmpty()) {
@@ -59,7 +60,7 @@ class ImportFigmaProductImagesCommand extends Command
 
         foreach ($files as $file) {
             $matched++;
-            $product = $this->resolveProductMatch($file, $products, $exactIndex);
+            $product = $this->resolveProductMatch($file, $sourcePath, $products, $exactIndex);
 
             if ($product === null) {
                 $unmatched[] = $file->getFilename();
@@ -176,37 +177,44 @@ class ImportFigmaProductImagesCommand extends Command
      * @param  array<string, Collection<int, Product>>  $exactIndex
      * @return Product|Collection<int, Product>|null
      */
-    private function resolveProductMatch(SplFileInfo $file, Collection $products, array $exactIndex): Product|Collection|null
+    private function resolveProductMatch(SplFileInfo $file, string $sourcePath, Collection $products, array $exactIndex): Product|Collection|null
     {
-        $stem = pathinfo($file->getFilename(), PATHINFO_FILENAME);
-        $normalizedStem = $this->normalizeKey($stem);
+        $normalizedCandidates = $this->candidateKeys($file, $sourcePath);
 
-        if ($normalizedStem === '') {
-            return null;
-        }
+        foreach ($normalizedCandidates as $candidate) {
+            $exactMatches = $exactIndex[$candidate] ?? collect();
 
-        $exactMatches = $exactIndex[$normalizedStem] ?? collect();
+            if ($exactMatches->count() === 1) {
+                return $exactMatches->first();
+            }
 
-        if ($exactMatches->count() === 1) {
-            return $exactMatches->first();
-        }
-
-        if ($exactMatches->count() > 1) {
-            return $exactMatches;
+            if ($exactMatches->count() > 1) {
+                return $exactMatches;
+            }
         }
 
         $partialMatches = $products
-            ->filter(function (Product $product) use ($normalizedStem): bool {
+            ->filter(function (Product $product) use ($normalizedCandidates): bool {
                 foreach ($this->productKeys($product) as $key) {
                     if ($key === '') {
                         continue;
                     }
 
-                    if (
-                        (mb_strlen($normalizedStem) >= 6 && str_contains($key, $normalizedStem))
-                        || (mb_strlen($key) >= 6 && str_contains($normalizedStem, $key))
-                    ) {
-                        return true;
+                    foreach ($normalizedCandidates as $candidate) {
+                        if (
+                            (mb_strlen($candidate) >= 6 && str_contains($key, $candidate))
+                            || (mb_strlen($key) >= 6 && str_contains($candidate, $key))
+                        ) {
+                            return true;
+                        }
+
+                        if (
+                            mb_strlen($candidate) >= 4
+                            && ctype_digit($candidate)
+                            && str_contains($key, $candidate)
+                        ) {
+                            return true;
+                        }
                     }
                 }
 
@@ -240,6 +248,50 @@ class ImportFigmaProductImagesCommand extends Command
 
         return collect($values)
             ->map(fn ($value): string => $this->normalizeKey((string) $value))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function stableSortKey(SplFileInfo $file, string $sourcePath): string
+    {
+        $relativePath = ltrim(Str::replace('\\', '/', Str::after($file->getPathname(), $sourcePath)), '/');
+        $stem = pathinfo($file->getFilename(), PATHINFO_FILENAME);
+        $rank = preg_match('/^\d+$/', $stem) === 1 ? (int) $stem : 9999;
+
+        return str_pad((string) $rank, 4, '0', STR_PAD_LEFT).'|'.$relativePath;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function candidateKeys(SplFileInfo $file, string $sourcePath): array
+    {
+        $candidates = [];
+        $relativePath = ltrim(Str::replace('\\', '/', Str::after($file->getPathname(), $sourcePath)), '/');
+        $stem = pathinfo($file->getFilename(), PATHINFO_FILENAME);
+        $dir = trim((string) pathinfo($relativePath, PATHINFO_DIRNAME), './');
+
+        $candidates[] = $stem;
+        $candidates[] = pathinfo($relativePath, PATHINFO_FILENAME);
+
+        if ($dir !== '') {
+            $dirSegments = array_values(array_filter(explode('/', $dir)));
+
+            if ($dirSegments !== []) {
+                $candidates[] = (string) end($dirSegments);
+                $candidates[] = implode(' ', $dirSegments);
+                $candidates[] = $dir;
+            }
+        }
+
+        if (preg_match('/^\d+$/', $stem) === 1 && $dir !== '') {
+            $candidates[] = $dir;
+        }
+
+        return collect($candidates)
+            ->map(fn (string $value): string => $this->normalizeKey($value))
             ->filter()
             ->unique()
             ->values()
