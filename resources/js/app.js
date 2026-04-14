@@ -579,6 +579,36 @@ const setupCatalogMenus = () => {
         return;
     }
 
+    menus.forEach((menu) => {
+        const dropdown = menu.querySelector('.catalog-header-catalog-dropdown');
+
+        if (!(dropdown instanceof HTMLElement) || dropdown.querySelector('[data-catalog-menu-close]')) {
+            return;
+        }
+
+        const allLink = dropdown.querySelector('.catalog-header-catalog-dropdown__all');
+        const top = document.createElement('div');
+        top.className = 'catalog-header-catalog-dropdown__top';
+
+        if (allLink instanceof HTMLElement) {
+            top.append(allLink);
+        }
+
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'catalog-header-catalog-dropdown__close';
+        closeButton.setAttribute('data-catalog-menu-close', '');
+        closeButton.setAttribute('aria-label', 'Закрыть каталог');
+        closeButton.innerHTML = `
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7l10 10M17 7 7 17" />
+            </svg>
+        `;
+
+        top.append(closeButton);
+        dropdown.prepend(top);
+    });
+
     document.addEventListener('click', (event) => {
         menus.forEach((menu) => {
             if (!(menu instanceof HTMLDetailsElement)) {
@@ -603,6 +633,22 @@ const setupCatalogMenus = () => {
                 menu.removeAttribute('open');
             }
         });
+    });
+
+    document.addEventListener('click', (event) => {
+        const closeButton = event.target instanceof Element
+            ? event.target.closest('[data-catalog-menu-close]')
+            : null;
+
+        if (!(closeButton instanceof HTMLElement)) {
+            return;
+        }
+
+        const menu = closeButton.closest('.catalog-header-catalog-menu');
+
+        if (menu instanceof HTMLDetailsElement) {
+            menu.removeAttribute('open');
+        }
     });
 };
 

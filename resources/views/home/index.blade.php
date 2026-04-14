@@ -17,7 +17,7 @@
 
                 <p class="mx-auto mb-8 max-w-[32rem] text-center text-sm leading-6 text-slate-500 sm:text-base">
                     Каталог, корзина и заказы доступны после входа. Если доступа еще нет, оставьте заявку на регистрацию —
-                    менеджер проверит данные и откроет кабинет.
+                    менеджер проверит данные и откроет доступ.
                 </p>
 
                 <form action="{{ route('login.store') }}" method="POST" class="catalog-auth-panel__form">
@@ -56,9 +56,6 @@
                 </form>
 
                 <div class="mt-6 flex flex-col gap-3 text-center">
-                    <p class="text-sm leading-6 text-slate-500">
-                        Нет доступа? Оставьте заявку, менеджер проверит данные и подтвердит регистрацию.
-                    </p>
                     <a href="{{ route('registration-requests.create') }}" class="ghost-button mx-auto">
                         Подать заявку на регистрацию
                     </a>

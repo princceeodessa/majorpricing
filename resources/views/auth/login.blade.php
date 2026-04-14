@@ -44,9 +44,6 @@
                 </form>
 
                 <div class="mt-6 flex flex-col gap-3 text-center">
-                    <p class="text-sm leading-6 text-slate-500">
-                        Нет доступа? Оставьте заявку, менеджер проверит данные и подтвердит регистрацию.
-                    </p>
                     <a href="{{ route('registration-requests.create') }}" class="ghost-button mx-auto">
                         Подать заявку на регистрацию
                     </a>
