@@ -42,7 +42,7 @@ class ImportFigmaProductImagesCommand extends Command
         }
 
         $products = Product::query()
-            ->select(['id', 'slug', 'title', 'name', 'one_c_code', 'vendor_code', 'image_path'])
+            ->select(['id', 'slug', 'title', 'name', 'one_c_id', 'one_c_code', 'vendor_code', 'image_path'])
             ->get();
 
         $exactIndex = $this->buildExactIndex($products);
@@ -181,6 +181,7 @@ class ImportFigmaProductImagesCommand extends Command
     private function resolveProductMatch(SplFileInfo $file, string $sourcePath, Collection $products, array $exactIndex): Product|Collection|null
     {
         $normalizedCandidates = $this->candidateKeys($file, $sourcePath);
+        $candidateTokens = $this->candidateTokens($file, $sourcePath);
         $exactAmbiguous = collect();
 
         foreach ($normalizedCandidates as $candidate) {
@@ -198,52 +199,20 @@ class ImportFigmaProductImagesCommand extends Command
             }
         }
 
+        if ($candidateTokens === []) {
+            $preferredExact = $this->preferSingleProduct($exactAmbiguous);
+            if ($preferredExact !== null) {
+                return $preferredExact;
+            }
+
+            return $exactAmbiguous->isNotEmpty() ? $exactAmbiguous : null;
+        }
+
         $scoredMatches = $products
-            ->map(function (Product $product) use ($normalizedCandidates): array {
-                $score = 0;
-
-                foreach ($this->productKeys($product) as $key) {
-                    if ($key === '') {
-                        continue;
-                    }
-
-                    foreach ($normalizedCandidates as $candidate) {
-                        if ($candidate === '') {
-                            continue;
-                        }
-
-                        $candidateLength = mb_strlen($candidate);
-                        $keyLength = mb_strlen($key);
-
-                        if ($candidateLength < 4 || $keyLength < 4) {
-                            continue;
-                        }
-
-                        $contains = str_contains($key, $candidate) || str_contains($candidate, $key);
-
-                        if (! $contains) {
-                            continue;
-                        }
-
-                        $candidateScore = min($candidateLength, $keyLength);
-
-                        if (preg_match('/\d/u', $candidate) === 1) {
-                            $candidateScore += 8;
-                        }
-
-                        if ($candidateLength >= 12) {
-                            $candidateScore += 4;
-                        }
-
-                        $score = max($score, $candidateScore);
-                    }
-                }
-
-                return [
-                    'product' => $product,
-                    'score' => $score,
-                ];
-            })
+            ->map(fn (Product $product): array => [
+                'product' => $product,
+                'score' => $this->scoreProductTokens($product, $candidateTokens),
+            ])
             ->filter(fn (array $row): bool => $row['score'] > 0)
             ->values();
 
@@ -256,14 +225,25 @@ class ImportFigmaProductImagesCommand extends Command
         }
 
         $maxScore = (int) $scoredMatches->max('score');
+
+        if ($maxScore < 14) {
+            $preferredExact = $this->preferSingleProduct($exactAmbiguous);
+            if ($preferredExact !== null) {
+                return $preferredExact;
+            }
+
+            return $exactAmbiguous->isNotEmpty() ? $exactAmbiguous : null;
+        }
+
         $bestMatches = $scoredMatches
             ->filter(fn (array $row): bool => $row['score'] === $maxScore)
             ->pluck('product')
             ->unique('id')
             ->values();
 
-        if ($bestMatches->count() === 1) {
-            return $bestMatches->first();
+        $preferredBest = $this->preferSingleProduct($bestMatches);
+        if ($preferredBest !== null) {
+            return $preferredBest;
         }
 
         if ($bestMatches->count() > 1) {
@@ -271,6 +251,11 @@ class ImportFigmaProductImagesCommand extends Command
         }
 
         if ($exactAmbiguous->isNotEmpty()) {
+            $preferredExact = $this->preferSingleProduct($exactAmbiguous);
+            if ($preferredExact !== null) {
+                return $preferredExact;
+            }
+
             return $exactAmbiguous;
         }
 
@@ -343,6 +328,207 @@ class ImportFigmaProductImagesCommand extends Command
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function candidateTokens(SplFileInfo $file, string $sourcePath): array
+    {
+        $relativePath = $this->relativePath($file, $sourcePath);
+        $stem = pathinfo($file->getFilename(), PATHINFO_FILENAME);
+        $dir = trim((string) pathinfo($relativePath, PATHINFO_DIRNAME), './');
+
+        $phrases = [];
+        $phrases[] = $relativePath;
+        $phrases[] = $stem;
+        if ($dir !== '') {
+            $phrases[] = $dir;
+        }
+
+        return collect($phrases)
+            ->flatMap(fn (string $value): array => $this->tokenize($value))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function scoreProductTokens(Product $product, array $candidateTokens): int
+    {
+        $productTokens = collect($this->productRawValues($product))
+            ->flatMap(fn (string $value): array => $this->tokenize($value))
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($productTokens === [] || $candidateTokens === []) {
+            return 0;
+        }
+
+        $shared = array_values(array_intersect($productTokens, $candidateTokens));
+        if ($shared === []) {
+            return 0;
+        }
+
+        $score = 0;
+        $strongSignals = 0;
+
+        foreach ($shared as $token) {
+            $length = mb_strlen($token);
+            $isNumeric = ctype_digit($token);
+            $hasDigit = preg_match('/\d/u', $token) === 1;
+
+            if ($isNumeric && $length >= 3) {
+                $score += 16;
+                $strongSignals++;
+                continue;
+            }
+
+            if ($hasDigit && $length >= 3) {
+                $score += 12;
+                $strongSignals++;
+                continue;
+            }
+
+            $score += min(10, $length);
+            if ($length >= 6) {
+                $strongSignals++;
+            }
+        }
+
+        if ($strongSignals === 0 && count($shared) < 2) {
+            return 0;
+        }
+
+        if (count($shared) >= 3) {
+            $score += 6;
+        }
+
+        return $score;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function productRawValues(Product $product): array
+    {
+        return collect([
+            (string) $product->one_c_id,
+            (string) $product->one_c_code,
+            (string) $product->vendor_code,
+            (string) $product->slug,
+            $product->publicTitle(),
+            $product->fullTitle(),
+        ])
+            ->filter(fn (string $value): bool => trim($value) !== '')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function tokenize(string $value): array
+    {
+        $value = mb_strtolower(trim($value));
+        if ($value === '') {
+            return [];
+        }
+
+        $value = str_replace('ё', 'е', $value);
+        $value = preg_replace('/\.[a-z0-9]+$/iu', '', $value) ?? $value;
+        $value = preg_replace('/[^0-9a-zа-я]+/iu', ' ', $value) ?? $value;
+
+        $parts = preg_split('/\s+/u', trim($value)) ?: [];
+
+        return collect($parts)
+            ->map(fn (string $token): string => $this->normalizeToken($token))
+            ->filter(fn (string $token): bool => ! $this->isNoiseToken($token))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function normalizeToken(string $token): string
+    {
+        $aliases = [
+            'черн' => 'черный',
+            'чёрн' => 'черный',
+            'бел' => 'белый',
+            'мат' => 'матовый',
+        ];
+
+        return $aliases[$token] ?? $token;
+    }
+
+    private function isNoiseToken(string $token): bool
+    {
+        if ($token === '') {
+            return true;
+        }
+
+        if (mb_strlen($token) < 3 && preg_match('/^\d{3,}$/u', $token) !== 1) {
+            return true;
+        }
+
+        return in_array($token, [
+            'профиль',
+            'алюминиевый',
+            'ал',
+            'блок',
+            'питания',
+            'leds',
+            'power',
+            'комплект',
+            'уп',
+            'м',
+            'шт',
+            'для',
+            'под',
+        ], true);
+    }
+
+    /**
+     * @param  Collection<int, Product>  $products
+     */
+    private function preferSingleProduct(Collection $products): ?Product
+    {
+        if ($products->count() === 1) {
+            return $products->first();
+        }
+
+        if ($products->isEmpty()) {
+            return null;
+        }
+
+        $preferred = $products;
+
+        foreach ([
+            fn (Product $product): bool => filled($product->one_c_id),
+            fn (Product $product): bool => filled($product->one_c_code),
+            fn (Product $product): bool => filled($product->vendor_code),
+        ] as $selector) {
+            $subset = $preferred->filter($selector)->values();
+            if ($subset->count() === 1) {
+                return $subset->first();
+            }
+
+            if ($subset->count() > 1) {
+                $preferred = $subset;
+            }
+        }
+
+        $titles = $preferred
+            ->map(fn (Product $product): string => $this->normalizeKey($product->publicTitle()))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($titles->count() === 1) {
+            return $preferred->sortByDesc('id')->first();
+        }
+
+        return null;
     }
 
     private function normalizeKey(string $value): string
