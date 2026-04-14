@@ -999,13 +999,13 @@ const formatRubles = (amount) => {
     const value = Number.parseFloat(`${amount ?? ''}`);
 
     if (!Number.isFinite(value)) {
-        return 'РџРѕ Р·Р°РїСЂРѕСЃСѓ';
+        return 'По запросу';
     }
 
     return `${new Intl.NumberFormat('ru-RU', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-    }).format(value)} в‚Ѕ`;
+    }).format(value)} ₽`;
 };
 
 const setupCartPaymentModes = () => {
@@ -1029,7 +1029,7 @@ const setupCartPaymentModes = () => {
 
         scope.querySelectorAll('[data-cart-price-label]').forEach((node) => {
             if (node instanceof HTMLElement) {
-                node.textContent = isCash ? 'РЎРѕ СЃРєРёРґРєРѕР№' : 'Р‘РµР· СЃРєРёРґРєРё';
+                node.textContent = isCash ? 'Со скидкой' : 'Без скидки';
             }
         });
 
@@ -1049,7 +1049,7 @@ const setupCartPaymentModes = () => {
             }
 
             const nextAmount = isCash ? node.dataset.discountTotal : node.dataset.baseTotal;
-            node.textContent = `РС‚РѕРіРѕ: ${formatRubles(nextAmount)}`;
+            node.textContent = `Итого: ${formatRubles(nextAmount)}`;
         });
 
         scope.querySelectorAll('[data-cart-compare-price]').forEach((node) => {
@@ -1069,7 +1069,7 @@ const setupCartPaymentModes = () => {
 
         scope.querySelectorAll('.catalog-cart-item__payment-note').forEach((node) => {
             if (node instanceof HTMLElement) {
-                node.textContent = isCash ? 'РќР°Р»РёС‡РЅС‹Р№ СЂР°СЃС‡РµС‚' : 'Р‘РµР·РЅР°Р»РёС‡РЅС‹Р№ СЂР°СЃС‡РµС‚';
+                node.textContent = isCash ? 'Наличный расчет' : 'Безналичный расчет';
             }
         });
     };
