@@ -10083,15 +10083,15 @@ html {
     display: grid;
     place-items: center;
     overflow: hidden;
-    padding: 0.55rem !important;
+    padding: 0.5rem !important;
 }
 
 .catalog-product-card__image {
     display: block;
-    width: 100% !important;
-    height: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
+    width: 90% !important;
+    height: 90% !important;
+    max-width: 90% !important;
+    max-height: 90% !important;
     object-fit: contain !important;
     object-position: center center !important;
 }
@@ -10099,5 +10099,12 @@ html {
 @media (max-width: 640px) {
     .catalog-product-card__image-wrap {
         padding: 0.45rem !important;
+    }
+
+    .catalog-product-card__image {
+        width: 92% !important;
+        height: 92% !important;
+        max-width: 92% !important;
+        max-height: 92% !important;
     }
 }
