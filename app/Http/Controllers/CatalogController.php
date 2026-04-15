@@ -29,7 +29,7 @@ class CatalogController extends Controller
 
         $productsQuery = Product::query()
             ->visibleInCatalog()
-            ->with(['category.parent', 'prices'])
+            ->with(['category.parent', 'prices', 'productImages'])
             ->when(
                 $selectedCategory,
                 fn ($query) => $query->whereIn('category_id', $this->categoryTreeIds($selectedCategory)),

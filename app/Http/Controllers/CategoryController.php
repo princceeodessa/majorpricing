@@ -80,7 +80,7 @@ class CategoryController extends Controller
 
         $products = Product::query()
             ->visibleInCatalog()
-            ->with(['category.parent', 'prices'])
+            ->with(['category.parent', 'prices', 'productImages'])
             ->whereIn('category_id', $categoryIds)
             ->search($request->string('q')->toString())
             ->when(

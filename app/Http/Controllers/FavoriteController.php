@@ -14,7 +14,7 @@ class FavoriteController extends Controller
     public function index(Request $request): View
     {
         $favoriteItems = FavoriteItem::query()
-            ->with(['product.category.parent', 'product.prices'])
+            ->with(['product.category.parent', 'product.prices', 'product.productImages'])
             ->where('user_id', $request->user()->id)
             ->latest('id')
             ->get();

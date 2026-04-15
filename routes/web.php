@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AdminProductImageController;
 use App\Http\Controllers\ManagerUserController;
 use App\Http\Controllers\OneCDiagnosticsController;
 use App\Http\Controllers\CatalogController;
@@ -67,6 +68,21 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/admin/1c/catalog/import', [OneCDiagnosticsController::class, 'importCatalog'])
         ->middleware('admin')
         ->name('admin.onec.catalog.import');
+    Route::get('/admin/products/images', [AdminProductImageController::class, 'index'])
+        ->middleware('admin')
+        ->name('admin.products.images.index');
+    Route::get('/admin/products/{product}/images', [AdminProductImageController::class, 'edit'])
+        ->middleware('admin')
+        ->name('admin.products.images.edit');
+    Route::post('/admin/products/{product}/images', [AdminProductImageController::class, 'store'])
+        ->middleware('admin')
+        ->name('admin.products.images.store');
+    Route::patch('/admin/products/{product}/images/{productImage}/cover', [AdminProductImageController::class, 'cover'])
+        ->middleware('admin')
+        ->name('admin.products.images.cover');
+    Route::delete('/admin/products/{product}/images/{productImage}', [AdminProductImageController::class, 'destroy'])
+        ->middleware('admin')
+        ->name('admin.products.images.destroy');
     Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
     Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
     Route::post('/products/{product:slug}/cart', [CartController::class, 'store'])->name('cart.store');

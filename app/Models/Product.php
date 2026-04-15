@@ -53,6 +53,54 @@ class Product extends Model
         return $this->hasMany(ProductPrice::class)->orderBy('column_index');
     }
 
+    public function productImages(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)
+            ->orderByDesc('is_cover')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function coverImagePath(): ?string
+    {
+        if ($this->relationLoaded('productImages')) {
+            $cover = $this->productImages->firstWhere('is_cover', true)
+                ?? $this->productImages->first();
+
+            if ($cover?->path) {
+                return $cover->path;
+            }
+        } else {
+            $cover = $this->productImages()->first();
+
+            if ($cover?->path) {
+                return $cover->path;
+            }
+        }
+
+        return filled($this->image_path) ? $this->image_path : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function galleryImagePaths(): array
+    {
+        $paths = $this->relationLoaded('productImages')
+            ? $this->productImages->pluck('path')->all()
+            : $this->productImages()->pluck('path')->all();
+
+        if (filled($this->image_path)) {
+            array_unshift($paths, $this->image_path);
+        }
+
+        return collect($paths)
+            ->filter(fn ($path): bool => filled($path))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     public function cartItems(): HasMany
     {
         return $this->hasMany(CartItem::class);

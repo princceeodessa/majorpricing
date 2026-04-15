@@ -408,6 +408,7 @@ const setupProductGalleries = () => {
             return;
         }
 
+        const mainImage = galleryRoot.querySelector('[data-gallery-image]');
         const thumbs = Array.from(galleryRoot.querySelectorAll('[data-gallery-thumb]'))
             .filter((thumb) => thumb instanceof HTMLButtonElement);
         const prev = galleryRoot.querySelector('[data-gallery-prev]');
@@ -433,6 +434,14 @@ const setupProductGalleries = () => {
                 thumb.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             });
 
+            if (mainImage instanceof HTMLImageElement && activeThumb.dataset.galleryImage) {
+                mainImage.src = activeThumb.dataset.galleryImage;
+
+                if (activeThumb.dataset.galleryAlt) {
+                    mainImage.alt = activeThumb.dataset.galleryAlt;
+                }
+            }
+
             if (chip instanceof HTMLElement && activeThumb.dataset.galleryChip) {
                 chip.textContent = activeThumb.dataset.galleryChip;
             }
@@ -447,19 +456,27 @@ const setupProductGalleries = () => {
         };
 
         thumbs.forEach((thumb, index) => {
-            thumb.addEventListener('click', () => activateSlide(index));
+            thumb.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                activateSlide(index);
+            });
         });
 
         if (prev instanceof HTMLButtonElement) {
             prev.disabled = thumbs.length < 2;
-            prev.addEventListener('click', () => {
+            prev.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
                 activateSlide(Number(galleryRoot.dataset.galleryIndex || 0) - 1);
             });
         }
 
         if (next instanceof HTMLButtonElement) {
             next.disabled = thumbs.length < 2;
-            next.addEventListener('click', () => {
+            next.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
                 activateSlide(Number(galleryRoot.dataset.galleryIndex || 0) + 1);
             });
         }

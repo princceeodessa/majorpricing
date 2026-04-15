@@ -11,7 +11,15 @@
         $availabilityLabel = $product->availabilityLabel();
         $availabilityTone = $product->availabilityTone();
         $fallbackImageUrl = asset('brand/product-placeholder.png');
-        $imageUrl = $product->image_path ? asset($product->image_path) : $fallbackImageUrl;
+        $galleryPaths = $product->galleryImagePaths();
+        $galleryImages = collect($galleryPaths)
+            ->filter(fn ($path): bool => filled($path))
+            ->map(fn ($path): string => asset($path))
+            ->values();
+        if ($galleryImages->isEmpty()) {
+            $galleryImages = collect([$fallbackImageUrl]);
+        }
+        $imageUrl = $galleryImages->first();
         $productFacts = collect([
             ['label' => 'В группе', 'value' => $category?->name],
             ['label' => 'Артикул', 'value' => $product->vendor_code],
@@ -24,10 +32,32 @@
 
     <section class="surface-card reveal-card p-5 sm:p-8">
         <div class="catalog-product-layout">
-            <div class="catalog-product-gallery">
+            <div class="catalog-product-gallery" data-gallery data-gallery-index="0">
+                @if ($galleryImages->count() > 1)
+                    <div class="catalog-product-gallery__thumbs">
+                        @foreach ($galleryImages as $index => $galleryImageUrl)
+                            <button
+                                type="button"
+                                class="catalog-product-gallery__thumb {{ $index === 0 ? 'is-active' : '' }}"
+                                data-gallery-thumb
+                                data-gallery-image="{{ $galleryImageUrl }}"
+                                data-gallery-alt="{{ $product->publicTitle() }}"
+                                aria-label="Фото {{ $index + 1 }}"
+                                aria-pressed="{{ $index === 0 ? 'true' : 'false' }}"
+                            >
+                                <img src="{{ $galleryImageUrl }}" alt="{{ $product->publicTitle() }} {{ $index + 1 }}">
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
+
                 <div class="catalog-product-stage">
+                    @if ($galleryImages->count() > 1)
+                        <button type="button" class="catalog-product-stage__arrow" data-gallery-prev aria-label="Предыдущее фото">‹</button>
+                    @endif
+
                     <div class="catalog-product-stage__canvas">
-                        <span class="catalog-product-stage__chip">
+                        <span class="catalog-product-stage__chip" data-gallery-chip>
                             {{ $category?->name ?? 'Каталог' }}
                         </span>
                         <div class="catalog-product-stage__halo"></div>
@@ -37,11 +67,16 @@
                                 src="{{ $imageUrl }}"
                                 alt="{{ $product->publicTitle() }}"
                                 class="catalog-product-stage__image"
+                                data-gallery-image
                                 data-fallback-src="{{ $fallbackImageUrl }}"
                                 onerror="this.onerror=null; this.src=this.dataset.fallbackSrc;"
                             >
                         </div>
                     </div>
+
+                    @if ($galleryImages->count() > 1)
+                        <button type="button" class="catalog-product-stage__arrow" data-gallery-next aria-label="Следующее фото">›</button>
+                    @endif
                 </div>
             </div>
 

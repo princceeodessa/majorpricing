@@ -4,8 +4,16 @@
     $publicTitle = $product->publicTitle();
     $rootCategory = $product->category?->parent ?? $product->category;
     $fallbackImageUrl = asset('brand/product-placeholder.png');
-    $hasRealImage = filled($product->image_path);
-    $imageUrl = $hasRealImage ? asset($product->image_path) : $fallbackImageUrl;
+    $galleryPaths = $product->galleryImagePaths();
+    $hasRealImage = collect($galleryPaths)->contains(fn ($path): bool => filled($path));
+    $galleryImages = collect($galleryPaths)
+        ->filter(fn ($path): bool => filled($path))
+        ->map(fn ($path): string => asset($path))
+        ->values();
+    if ($galleryImages->isEmpty()) {
+        $galleryImages = collect([$fallbackImageUrl]);
+    }
+    $imageUrl = $galleryImages->first();
     $unitLabel = $product->publicUnitLabel();
     $availabilityLabel = $product->availabilityLabel();
     $availabilityTone = $product->availabilityTone();
@@ -24,21 +32,41 @@
         @include('partials.favorite-toggle', ['product' => $product])
     </div>
 
-    <a href="{{ route('products.show', $product) }}" class="catalog-product-card__visual-link">
-        <div class="catalog-product-card__visual">
+    <div class="catalog-product-card__visual" data-gallery data-gallery-index="0">
+        <a href="{{ route('products.show', $product) }}" class="catalog-product-card__visual-link">
             <div class="catalog-product-card__image-wrap">
                 <img
                     src="{{ $imageUrl }}"
                     alt="{{ $publicTitle }}"
                     class="catalog-product-card__image"
+                    data-gallery-image
                     loading="lazy"
                     decoding="async"
                     data-fallback-src="{{ $fallbackImageUrl }}"
                     onerror="this.onerror=null; this.src=this.dataset.fallbackSrc;"
                 >
             </div>
-        </div>
-    </a>
+        </a>
+
+        @if ($galleryImages->count() > 1)
+            <button type="button" class="catalog-product-card__gallery-arrow is-prev" data-gallery-prev aria-label="Предыдущее фото">‹</button>
+            <button type="button" class="catalog-product-card__gallery-arrow is-next" data-gallery-next aria-label="Следующее фото">›</button>
+
+            <div class="catalog-product-card__gallery-dots">
+                @foreach ($galleryImages as $index => $galleryImageUrl)
+                    <button
+                        type="button"
+                        class="catalog-product-card__gallery-dot {{ $index === 0 ? 'is-active' : '' }}"
+                        data-gallery-thumb
+                        data-gallery-image="{{ $galleryImageUrl }}"
+                        data-gallery-alt="{{ $publicTitle }}"
+                        aria-label="Фото {{ $index + 1 }}"
+                        aria-pressed="{{ $index === 0 ? 'true' : 'false' }}"
+                    ></button>
+                @endforeach
+            </div>
+        @endif
+    </div>
 
     <div class="catalog-product-card__body">
         <div>

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Product;
+use App\Models\ProductImage;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -43,6 +44,7 @@ class ImportFigmaProductImagesCommand extends Command
 
         $products = Product::query()
             ->select(['id', 'slug', 'title', 'name', 'one_c_id', 'one_c_code', 'vendor_code', 'image_path'])
+            ->with('productImages')
             ->get();
 
         $exactIndex = $this->buildExactIndex($products);
@@ -58,6 +60,7 @@ class ImportFigmaProductImagesCommand extends Command
         $resolvedAmbiguous = 0;
         $unmatched = [];
         $ambiguous = [];
+        $clearedProductIds = [];
 
         foreach ($files as $file) {
             $matched++;
@@ -71,42 +74,24 @@ class ImportFigmaProductImagesCommand extends Command
 
             if ($product instanceof Collection) {
                 if ($this->option('apply-ambiguous')) {
-                    $candidates = $product
-                        ->filter(function (Product $candidate): bool {
-                            if (! filled($candidate->image_path)) {
-                                return true;
-                            }
+                    foreach ($product as $candidate) {
+                        $attached = $this->attachImageToProduct(
+                            $candidate,
+                            $file,
+                            $sourcePath,
+                            $targetDirectory,
+                            $clearedProductIds,
+                        );
 
-                            return (bool) $this->option('overwrite');
-                        })
-                        ->values();
-
-                    if ($candidates->isNotEmpty()) {
-                        if ($this->option('dry-run')) {
-                            $updated += $candidates->count();
-                            $resolvedAmbiguous += $candidates->count();
-                            continue;
-                        }
-
-                        foreach ($candidates as $candidate) {
-                            $extension = mb_strtolower($file->getExtension());
-                            $baseName = $candidate->slug ?: Str::slug($candidate->publicTitle());
-                            $fileName = $candidate->id.'-'.($baseName !== '' ? $baseName : 'product').'.'.$extension;
-                            $targetRelativePath = 'catalog-media/figma/'.$fileName;
-                            $targetPath = public_path($targetRelativePath);
-
-                            File::copy($file->getPathname(), $targetPath);
-
-                            $candidate->forceFill([
-                                'image_path' => $targetRelativePath,
-                            ])->save();
-
+                        if ($attached) {
                             $updated++;
                             $resolvedAmbiguous++;
+                        } else {
+                            $skipped++;
                         }
-
-                        continue;
                     }
+
+                    continue;
                 }
 
                 $ambiguous[] = [
@@ -119,29 +104,19 @@ class ImportFigmaProductImagesCommand extends Command
                 continue;
             }
 
-            if (filled($product->image_path) && ! $this->option('overwrite')) {
-                $skipped++;
-                continue;
-            }
+            $attached = $this->attachImageToProduct(
+                $product,
+                $file,
+                $sourcePath,
+                $targetDirectory,
+                $clearedProductIds,
+            );
 
-            if ($this->option('dry-run')) {
+            if ($attached) {
                 $updated++;
-                continue;
+            } else {
+                $skipped++;
             }
-
-            $extension = mb_strtolower($file->getExtension());
-            $baseName = $product->slug ?: Str::slug($product->publicTitle());
-            $fileName = $product->id.'-'.($baseName !== '' ? $baseName : 'product').'.'.$extension;
-            $relativePath = 'catalog-media/figma/'.$fileName;
-            $targetPath = public_path($relativePath);
-
-            File::copy($file->getPathname(), $targetPath);
-
-            $product->forceFill([
-                'image_path' => $relativePath,
-            ])->save();
-
-            $updated++;
         }
 
         $this->table(
@@ -179,6 +154,99 @@ class ImportFigmaProductImagesCommand extends Command
             : 'Импорт изображений из Figma завершен.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @param  array<int, int>  $clearedProductIds
+     */
+    private function attachImageToProduct(
+        Product $product,
+        SplFileInfo $file,
+        string $sourcePath,
+        string $targetDirectory,
+        array &$clearedProductIds,
+    ): bool {
+        if (! $product->relationLoaded('productImages')) {
+            $product->load('productImages');
+        }
+
+        if ($this->option('overwrite') && ! in_array($product->id, $clearedProductIds, true)) {
+            if (! $this->option('dry-run')) {
+                $this->clearProductImages($product);
+            }
+
+            $clearedProductIds[] = $product->id;
+            $product->setRelation('productImages', collect());
+        }
+
+        $relativePath = $this->buildTargetRelativePath($product, $file, $sourcePath);
+
+        $alreadyExists = $product->productImages
+            ->contains(fn (ProductImage $image): bool => $image->path === $relativePath);
+
+        if ($alreadyExists) {
+            return false;
+        }
+
+        if ($this->option('dry-run')) {
+            $nextImages = $product->productImages->push(new ProductImage([
+                'path' => $relativePath,
+                'sort_order' => ((int) $product->productImages->max('sort_order')) + 1,
+                'is_cover' => $product->productImages->isEmpty(),
+            ]));
+
+            $product->setRelation('productImages', $nextImages->values());
+
+            if (! filled($product->image_path)) {
+                $product->image_path = $relativePath;
+            }
+
+            return true;
+        }
+
+        File::copy($file->getPathname(), $targetDirectory.'/'.basename($relativePath));
+
+        $isCover = $product->productImages->isEmpty();
+        $newImage = $product->productImages()->create([
+            'path' => $relativePath,
+            'sort_order' => ((int) $product->productImages->max('sort_order')) + 1,
+            'is_cover' => $isCover,
+        ]);
+
+        if ($isCover || ! filled($product->image_path)) {
+            $product->forceFill(['image_path' => $relativePath])->save();
+        }
+
+        $product->setRelation('productImages', $product->productImages->push($newImage)->values());
+
+        return true;
+    }
+
+    private function clearProductImages(Product $product): void
+    {
+        $product->loadMissing('productImages');
+
+        foreach ($product->productImages as $image) {
+            $path = public_path($image->path);
+
+            if (File::exists($path)) {
+                File::delete($path);
+            }
+        }
+
+        $product->productImages()->delete();
+        $product->forceFill(['image_path' => null])->save();
+    }
+
+    private function buildTargetRelativePath(Product $product, SplFileInfo $file, string $sourcePath): string
+    {
+        $extension = mb_strtolower($file->getExtension());
+        $baseName = $product->slug ?: Str::slug($product->publicTitle());
+        $baseName = $baseName !== '' ? $baseName : 'product';
+        $variantHash = substr(md5($this->relativePath($file, $sourcePath)), 0, 12);
+        $fileName = sprintf('%d-%s-%s.%s', $product->id, $baseName, $variantHash, $extension);
+
+        return 'catalog-media/figma/'.$fileName;
     }
 
     private function resolvePath(string $path): string

@@ -15,7 +15,7 @@ class ProductController extends Controller
     {
         abort_unless($product->isVisibleInCatalog(), 404);
 
-        $product->loadMissing(['category.children', 'category.parent.children', 'category.parent', 'prices']);
+        $product->loadMissing(['category.children', 'category.parent.children', 'category.parent', 'prices', 'productImages']);
         $cartQuantity = (int) $request->user()->cartItems()->where('product_id', $product->id)->value('quantity');
 
         $relatedProducts = $this->resolveRelatedProducts($product);
@@ -38,7 +38,7 @@ class ProductController extends Controller
 
         $candidates = Product::query()
             ->visibleInCatalog()
-            ->with(['category.parent', 'prices'])
+            ->with(['category.parent', 'prices', 'productImages'])
             ->whereKeyNot($product->id)
             ->where(function (Builder $query) use ($product, $rootCategoryIds, $tokens): void {
                 if ($product->category_id) {
