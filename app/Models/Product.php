@@ -218,11 +218,22 @@ class Product extends Model
 
     public function publicUnitLabel(): ?string
     {
-        return self::canonicalUnitLabel(
-            filled($this->measurement_label)
-                ? (string) $this->measurement_label
-                : (filled($this->measurement_value) ? (string) $this->measurement_value : null)
-        );
+        $candidates = [
+            filled($this->measurement_label) ? (string) $this->measurement_label : null,
+            filled($this->measurement_value) ? (string) $this->measurement_value : null,
+            self::extractUnitCandidateFromText($this->title),
+            self::extractUnitCandidateFromText($this->name),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $normalized = self::normalizeUnitForDisplay($candidate);
+
+            if ($normalized !== null) {
+                return $normalized;
+            }
+        }
+
+        return null;
     }
 
     public static function canonicalUnitLabel(?string $value): ?string
@@ -291,6 +302,135 @@ class Product extends Model
         }
 
         return $normalized;
+    }
+
+    private static function normalizeUnitForDisplay(?string $value): ?string
+    {
+        $canonical = self::canonicalUnitLabel($value);
+
+        if ($canonical !== null) {
+            $value = $canonical;
+        }
+
+        if (! filled($value)) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $probe = mb_strtolower($normalized);
+        $compact = preg_replace('/[\s\.\,\-–—_]+/u', '', $probe) ?? $probe;
+
+        if (
+            preg_match('/(^|[^\p{L}])(шт|штук|штука|ед|единиц|pcs?|piece)($|[^\p{L}])/u', $probe) === 1
+            || str_contains($compact, 'шт')
+        ) {
+            return 'шт';
+        }
+
+        if (
+            str_contains($compact, 'погм')
+            || str_contains($compact, 'погон')
+            || str_contains($compact, 'мп')
+            || str_contains($compact, 'пм')
+        ) {
+            return 'м.п.';
+        }
+
+        if (
+            str_contains($probe, 'м²')
+            || str_contains($compact, 'м2')
+            || str_contains($compact, 'квм')
+            || str_contains($compact, 'квадрат')
+        ) {
+            return 'м²';
+        }
+
+        if (
+            str_contains($probe, 'м³')
+            || str_contains($compact, 'м3')
+            || str_contains($compact, 'кубм')
+            || str_contains($compact, 'кубическ')
+        ) {
+            return 'м³';
+        }
+
+        if (
+            preg_match('/м\s*\/\s*уп/u', $probe) === 1
+            || str_contains($compact, 'муп')
+            || preg_match('/(^|[^\p{L}])(м|метр|метров|meter|m)($|[^\p{L}])/u', $probe) === 1
+        ) {
+            return 'м';
+        }
+
+        if (str_contains($compact, 'упак') || $compact === 'уп' || $compact === 'уп.') {
+            return 'упак';
+        }
+
+        if (str_contains($compact, 'комплект') || str_contains($compact, 'компл')) {
+            return 'компл';
+        }
+
+        if (str_contains($compact, 'пара') || $compact === 'пар') {
+            return 'пара';
+        }
+
+        if (preg_match('/(^|[^\p{L}])(кг|килограмм)($|[^\p{L}])/u', $probe) === 1) {
+            return 'кг';
+        }
+
+        if (preg_match('/(^|[^\p{L}])(л|литр|литра|литров)($|[^\p{L}])/u', $probe) === 1) {
+            return 'л';
+        }
+
+        if (mb_strlen($normalized) <= 8 && preg_match('/^[\p{L}\/\.]+$/u', $normalized) === 1) {
+            return $normalized;
+        }
+
+        return null;
+    }
+
+    private static function extractUnitCandidateFromText(?string $text): ?string
+    {
+        if (! filled($text)) {
+            return null;
+        }
+
+        $probe = mb_strtolower((string) $text);
+
+        if (preg_match_all('/\(([^)]{1,24})\)/u', $probe, $matches) === 1) {
+            foreach ($matches[1] as $fragment) {
+                if (! is_string($fragment)) {
+                    continue;
+                }
+
+                if (preg_match('/\b(м\.п\.|м²|м³|м2|м3|м|шт|упак|кг|л)\b/u', $fragment, $unitMatch) === 1) {
+                    return $unitMatch[1];
+                }
+
+                if (preg_match('/\d+[.,]?\d*\s*(м|шт|кг|л)\b/u', $fragment, $valueMatch) === 1) {
+                    return $valueMatch[1];
+                }
+            }
+        }
+
+        if (preg_match('/\b(м\.п\.|м²|м³|м2|м3|шт|упак|кг|л)\b/u', $probe, $unitMatch) === 1) {
+            return $unitMatch[1];
+        }
+
+        if (preg_match('/\d+[.,]?\d*\s*(м|шт|кг|л)\b/u', $probe, $valueMatch) === 1) {
+            return $valueMatch[1];
+        }
+
+        if (preg_match('/м\s*\/\s*уп/u', $probe) === 1) {
+            return 'м';
+        }
+
+        return null;
     }
 
     public function hasStockQuantity(): bool
