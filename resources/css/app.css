@@ -10214,6 +10214,10 @@ html {
 }
 
 .catalog-product-gallery {
+    display: block;
+}
+
+.catalog-product-gallery--with-thumbs {
     display: grid;
     grid-template-columns: 92px minmax(0, 1fr);
     gap: 0.95rem;
@@ -10249,7 +10253,7 @@ html {
 }
 
 @media (max-width: 720px) {
-    .catalog-product-gallery {
+    .catalog-product-gallery--with-thumbs {
         grid-template-columns: 1fr;
         gap: 0.75rem;
     }

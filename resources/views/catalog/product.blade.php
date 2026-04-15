@@ -32,7 +32,11 @@
 
     <section class="surface-card reveal-card p-5 sm:p-8">
         <div class="catalog-product-layout">
-            <div class="catalog-product-gallery" data-gallery data-gallery-index="0">
+            <div
+                class="catalog-product-gallery {{ $galleryImages->count() > 1 ? 'catalog-product-gallery--with-thumbs' : '' }}"
+                data-gallery
+                data-gallery-index="0"
+            >
                 @if ($galleryImages->count() > 1)
                     <div class="catalog-product-gallery__thumbs">
                         @foreach ($galleryImages as $index => $galleryImageUrl)
