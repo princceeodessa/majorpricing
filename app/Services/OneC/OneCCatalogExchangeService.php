@@ -249,7 +249,7 @@ class OneCCatalogExchangeService
                 'vendor_code' => $this->firstChildValue($xpath, $productNode, ['Артикул', 'Р С’РЎР‚РЎвЂљР С‘Р С”РЎС“Р В»']),
                 'brand_name' => $brandName,
                 'measurement_label' => $unitLabel,
-                'measurement_value' => $this->firstChildValue($xpath, $productNode, ['НаименованиеПолное', 'Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р ВµР СџР С•Р В»Р Р…Р С•Р Вµ']),
+                'measurement_value' => $unitLabel,
                 'description' => $this->firstChildValue($xpath, $productNode, ['Описание', 'Р С›Р С—Р С‘РЎРѓР В°Р Р…Р С‘Р Вµ']),
                 'source_sheet' => $isNewProduct ? '1C' : $product->source_sheet,
                 'source_row' => $isNewProduct ? null : $product->source_row,
@@ -257,16 +257,6 @@ class OneCCatalogExchangeService
                 'image_path' => $imagePath ?? $product->image_path,
             ]);
 
-            $normalizedUnit = Product::canonicalUnitLabel(
-                filled($product->measurement_label)
-                    ? (string) $product->measurement_label
-                    : (filled($product->measurement_value) ? (string) $product->measurement_value : null)
-            );
-
-            if (filled($normalizedUnit)) {
-                $product->measurement_label = $normalizedUnit;
-                $product->measurement_value = $normalizedUnit;
-            }
             $product->save();
 
             $count++;
@@ -317,14 +307,7 @@ class OneCCatalogExchangeService
                 $offerNode,
                 ['Количество', 'РљРѕР»РёС‡РµСЃС‚РІРѕ']
             ));
-            $offerUnit = Product::canonicalUnitLabel($this->firstChildValue(
-                $xpath,
-                $offerNode,
-                [
-                    json_decode('"\u0415\u0434\u0438\u043d\u0438\u0446\u0430"', true),
-                    json_decode('"\u0411\u0430\u0437\u043e\u0432\u0430\u044f\u0415\u0434\u0438\u043d\u0438\u0446\u0430"', true),
-                ],
-            ));
+            $offerUnit = Product::canonicalUnitLabel($this->resolveOfferUnitLabel($xpath, $offerNode));
             $resolvedMinimums = [];
             $publicMinimums = [];
             $priceNodes = $this->queryChildren(
@@ -838,22 +821,73 @@ class OneCCatalogExchangeService
 
     private function resolveUnitLabel(DOMXPath $xpath, DOMElement $productNode): ?string
     {
-        $measureNode = $this->queryChildren(
+        return $this->resolveUnitLabelFromNodeNames(
             $xpath,
-            '.',
             $productNode,
             [
-                ['БазоваяЕдиница', 'Р вЂР В°Р В·Р С•Р Р†Р В°РЎРЏР вЂўР Т‘Р С‘Р Р…Р С‘РЎвЂ Р В°'],
+                [json_decode('"\u0411\u0430\u0437\u043e\u0432\u0430\u044f\u0415\u0434\u0438\u043d\u0438\u0446\u0430"', true), 'Р вЂР В°Р В·Р С•Р Р†Р В°РЎРЏР вЂўР Т‘Р С‘Р Р…Р С‘РЎвЂ Р В°'],
+                [json_decode('"\u0415\u0434\u0438\u043d\u0438\u0446\u0430"', true), 'Р В•Р Т‘Р С‘Р Р…Р С‘РЎвЂ Р В°'],
             ],
-        )->item(0);
+        );
+    }
 
-        if (! $measureNode instanceof DOMElement) {
-            return null;
+    private function resolveOfferUnitLabel(DOMXPath $xpath, DOMElement $offerNode): ?string
+    {
+        return $this->resolveUnitLabelFromNodeNames(
+            $xpath,
+            $offerNode,
+            [
+                [json_decode('"\u0415\u0434\u0438\u043d\u0438\u0446\u0430"', true), 'Р В•Р Т‘Р С‘Р Р…Р С‘РЎвЂ Р В°'],
+                [json_decode('"\u0411\u0430\u0437\u043e\u0432\u0430\u044f\u0415\u0434\u0438\u043d\u0438\u0446\u0430"', true), 'Р вЂР В°Р В·Р С•Р Р†Р В°РЎРЏР вЂўР Т‘Р С‘Р Р…Р С‘РЎвЂ Р В°'],
+            ],
+        );
+    }
+
+    /**
+     * @param  array<int, array<int, string>>  $measureNodeVariants
+     */
+    private function resolveUnitLabelFromNodeNames(DOMXPath $xpath, DOMElement $contextNode, array $measureNodeVariants): ?string
+    {
+        foreach ($measureNodeVariants as $measureNodeNames) {
+            $measureNode = $this->queryChildren(
+                $xpath,
+                '.',
+                $contextNode,
+                [
+                    $measureNodeNames,
+                ],
+            )->item(0);
+
+            if (! $measureNode instanceof DOMElement) {
+                continue;
+            }
+
+            $unit = $this->extractUnitFromMeasureNode($xpath, $measureNode);
+
+            if (filled($unit)) {
+                return $unit;
+            }
         }
 
+        return null;
+    }
+
+    private function extractUnitFromMeasureNode(DOMXPath $xpath, DOMElement $measureNode): ?string
+    {
         return $this->firstFilled([
-            $measureNode->getAttribute('НаименованиеКраткое'),
+            $measureNode->getAttribute(json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435\u041a\u0440\u0430\u0442\u043a\u043e\u0435"', true)),
             $measureNode->getAttribute('Р СњР В°Р С‘Р СР ВµР Р…Р С•Р Р†Р В°Р Р…Р С‘Р ВµР С™РЎР‚Р В°РЎвЂљР С”Р С•Р Вµ'),
+            $measureNode->getAttribute(json_decode('"\u041c\u0435\u0436\u0434\u0443\u043d\u0430\u0440\u043e\u0434\u043d\u043e\u0435\u0421\u043e\u043a\u0440\u0430\u0449\u0435\u043d\u0438\u0435"', true)),
+            $measureNode->getAttribute(json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435\u041f\u043e\u043b\u043d\u043e\u0435"', true)),
+            $this->firstChildValue(
+                $xpath,
+                $measureNode,
+                [
+                    json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435\u041a\u0440\u0430\u0442\u043a\u043e\u0435"', true),
+                    json_decode('"\u041c\u0435\u0436\u0434\u0443\u043d\u0430\u0440\u043e\u0434\u043d\u043e\u0435\u0421\u043e\u043a\u0440\u0430\u0449\u0435\u043d\u0438\u0435"', true),
+                    json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435\u041f\u043e\u043b\u043d\u043e\u0435"', true),
+                ],
+            ),
             trim($measureNode->textContent),
         ]);
     }

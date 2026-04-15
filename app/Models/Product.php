@@ -218,22 +218,8 @@ class Product extends Model
 
     public function publicUnitLabel(): ?string
     {
-        $candidates = [
-            filled($this->measurement_label) ? (string) $this->measurement_label : null,
-            filled($this->measurement_value) ? (string) $this->measurement_value : null,
-            self::extractUnitCandidateFromText($this->title),
-            self::extractUnitCandidateFromText($this->name),
-        ];
-
-        foreach ($candidates as $candidate) {
-            $normalized = self::normalizeUnitForDisplay($candidate);
-
-            if ($normalized !== null) {
-                return $normalized;
-            }
-        }
-
-        return null;
+        return self::canonicalUnitLabel($this->measurement_label)
+            ?? self::canonicalUnitLabel($this->measurement_value);
     }
 
     public static function canonicalUnitLabel(?string $value): ?string
