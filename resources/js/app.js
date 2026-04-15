@@ -180,10 +180,58 @@ const setupPriceFilters = () => {
     });
 };
 
-const normalizeQty = (input, nextValue = input.value) => {
-    const parsed = Number.parseInt(`${nextValue}`, 10);
+const readIntWithFallback = (candidate, fallback) => {
+    const parsed = Number.parseInt(`${candidate ?? ''}`, 10);
 
-    input.value = `${Number.isNaN(parsed) ? 1 : Math.max(1, parsed)}`;
+    return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+const resolveQuantityConstraints = ({ min = 1, step = 1, max = 999 } = {}) => {
+    const resolvedMin = clamp(readIntWithFallback(min, 1), 1, 999);
+    const resolvedStep = Math.max(1, readIntWithFallback(step, resolvedMin));
+    const resolvedMaxBase = clamp(readIntWithFallback(max, 999), resolvedMin, 999);
+    const stepsToMax = Math.max(0, Math.floor((resolvedMaxBase - resolvedMin) / resolvedStep));
+    const resolvedMax = resolvedMin + (stepsToMax * resolvedStep);
+
+    return {
+        min: resolvedMin,
+        step: resolvedStep,
+        max: Math.max(resolvedMin, resolvedMax),
+    };
+};
+
+const readInputQuantityConstraints = (input) => resolveQuantityConstraints({
+    min: input instanceof HTMLInputElement ? input.getAttribute('min') : 1,
+    step: input instanceof HTMLInputElement ? input.getAttribute('step') : 1,
+    max: input instanceof HTMLInputElement ? input.getAttribute('max') : 999,
+});
+
+const readCartControlQuantityConstraints = (control) => resolveQuantityConstraints({
+    min: control instanceof HTMLElement ? control.dataset.minQuantity : 1,
+    step: control instanceof HTMLElement ? control.dataset.stepQuantity : 1,
+    max: 999,
+});
+
+const normalizeQuantityByConstraints = (value, fallback, constraints) => {
+    const parsed = Number.parseInt(`${value}`, 10);
+    const fallbackValue = Number.isFinite(fallback) ? Math.trunc(fallback) : constraints.min;
+    const baseValue = Number.isNaN(parsed) ? fallbackValue : parsed;
+    const bounded = clamp(baseValue, constraints.min, constraints.max);
+    const stepsFromMin = Math.max(0, Math.ceil((bounded - constraints.min) / constraints.step));
+    const normalized = constraints.min + (stepsFromMin * constraints.step);
+
+    return Math.max(constraints.min, Math.min(constraints.max, normalized));
+};
+
+const normalizeQty = (input, nextValue = input?.value ?? 1) => {
+    const constraints = readInputQuantityConstraints(input);
+    const normalized = normalizeQuantityByConstraints(nextValue, constraints.min, constraints);
+
+    if (input instanceof HTMLInputElement) {
+        input.value = `${normalized}`;
+    }
+
+    return normalized;
 };
 
 const setupQuantityControls = () => {
@@ -203,7 +251,9 @@ const setupQuantityControls = () => {
             return;
         }
 
-        normalizeQty(input, Number(input.value) + (button.hasAttribute('data-qty-inc') ? 1 : -1));
+        const constraints = readInputQuantityConstraints(input);
+        const delta = button.hasAttribute('data-qty-inc') ? constraints.step : -constraints.step;
+        normalizeQty(input, readIntWithFallback(input.value, constraints.min) + delta);
     });
 
     document.addEventListener('change', (event) => {
@@ -217,14 +267,8 @@ const setupQuantityControls = () => {
     });
 };
 
-const normalizeCartQuantity = (value, fallback = 1) => {
-    const parsed = Number.parseInt(`${value}`, 10);
-
-    if (Number.isNaN(parsed)) {
-        return clamp(fallback, 1, 999);
-    }
-
-    return clamp(parsed, 1, 999);
+const normalizeCartQuantity = (value, fallback = 1, constraints = resolveQuantityConstraints()) => {
+    return normalizeQuantityByConstraints(value, fallback, constraints);
 };
 
 const syncSingleCartControl = (control, quantity) => {
@@ -232,23 +276,28 @@ const syncSingleCartControl = (control, quantity) => {
         return;
     }
 
-    control.dataset.quantity = `${quantity}`;
+    const constraints = readCartControlQuantityConstraints(control);
+    const safeQuantity = quantity > 0
+        ? normalizeCartQuantity(quantity, constraints.min, constraints)
+        : 0;
+
+    control.dataset.quantity = `${safeQuantity}`;
 
     const addState = control.querySelector('[data-cart-add-state]');
     const qtyState = control.querySelector('[data-cart-qty-state]');
     const qtyValue = control.querySelector('[data-cart-quantity]');
 
-    addState?.classList.toggle('hidden', quantity > 0);
-    qtyState?.classList.toggle('hidden', quantity <= 0);
+    addState?.classList.toggle('hidden', safeQuantity > 0);
+    qtyState?.classList.toggle('hidden', safeQuantity <= 0);
 
     if (qtyValue instanceof HTMLInputElement) {
-        qtyValue.value = `${quantity > 0 ? quantity : 1}`;
+        qtyValue.value = `${safeQuantity > 0 ? safeQuantity : constraints.min}`;
 
         return;
     }
 
     if (qtyValue instanceof HTMLElement) {
-        qtyValue.textContent = `${quantity}`;
+        qtyValue.textContent = `${safeQuantity}`;
     }
 };
 
@@ -267,8 +316,21 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
         return;
     }
 
-    const currentQuantity = Math.max(0, Number.parseInt(control.dataset.quantity || '0', 10) || 0);
-    const resolvedNextQuantity = Math.max(0, Math.min(999, Math.trunc(Number(nextQuantity) || 0)));
+    const constraints = readCartControlQuantityConstraints(control);
+    const currentQuantity = Math.max(0, readIntWithFallback(control.dataset.quantity, 0));
+    let resolvedNextQuantity = Math.trunc(Number(nextQuantity) || 0);
+
+    if (resolvedNextQuantity > 0) {
+        resolvedNextQuantity = normalizeCartQuantity(
+            resolvedNextQuantity,
+            currentQuantity > 0 ? currentQuantity : constraints.min,
+            constraints,
+        );
+    }
+
+    if (resolvedNextQuantity > 0 && resolvedNextQuantity < constraints.min) {
+        resolvedNextQuantity = constraints.min;
+    }
 
     if (resolvedNextQuantity === currentQuantity) {
         syncSingleCartControl(control, currentQuantity);
@@ -348,18 +410,23 @@ const setupProductCardCartControls = () => {
 
         event.preventDefault();
 
+        const constraints = readCartControlQuantityConstraints(control);
         const quantityInput = control.querySelector('[data-cart-quantity-input]');
         const quantity = quantityInput instanceof HTMLInputElement
-            ? normalizeCartQuantity(quantityInput.value, Number.parseInt(control.dataset.quantity || '1', 10) || 1)
-            : Math.max(0, Number.parseInt(control.dataset.quantity || '0', 10) || 0);
+            ? normalizeCartQuantity(
+                quantityInput.value,
+                readIntWithFallback(control.dataset.quantity, constraints.min) || constraints.min,
+                constraints,
+            )
+            : Math.max(0, readIntWithFallback(control.dataset.quantity, 0));
         let nextQuantity = quantity;
 
         if (target.hasAttribute('data-cart-add')) {
-            nextQuantity = 1;
+            nextQuantity = constraints.min;
         } else if (target.hasAttribute('data-cart-inc')) {
-            nextQuantity = quantity + 1;
+            nextQuantity = quantity + constraints.step;
         } else if (target.hasAttribute('data-cart-dec')) {
-            nextQuantity = quantity - 1;
+            nextQuantity = quantity - constraints.step;
         }
 
         void submitProductCardQuantity(control, nextQuantity);
@@ -378,8 +445,9 @@ const setupProductCardCartControls = () => {
             return;
         }
 
-        const currentQuantity = Math.max(1, Number.parseInt(control.dataset.quantity || '1', 10) || 1);
-        const nextQuantity = normalizeCartQuantity(input.value, currentQuantity);
+        const constraints = readCartControlQuantityConstraints(control);
+        const currentQuantity = Math.max(constraints.min, readIntWithFallback(control.dataset.quantity, constraints.min));
+        const nextQuantity = normalizeCartQuantity(input.value, currentQuantity, constraints);
 
         input.value = `${nextQuantity}`;
         void submitProductCardQuantity(control, nextQuantity);

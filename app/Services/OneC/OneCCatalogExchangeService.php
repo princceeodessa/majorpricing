@@ -172,6 +172,7 @@ class OneCCatalogExchangeService
     private function importProducts(DOMXPath $xpath, string $sessionKey): int
     {
         $count = 0;
+        $propertyMap = $this->collectClassifierPropertyMap($xpath);
         $productNodes = $this->queryChildren(
             $xpath,
             '//*',
@@ -213,7 +214,11 @@ class OneCCatalogExchangeService
 
             $oneCCode = $this->resolveProductCode($xpath, $productNode);
             $vendorCode = $this->firstChildValue($xpath, $productNode, ['РђСЂС‚РёРєСѓР»', 'РВРЎвЂ™РРЋРвЂљРРЋРІР‚С™РВРЎвЂРВРЎвЂќРРЋРЎвЂњРВР’В»']);
-            $brandName = $this->resolveProductBrand($xpath, $productNode);
+            $propertyValues = $this->collectProductPropertyValues($xpath, $productNode, $propertyMap);
+            $brandName = $this->resolveProductBrand($xpath, $productNode, $propertyValues);
+            $colorName = $this->resolveProductColor($xpath, $productNode, $propertyValues);
+            $minimumSaleQuantity = $this->resolveProductMinimumSaleQuantity($xpath, $productNode, $propertyValues);
+            $unitsInPackage = $this->resolveProductUnitsInPackage($xpath, $productNode, $propertyValues);
 
             $product = $this->resolveProductForSync(
                 oneCId: $oneCId,
@@ -248,8 +253,11 @@ class OneCCatalogExchangeService
                 'one_c_code' => $oneCCode,
                 'vendor_code' => $this->firstChildValue($xpath, $productNode, ['Артикул', 'Р С’РЎР‚РЎвЂљР С‘Р С”РЎС“Р В»']),
                 'brand_name' => $brandName,
+                'color_name' => $colorName,
                 'measurement_label' => $unitLabel,
                 'measurement_value' => $unitLabel,
+                'minimum_sale_quantity' => $minimumSaleQuantity,
+                'units_in_package' => $unitsInPackage,
                 'description' => $this->firstChildValue($xpath, $productNode, ['Описание', 'Р С›Р С—Р С‘РЎРѓР В°Р Р…Р С‘Р Вµ']),
                 'source_sheet' => $isNewProduct ? '1C' : $product->source_sheet,
                 'source_row' => $isNewProduct ? null : $product->source_row,
@@ -479,12 +487,107 @@ class OneCCatalogExchangeService
         ]);
     }
 
-    private function resolveProductBrand(DOMXPath $xpath, DOMElement $productNode): ?string
+    /**
+     * @param  array<string, string>  $propertyValues
+     */
+    private function resolveProductBrand(DOMXPath $xpath, DOMElement $productNode, array $propertyValues = []): ?string
     {
         return $this->firstFilled([
             $this->firstChildValue($xpath, $productNode, ['Бренд']),
             $this->requisiteValue($xpath, $productNode, ['Бренд']),
+            $this->propertyValue($propertyValues, ['Бренд']),
         ]);
+    }
+
+    /**
+     * @param  array<string, string>  $propertyValues
+     */
+    private function resolveProductColor(DOMXPath $xpath, DOMElement $productNode, array $propertyValues = []): ?string
+    {
+        return $this->firstFilled([
+            $this->firstChildValue($xpath, $productNode, [
+                json_decode('"\u0426\u0432\u0435\u0442"', true),
+                json_decode('"\u0426\u0432\u0435\u0442\u0424\u0430\u043a\u0442\u0443\u0440\u044b"', true),
+                json_decode('"\u0426\u0432\u0435\u0442 \u0444\u0430\u043a\u0442\u0443\u0440\u044b"', true),
+            ]),
+            $this->requisiteValue($xpath, $productNode, [
+                json_decode('"\u0426\u0432\u0435\u0442"', true),
+                json_decode('"\u0426\u0432\u0435\u0442\u0424\u0430\u043a\u0442\u0443\u0440\u044b"', true),
+                json_decode('"\u0426\u0432\u0435\u0442 \u0444\u0430\u043a\u0442\u0443\u0440\u044b"', true),
+            ]),
+            $this->propertyValue($propertyValues, [
+                json_decode('"\u0426\u0432\u0435\u0442"', true),
+                json_decode('"\u0426\u0432\u0435\u0442\u0424\u0430\u043a\u0442\u0443\u0440\u044b"', true),
+                json_decode('"\u0426\u0432\u0435\u0442 \u0444\u0430\u043a\u0442\u0443\u0440\u044b"', true),
+            ]),
+            $this->propertyValueByNameFragments($propertyValues, [
+                [
+                    json_decode('"\u0446\u0432\u0435\u0442"', true),
+                ],
+                [
+                    json_decode('"\u0444\u0430\u043a\u0442\u0443\u0440"', true),
+                ],
+            ]),
+        ]);
+    }
+
+    /**
+     * @param  array<string, string>  $propertyValues
+     */
+    private function resolveProductMinimumSaleQuantity(DOMXPath $xpath, DOMElement $productNode, array $propertyValues = []): ?float
+    {
+        $value = $this->firstFilled([
+            $this->firstChildValue($xpath, $productNode, [
+                json_decode('"\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u043e\u0435\u043f\u0440\u043e\u0434\u0430\u0432\u0430\u0435\u043c\u043e\u0435\u043a\u043e\u043b\u0432\u043e"', true),
+                json_decode('"\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u043e\u0435 \u043f\u0440\u043e\u0434\u0430\u0432\u0430\u0435\u043c\u043e\u0435 \u043a\u043e\u043b-\u0432\u043e"', true),
+            ]),
+            $this->requisiteValue($xpath, $productNode, [
+                json_decode('"\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u043e\u0435\u043f\u0440\u043e\u0434\u0430\u0432\u0430\u0435\u043c\u043e\u0435\u043a\u043e\u043b\u0432\u043e"', true),
+                json_decode('"\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u043e\u0435 \u043f\u0440\u043e\u0434\u0430\u0432\u0430\u0435\u043c\u043e\u0435 \u043a\u043e\u043b-\u0432\u043e"', true),
+            ]),
+            $this->propertyValue($propertyValues, [
+                json_decode('"\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u043e\u0435\u043f\u0440\u043e\u0434\u0430\u0432\u0430\u0435\u043c\u043e\u0435\u043a\u043e\u043b\u0432\u043e"', true),
+                json_decode('"\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u043e\u0435 \u043f\u0440\u043e\u0434\u0430\u0432\u0430\u0435\u043c\u043e\u0435 \u043a\u043e\u043b-\u0432\u043e"', true),
+            ]),
+            $this->propertyValueByNameFragments($propertyValues, [
+                [
+                    json_decode('"\u043c\u0438\u043d\u0438\u043c"', true),
+                    json_decode('"\u043f\u0440\u043e\u0434\u0430"', true),
+                    json_decode('"\u043a\u043e\u043b"', true),
+                ],
+            ]),
+        ]);
+
+        return $this->normalizePositiveDecimal($value);
+    }
+
+    /**
+     * @param  array<string, string>  $propertyValues
+     */
+    private function resolveProductUnitsInPackage(DOMXPath $xpath, DOMElement $productNode, array $propertyValues = []): ?float
+    {
+        $value = $this->firstFilled([
+            $this->firstChildValue($xpath, $productNode, [
+                json_decode('"\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e\u0432\u0443\u043f\u0430\u043a\u043e\u0432\u043a\u0435"', true),
+                json_decode('"\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0432 \u0443\u043f\u0430\u043a\u043e\u0432\u043a\u0435"', true),
+            ]),
+            $this->requisiteValue($xpath, $productNode, [
+                json_decode('"\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e\u0432\u0443\u043f\u0430\u043a\u043e\u0432\u043a\u0435"', true),
+                json_decode('"\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0432 \u0443\u043f\u0430\u043a\u043e\u0432\u043a\u0435"', true),
+            ]),
+            $this->propertyValue($propertyValues, [
+                json_decode('"\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e\u0432\u0443\u043f\u0430\u043a\u043e\u0432\u043a\u0435"', true),
+                json_decode('"\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0432 \u0443\u043f\u0430\u043a\u043e\u0432\u043a\u0435"', true),
+            ]),
+            $this->propertyValueByNameFragments($propertyValues, [
+                [
+                    json_decode('"\u043a\u043e\u043b"', true),
+                    json_decode('"\u0443\u043f\u0430\u043a"', true),
+                ],
+            ]),
+        ]);
+
+        return $this->normalizePositiveDecimal($value);
     }
 
     private function resolveCategoryForSync(string $name, string $oneCId, ?Category $parent): Category
@@ -805,9 +908,12 @@ class OneCCatalogExchangeService
                 'vendor_code' => $target->vendor_code ?: $duplicate->vendor_code,
                 'one_c_code' => $target->one_c_code ?: $duplicate->one_c_code,
                 'brand_name' => $target->brand_name ?: $duplicate->brand_name,
+                'color_name' => $target->color_name ?: $duplicate->color_name,
                 'measurement_label' => $target->measurement_label ?: $duplicate->measurement_label,
                 'measurement_value' => $target->measurement_value ?: $duplicate->measurement_value,
                 'stock_quantity' => $target->stock_quantity ?? $duplicate->stock_quantity,
+                'minimum_sale_quantity' => $target->minimum_sale_quantity ?? $duplicate->minimum_sale_quantity,
+                'units_in_package' => $target->units_in_package ?? $duplicate->units_in_package,
                 'description' => $target->description ?: $duplicate->description,
                 'image_path' => $target->image_path ?: $duplicate->image_path,
                 'category_id' => $target->category_id ?: $category?->id ?: $duplicate->category_id,
@@ -1032,6 +1138,165 @@ class OneCCatalogExchangeService
         $normalized = str_replace([' ', ','], ['', '.'], trim($value));
 
         return is_numeric($normalized) ? (float) $normalized : null;
+    }
+
+    private function normalizePositiveDecimal(?string $value): ?float
+    {
+        $normalized = $this->normalizeDecimal($value);
+
+        return $normalized !== null && $normalized > 0
+            ? $normalized
+            : null;
+    }
+
+    /**
+     * @return array<string, array{
+     *     name:string,
+     *     normalized_name:string,
+     *     values:array<string, string>
+     * }>
+     */
+    private function collectClassifierPropertyMap(DOMXPath $xpath): array
+    {
+        $result = [];
+        $propertyNodes = $xpath->query(
+            '//*[local-name()="Классификатор"]/*[local-name()="Свойства"]/*[local-name()="Свойство"]'
+        );
+
+        if (! $propertyNodes) {
+            return $result;
+        }
+
+        foreach ($propertyNodes as $propertyNode) {
+            if (! $propertyNode instanceof DOMElement) {
+                continue;
+            }
+
+            $propertyId = $this->firstChildValue($xpath, $propertyNode, ['Ид']);
+            $propertyName = $this->firstChildValue($xpath, $propertyNode, ['Наименование']);
+
+            if (! filled($propertyId) || ! filled($propertyName)) {
+                continue;
+            }
+
+            $dictionary = [];
+            $dictionaryNodes = $xpath->query('./*[local-name()="ВариантыЗначений"]/*', $propertyNode);
+
+            if ($dictionaryNodes) {
+                foreach ($dictionaryNodes as $dictionaryNode) {
+                    if (! $dictionaryNode instanceof DOMElement) {
+                        continue;
+                    }
+
+                    $valueId = $this->firstChildValue($xpath, $dictionaryNode, ['ИдЗначения', 'Ид']);
+                    $value = $this->firstFilled([
+                        $this->firstChildValue($xpath, $dictionaryNode, ['Значение']),
+                        trim($dictionaryNode->textContent),
+                    ]);
+
+                    if (filled($valueId) && filled($value)) {
+                        $dictionary[(string) $valueId] = $value;
+                    }
+                }
+            }
+
+            $result[(string) $propertyId] = [
+                'name' => trim((string) $propertyName),
+                'normalized_name' => $this->normalizeRequisiteName($propertyName),
+                'values' => $dictionary,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, array{name:string,normalized_name:string,values:array<string, string>}>  $propertyMap
+     * @return array<string, string>
+     */
+    private function collectProductPropertyValues(DOMXPath $xpath, DOMElement $productNode, array $propertyMap): array
+    {
+        $result = [];
+        $propertyValueNodes = $xpath->query(
+            './*[local-name()="ЗначенияСвойств"]/*[local-name()="ЗначенияСвойства"]',
+            $productNode
+        );
+
+        if (! $propertyValueNodes) {
+            return $result;
+        }
+
+        foreach ($propertyValueNodes as $propertyValueNode) {
+            if (! $propertyValueNode instanceof DOMElement) {
+                continue;
+            }
+
+            $propertyId = $this->firstChildValue($xpath, $propertyValueNode, ['Ид']);
+            $rawValue = $this->firstChildValue($xpath, $propertyValueNode, ['Значение']);
+
+            if (! filled($propertyId) || ! filled($rawValue)) {
+                continue;
+            }
+
+            $propertyMeta = $propertyMap[(string) $propertyId] ?? null;
+            $resolvedValue = $propertyMeta['values'][(string) $rawValue] ?? $rawValue;
+
+            if (! filled($resolvedValue)) {
+                continue;
+            }
+
+            $name = $propertyMeta['normalized_name'] ?? $this->normalizeRequisiteName($propertyId);
+            $result[$name] = trim((string) $resolvedValue);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, string>  $propertyValues
+     * @param  array<int, string>  $propertyNames
+     */
+    private function propertyValue(array $propertyValues, array $propertyNames): ?string
+    {
+        foreach ($propertyNames as $propertyName) {
+            $normalizedName = $this->normalizeRequisiteName($propertyName);
+
+            if ($normalizedName !== '' && array_key_exists($normalizedName, $propertyValues)) {
+                return $propertyValues[$normalizedName];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, string>  $propertyValues
+     * @param  array<int, array<int, string>>  $fragmentSets
+     */
+    private function propertyValueByNameFragments(array $propertyValues, array $fragmentSets): ?string
+    {
+        foreach ($propertyValues as $normalizedName => $value) {
+            foreach ($fragmentSets as $fragments) {
+                $normalizedFragments = collect($fragments)
+                    ->map(fn (?string $fragment): string => $this->normalizeRequisiteName($fragment))
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                if ($normalizedFragments === []) {
+                    continue;
+                }
+
+                $matched = collect($normalizedFragments)
+                    ->every(fn (string $fragment): bool => str_contains($normalizedName, $fragment));
+
+                if ($matched) {
+                    return $value;
+                }
+            }
+        }
+
+        return null;
     }
 
     private function uniqueSlug(string $value, string $modelClass): string

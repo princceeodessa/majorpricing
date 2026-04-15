@@ -8,6 +8,11 @@
         $comparePrice = $product->comparePrice();
         $category = $product->category;
         $unitLabel = $product->publicUnitLabel();
+        $minimumSaleSummary = $product->minimumSaleQuantitySummary();
+        $unitsInPackageSummary = $product->unitsInPackageSummary();
+        $minCartQuantity = $product->cartQuantityMinimum();
+        $stepCartQuantity = $product->cartQuantityStep();
+        $maxCartQuantity = $product->cartQuantityMax();
         $availabilityLabel = $product->availabilityLabel();
         $availabilityTone = $product->availabilityTone();
         $fallbackImageUrl = asset('brand/product-placeholder.png');
@@ -26,6 +31,9 @@
             ['label' => 'Код', 'value' => $product->one_c_code],
             ['label' => 'Ед. изм.', 'value' => $unitLabel],
             ['label' => 'Бренд', 'value' => $product->brand_name],
+            ['label' => 'Цвет', 'value' => $product->color_name],
+            ['label' => 'Мин. продаваемое кол-во', 'value' => $minimumSaleSummary],
+            ['label' => 'Количество в упаковке', 'value' => $unitsInPackageSummary],
             ['label' => 'Наличие', 'value' => $availabilityLabel],
         ])->filter(fn (array $item) => filled($item['value']))->values();
     @endphp
@@ -137,7 +145,15 @@
 
                     <div class="catalog-qty-control" data-qty>
                         <button type="button" data-qty-dec aria-label="Уменьшить количество">−</button>
-                        <input type="number" min="1" max="999" value="1" name="quantity" data-qty-input>
+                        <input
+                            type="number"
+                            min="{{ $minCartQuantity }}"
+                            max="{{ $maxCartQuantity }}"
+                            step="{{ $stepCartQuantity }}"
+                            value="{{ $minCartQuantity }}"
+                            name="quantity"
+                            data-qty-input
+                        >
                         <button type="button" data-qty-inc aria-label="Увеличить количество">+</button>
                     </div>
 

@@ -20,6 +20,12 @@
     $productAccents = ['#163459', '#1f4f7a', '#255f91', '#2f6f9f', '#3c7fae', '#0f2947'];
     $productAccent = $productAccents[($rootCategory?->id ?? $product->id ?? 0) % count($productAccents)];
     $cartQuantity = (int) (($cartProductQuantities[$product->id] ?? 0));
+    $minCartQuantity = $product->cartQuantityMinimum();
+    $stepCartQuantity = $product->cartQuantityStep();
+    $maxCartQuantity = $product->cartQuantityMax();
+    $safeCartQuantity = $cartQuantity > 0 ? $product->normalizeCartQuantity($cartQuantity) : $minCartQuantity;
+    $minimumSaleSummary = $product->minimumSaleQuantitySummary();
+    $unitsInPackageSummary = $product->unitsInPackageSummary();
 @endphp
 
 <article
@@ -103,7 +109,9 @@
                 class="catalog-product-card__cart-control"
                 data-cart-control
                 data-product-id="{{ $product->id }}"
-                data-quantity="{{ $cartQuantity }}"
+                data-quantity="{{ $cartQuantity > 0 ? $safeCartQuantity : 0 }}"
+                data-min-quantity="{{ $minCartQuantity }}"
+                data-step-quantity="{{ $stepCartQuantity }}"
                 data-store-url="{{ route('cart.store', $product) }}"
                 data-update-url="{{ route('cart.product.update', $product) }}"
                 data-destroy-url="{{ route('cart.product.destroy', $product) }}"
@@ -117,19 +125,34 @@
                     <button type="button" class="catalog-product-card__stepper-btn" data-cart-dec aria-label="Уменьшить количество">−</button>
                     <input
                         type="number"
-                        min="1"
-                        max="999"
-                        step="1"
+                        min="{{ $minCartQuantity }}"
+                        max="{{ $maxCartQuantity }}"
+                        step="{{ $stepCartQuantity }}"
                         inputmode="numeric"
                         class="catalog-product-card__stepper-value"
                         data-cart-quantity
                         data-cart-quantity-input
-                        value="{{ max(1, $cartQuantity) }}"
+                        value="{{ $safeCartQuantity }}"
                         aria-label="Quantity"
                         title="Enter quantity manually"
                     >
                     <button type="button" class="catalog-product-card__stepper-btn" data-cart-inc aria-label="Увеличить количество">+</button>
                 </div>
+
+                @if ($minimumSaleSummary || $unitsInPackageSummary)
+                    <p class="catalog-product-card__meta">
+                        @if ($minimumSaleSummary)
+                            Мин. {{ $minimumSaleSummary }}
+                        @endif
+                        @if ($unitsInPackageSummary)
+                            {{ $minimumSaleSummary ? '·' : '' }} Упаковка: {{ $unitsInPackageSummary }}
+                        @endif
+                    </p>
+                @endif
+
+                @if (filled($product->color_name))
+                    <p class="catalog-product-card__meta">Цвет: {{ $product->color_name }}</p>
+                @endif
             </div>
         </div>
     </div>

@@ -21,9 +21,12 @@ class Product extends Model
         'one_c_code',
         'vendor_code',
         'brand_name',
+        'color_name',
         'measurement_label',
         'measurement_value',
         'stock_quantity',
+        'minimum_sale_quantity',
+        'units_in_package',
         'description',
         'source_sheet',
         'source_row',
@@ -39,6 +42,8 @@ class Product extends Model
         'has_video' => 'boolean',
         'price_from' => 'decimal:2',
         'stock_quantity' => 'decimal:3',
+        'minimum_sale_quantity' => 'decimal:3',
+        'units_in_package' => 'decimal:3',
         'source_row' => 'integer',
         'sort_order' => 'integer',
     ];
@@ -130,7 +135,8 @@ class Product extends Model
                 ->orWhere('description', 'like', $needle)
                 ->orWhere('vendor_code', 'like', $needle)
                 ->orWhere('one_c_code', 'like', $needle)
-                ->orWhere('brand_name', 'like', $needle);
+                ->orWhere('brand_name', 'like', $needle)
+                ->orWhere('color_name', 'like', $needle);
         });
     }
 
@@ -467,6 +473,121 @@ class Product extends Model
         return null;
     }
 
+    public function minimumSaleQuantityNumber(): ?float
+    {
+        return $this->normalizePositiveDecimalValue($this->minimum_sale_quantity);
+    }
+
+    public function unitsInPackageNumber(): ?float
+    {
+        return $this->normalizePositiveDecimalValue($this->units_in_package);
+    }
+
+    public function formattedMinimumSaleQuantity(): ?string
+    {
+        return $this->formattedDecimalQuantity($this->minimumSaleQuantityNumber());
+    }
+
+    public function formattedUnitsInPackage(): ?string
+    {
+        return $this->formattedDecimalQuantity($this->unitsInPackageNumber());
+    }
+
+    public function minimumSaleQuantitySummary(): ?string
+    {
+        $quantity = $this->formattedMinimumSaleQuantity();
+
+        if ($quantity === null) {
+            return null;
+        }
+
+        $unitLabel = $this->publicUnitLabel();
+
+        return $unitLabel
+            ? trim($quantity.' '.mb_strtolower($unitLabel))
+            : $quantity;
+    }
+
+    public function unitsInPackageSummary(): ?string
+    {
+        $quantity = $this->formattedUnitsInPackage();
+
+        if ($quantity === null) {
+            return null;
+        }
+
+        $unitLabel = $this->publicUnitLabel();
+
+        return $unitLabel
+            ? trim($quantity.' '.mb_strtolower($unitLabel))
+            : $quantity;
+    }
+
+    public function cartQuantityMinimum(): int
+    {
+        $minimum = $this->effectiveSaleStepNumber();
+
+        if ($minimum === null) {
+            return 1;
+        }
+
+        return max(1, min(999, (int) ceil($minimum)));
+    }
+
+    public function cartQuantityStep(): int
+    {
+        $step = $this->effectiveSaleStepNumber();
+
+        if ($step === null) {
+            return 1;
+        }
+
+        return max(1, min(999, (int) ceil($step)));
+    }
+
+    public function cartQuantityMax(): int
+    {
+        $minimum = $this->cartQuantityMinimum();
+        $step = $this->cartQuantityStep();
+        $max = 999;
+
+        if ($minimum > $max) {
+            return $max;
+        }
+
+        $steps = (int) floor(($max - $minimum) / $step);
+
+        return $minimum + ($steps * $step);
+    }
+
+    public function normalizeCartQuantity(int|float|string|null $value): int
+    {
+        $minimum = $this->cartQuantityMinimum();
+        $step = $this->cartQuantityStep();
+        $maximum = $this->cartQuantityMax();
+
+        $candidate = is_numeric($value) ? (int) floor((float) $value) : $minimum;
+        $candidate = max($minimum, min($candidate, $maximum));
+
+        $stepsFromMinimum = (int) ceil(($candidate - $minimum) / $step);
+        $normalized = $minimum + max(0, $stepsFromMinimum) * $step;
+
+        if ($normalized > $maximum) {
+            return $maximum;
+        }
+
+        return max($minimum, $normalized);
+    }
+
+    public function isCartQuantityAligned(int|float|string|null $value): bool
+    {
+        if (! is_numeric($value)) {
+            return false;
+        }
+
+        return $this->normalizeCartQuantity($value) === (int) floor((float) $value);
+    }
+
     public function hasStockQuantity(): bool
     {
         return $this->stock_quantity !== null;
@@ -613,5 +734,44 @@ class Product extends Model
     private static function comparePriceMarker(): string
     {
         return json_decode('"\u0431\u0435\u0437\u043d\u0430\u043b"', true);
+    }
+
+    private function formattedDecimalQuantity(?float $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $formatted = number_format($value, 3, ',', ' ');
+        $formatted = preg_replace('/0+$/', '', $formatted) ?? $formatted;
+        $formatted = preg_replace('/,$/', '', $formatted) ?? $formatted;
+
+        return $formatted === '' ? '0' : $formatted;
+    }
+
+    private function normalizePositiveDecimalValue(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $numeric = is_numeric($value) ? (float) $value : null;
+
+        if ($numeric === null || $numeric <= 0) {
+            return null;
+        }
+
+        return $numeric;
+    }
+
+    private function effectiveSaleStepNumber(): ?float
+    {
+        $packageQuantity = $this->unitsInPackageNumber();
+
+        if ($packageQuantity !== null) {
+            return $packageQuantity;
+        }
+
+        return $this->minimumSaleQuantityNumber();
     }
 }

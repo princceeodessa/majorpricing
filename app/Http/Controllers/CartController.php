@@ -60,13 +60,17 @@ class CartController extends Controller
             'quantity' => ['nullable', 'integer', 'min:1', 'max:999'],
         ]);
 
-        $quantity = (int) ($validated['quantity'] ?? 1);
+        $quantity = $product->normalizeCartQuantity((int) ($validated['quantity'] ?? $product->cartQuantityMinimum()));
         $cartItem = CartItem::query()->firstOrNew([
             'user_id' => $request->user()->id,
             'product_id' => $product->id,
         ]);
 
-        $cartItem->quantity = min(999, ($cartItem->exists ? $cartItem->quantity : 0) + $quantity);
+        $currentQuantity = $cartItem->exists
+            ? $product->normalizeCartQuantity((int) $cartItem->quantity)
+            : 0;
+
+        $cartItem->quantity = $product->normalizeCartQuantity($currentQuantity + $quantity);
         $cartItem->save();
 
         return $this->cartMutationResponse($request, $product, $cartItem->quantity, 'Товар добавлен в корзину.');
@@ -85,7 +89,7 @@ class CartController extends Controller
             'product_id' => $product->id,
         ]);
 
-        $cartItem->quantity = (int) $validated['quantity'];
+        $cartItem->quantity = $product->normalizeCartQuantity((int) $validated['quantity']);
         $cartItem->save();
 
         return $this->cartMutationResponse($request, $product, $cartItem->quantity, 'Количество в корзине обновлено.');
@@ -109,8 +113,13 @@ class CartController extends Controller
             'quantity' => ['required', 'integer', 'min:1', 'max:999'],
         ]);
 
+        $cartItem->loadMissing('product');
+        $normalizedQuantity = $cartItem->product
+            ? $cartItem->product->normalizeCartQuantity((int) $validated['quantity'])
+            : (int) $validated['quantity'];
+
         $cartItem->update([
-            'quantity' => (int) $validated['quantity'],
+            'quantity' => $normalizedQuantity,
         ]);
 
         if ($request->expectsJson() || $request->ajax()) {
@@ -262,9 +271,20 @@ class CartController extends Controller
             ->get();
 
         $cartItems->each(function (CartItem $cartItem) use ($paymentMethod): void {
-            $discountPrice = $cartItem->product?->publicPrice();
-            $basePrice = $cartItem->product?->priceForPaymentMethod(self::PAYMENT_METHOD_BANK_TRANSFER);
-            $resolvedPrice = $cartItem->product?->priceForPaymentMethod($paymentMethod);
+            $product = $cartItem->product;
+
+            if ($product) {
+                $normalizedQuantity = $product->normalizeCartQuantity((int) $cartItem->quantity);
+
+                if ($normalizedQuantity !== (int) $cartItem->quantity) {
+                    $cartItem->quantity = $normalizedQuantity;
+                    $cartItem->save();
+                }
+            }
+
+            $discountPrice = $product?->publicPrice();
+            $basePrice = $product?->priceForPaymentMethod(self::PAYMENT_METHOD_BANK_TRANSFER);
+            $resolvedPrice = $product?->priceForPaymentMethod($paymentMethod);
 
             $discountUnitAmount = $discountPrice?->min_amount !== null ? (float) $discountPrice->min_amount : null;
             $baseUnitAmount = $basePrice?->min_amount !== null ? (float) $basePrice->min_amount : null;

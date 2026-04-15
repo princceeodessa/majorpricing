@@ -64,6 +64,12 @@
                     @php($baseLineAmount = $cartItem->getAttribute('base_line_amount'))
                     @php($discountLineAmount = $cartItem->getAttribute('discount_line_amount'))
                     @php($hasDiscount = $baseUnitAmount !== null && $discountUnitAmount !== null && $baseUnitAmount > $discountUnitAmount)
+                    @php($minCartQuantity = $product?->cartQuantityMinimum() ?? 1)
+                    @php($stepCartQuantity = $product?->cartQuantityStep() ?? 1)
+                    @php($maxCartQuantity = $product?->cartQuantityMax() ?? 999)
+                    @php($safeCartQuantity = $product ? $product->normalizeCartQuantity((int) $cartItem->quantity) : (int) $cartItem->quantity)
+                    @php($minimumSaleSummary = $product?->minimumSaleQuantitySummary())
+                    @php($unitsInPackageSummary = $product?->unitsInPackageSummary())
 
                     <article class="surface-card reveal-card p-5 sm:p-6" data-cart-item data-cart-item-id="{{ $cartItem->id }}">
                         <div class="catalog-cart-item">
@@ -95,6 +101,15 @@
                                         @if ($unitLabel)
                                             · {{ $unitLabel }}
                                         @endif
+                                        @if ($product?->color_name)
+                                            · Цвет: {{ $product->color_name }}
+                                        @endif
+                                        @if ($minimumSaleSummary)
+                                            · Мин. {{ $minimumSaleSummary }}
+                                        @endif
+                                        @if ($unitsInPackageSummary)
+                                            · Упаковка: {{ $unitsInPackageSummary }}
+                                        @endif
                                     </p>
                                 </div>
 
@@ -112,10 +127,11 @@
                                         <button type="button" class="catalog-qty-control__button" data-qty-dec>-</button>
                                         <input
                                             type="number"
-                                            min="1"
-                                            max="999"
+                                            min="{{ $minCartQuantity }}"
+                                            max="{{ $maxCartQuantity }}"
+                                            step="{{ $stepCartQuantity }}"
                                             name="quantity"
-                                            value="{{ $cartItem->quantity }}"
+                                            value="{{ $safeCartQuantity }}"
                                             class="catalog-clean-input"
                                             data-qty-input
                                         >
