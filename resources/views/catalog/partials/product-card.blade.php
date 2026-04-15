@@ -3,9 +3,6 @@
     $comparePrice = $product->comparePrice();
     $publicTitle = $product->publicTitle();
     $rootCategory = $product->category?->parent ?? $product->category;
-    $detailLine = $product->description
-        ? \Illuminate\Support\Str::limit(str_replace("\n", ' / ', $product->description), 108)
-        : ($product->vendor_code ? 'Артикул: '.$product->vendor_code : ($product->brand_name ?: ''));
     $fallbackImageUrl = asset('brand/product-placeholder.png');
     $hasRealImage = filled($product->image_path);
     $imageUrl = $hasRealImage ? asset($product->image_path) : $fallbackImageUrl;
@@ -49,9 +46,6 @@
             <a href="{{ route('products.show', $product) }}" class="catalog-product-card__title-link">
                 <h3 class="catalog-product-card__title">{{ $publicTitle }}</h3>
             </a>
-            @if (filled($detailLine))
-                <p class="catalog-product-card__description">{{ $detailLine }}</p>
-            @endif
             <p class="catalog-product-card__meta catalog-product-card__meta--{{ $availabilityTone }}">
                 {{ $availabilityLabel }}
             </p>

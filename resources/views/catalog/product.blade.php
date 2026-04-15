@@ -20,7 +20,6 @@
             ['label' => 'Бренд', 'value' => $product->brand_name],
             ['label' => 'Наличие', 'value' => $availabilityLabel],
         ])->filter(fn (array $item) => filled($item['value']))->values();
-        $description = trim((string) $product->description);
     @endphp
 
     <section class="surface-card reveal-card p-5 sm:p-8">
@@ -105,10 +104,6 @@
 
                     <button type="submit" class="catalog-buy-button">В корзину</button>
                 </form>
-
-                @if (filled($description))
-                    <p class="catalog-product-copy__description">{{ $description }}</p>
-                @endif
 
                 @if ($productFacts->isNotEmpty())
                     <dl class="catalog-product-facts">
