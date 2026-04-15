@@ -237,7 +237,7 @@ class Product extends Model
         $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
         $probe = mb_strtolower($normalized);
 
-        if (preg_match('/^(шт\.?|штука|штук|ед\.?|единица|pcs?\.?|piece)$/u', $probe) === 1) {
+        if (preg_match('/^(шт\.?|штука|штук|ед\.?|единица|pc\.?|pcs?\.?|pce\.?|piece)$/u', $probe) === 1) {
             return 'шт';
         }
 
@@ -312,7 +312,7 @@ class Product extends Model
         $compact = preg_replace('/[\s\.\,\-–—_]+/u', '', $probe) ?? $probe;
 
         if (
-            preg_match('/(^|[^\p{L}])(шт|штук|штука|ед|единиц|pcs?|piece)($|[^\p{L}])/u', $probe) === 1
+            preg_match('/(^|[^\p{L}])(шт|штук|штука|ед|единиц|pc|pcs?|pce|piece)($|[^\p{L}])/u', $probe) === 1
             || str_contains($compact, 'шт')
         ) {
             return 'шт';
