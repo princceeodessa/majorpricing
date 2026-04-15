@@ -87,7 +87,19 @@
 
                 <div class="catalog-product-card__stepper {{ $cartQuantity > 0 ? '' : 'hidden' }}" data-cart-qty-state>
                     <button type="button" class="catalog-product-card__stepper-btn" data-cart-dec aria-label="Уменьшить количество">−</button>
-                    <span class="catalog-product-card__stepper-value" data-cart-quantity>{{ $cartQuantity }}</span>
+                    <input
+                        type="number"
+                        min="1"
+                        max="999"
+                        step="1"
+                        inputmode="numeric"
+                        class="catalog-product-card__stepper-value"
+                        data-cart-quantity
+                        data-cart-quantity-input
+                        value="{{ max(1, $cartQuantity) }}"
+                        aria-label="Quantity"
+                        title="Enter quantity manually"
+                    >
                     <button type="button" class="catalog-product-card__stepper-btn" data-cart-inc aria-label="Увеличить количество">+</button>
                 </div>
             </div>

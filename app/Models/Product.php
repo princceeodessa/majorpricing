@@ -218,9 +218,79 @@ class Product extends Model
 
     public function publicUnitLabel(): ?string
     {
-        return filled($this->measurement_label)
-            ? trim((string) $this->measurement_label)
-            : (filled($this->measurement_value) ? trim((string) $this->measurement_value) : null);
+        return self::canonicalUnitLabel(
+            filled($this->measurement_label)
+                ? (string) $this->measurement_label
+                : (filled($this->measurement_value) ? (string) $this->measurement_value : null)
+        );
+    }
+
+    public static function canonicalUnitLabel(?string $value): ?string
+    {
+        if (! filled($value)) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+        $probe = mb_strtolower($normalized);
+
+        if (preg_match('/^(шт\.?|штука|штук|ед\.?|единица|pcs?\.?|piece)$/u', $probe) === 1) {
+            return 'шт';
+        }
+
+        if (preg_match('/^(м\.п\.?|п\/м|пог\.?\s*м(етр)?|погон(ный)?\s*метр(а|ов)?)$/u', $probe) === 1) {
+            return 'м.п.';
+        }
+
+        if (preg_match('/^(м\.?|метр(а|ов)?|meter|m)$/u', $probe) === 1) {
+            return 'м';
+        }
+
+        if (preg_match('/^(м2|м²|кв\.?\s*м|кв\.?\s*метр(а|ов)?|квадратн(ый|ого)?\s*метр(а|ов)?)$/u', $probe) === 1) {
+            return 'м²';
+        }
+
+        if (preg_match('/^(м3|м³|куб\.?\s*м|куб\.?\s*метр(а|ов)?|кубическ(ий|ого)?\s*метр(а|ов)?)$/u', $probe) === 1) {
+            return 'м³';
+        }
+
+        if (preg_match('/^(компл\.?|комплект)$/u', $probe) === 1) {
+            return 'компл';
+        }
+
+        if (preg_match('/^(уп\.?|упак\.?|упаковка)$/u', $probe) === 1) {
+            return 'упак';
+        }
+
+        if (preg_match('/^(пара|пар)$/u', $probe) === 1) {
+            return 'пара';
+        }
+
+        if (preg_match('/^(л\.?|литр(а|ов)?)$/u', $probe) === 1) {
+            return 'л';
+        }
+
+        if (preg_match('/^(кг\.?|килограмм(а|ов)?)$/u', $probe) === 1) {
+            return 'кг';
+        }
+
+        $wordCount = preg_match_all('/\p{L}+/u', $probe);
+
+        if (
+            mb_strlen($normalized) > 10
+            || preg_match('/\d/u', $normalized) === 1
+            || $wordCount > 2
+        ) {
+            return null;
+        }
+
+        return $normalized;
     }
 
     public function hasStockQuantity(): bool

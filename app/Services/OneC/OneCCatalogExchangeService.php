@@ -228,7 +228,7 @@ class OneCCatalogExchangeService
                 $product->slug = $this->uniqueSlug($title, Product::class);
             }
 
-            $unitLabel = $this->resolveUnitLabel($xpath, $productNode);
+            $unitLabel = Product::canonicalUnitLabel($this->resolveUnitLabel($xpath, $productNode));
             $imagePath = null;
 
             foreach ($this->childValues($xpath, $productNode, [['Картинка', 'Р С™Р В°РЎР‚РЎвЂљР С‘Р Р…Р С”Р В°']]) as $pictureRef) {
@@ -256,6 +256,17 @@ class OneCCatalogExchangeService
                 'sort_order' => $index,
                 'image_path' => $imagePath ?? $product->image_path,
             ]);
+
+            $normalizedUnit = Product::canonicalUnitLabel(
+                filled($product->measurement_label)
+                    ? (string) $product->measurement_label
+                    : (filled($product->measurement_value) ? (string) $product->measurement_value : null)
+            );
+
+            if (filled($normalizedUnit)) {
+                $product->measurement_label = $normalizedUnit;
+                $product->measurement_value = $normalizedUnit;
+            }
             $product->save();
 
             $count++;
@@ -305,6 +316,14 @@ class OneCCatalogExchangeService
                 $xpath,
                 $offerNode,
                 ['Количество', 'РљРѕР»РёС‡РµСЃС‚РІРѕ']
+            ));
+            $offerUnit = Product::canonicalUnitLabel($this->firstChildValue(
+                $xpath,
+                $offerNode,
+                [
+                    json_decode('"\u0415\u0434\u0438\u043d\u0438\u0446\u0430"', true),
+                    json_decode('"\u0411\u0430\u0437\u043e\u0432\u0430\u044f\u0415\u0434\u0438\u043d\u0438\u0446\u0430"', true),
+                ],
             ));
             $resolvedMinimums = [];
             $publicMinimums = [];
@@ -359,6 +378,22 @@ class OneCCatalogExchangeService
 
             if ($stockQuantity !== null) {
                 $productPayload['stock_quantity'] = $stockQuantity;
+            }
+
+            if (filled($offerUnit)) {
+                $currentUnit = Product::canonicalUnitLabel(
+                    filled($product->measurement_label)
+                        ? (string) $product->measurement_label
+                        : (filled($product->measurement_value) ? (string) $product->measurement_value : null)
+                );
+
+                if (blank($product->measurement_label) || $currentUnit === null) {
+                    $productPayload['measurement_label'] = $offerUnit;
+                }
+
+                if (blank($product->measurement_value) || $currentUnit === null) {
+                    $productPayload['measurement_value'] = $offerUnit;
+                }
             }
 
             if ($resolvedMinimums !== []) {

@@ -217,24 +217,44 @@ const setupQuantityControls = () => {
     });
 };
 
+const normalizeCartQuantity = (value, fallback = 1) => {
+    const parsed = Number.parseInt(`${value}`, 10);
+
+    if (Number.isNaN(parsed)) {
+        return clamp(fallback, 1, 999);
+    }
+
+    return clamp(parsed, 1, 999);
+};
+
+const syncSingleCartControl = (control, quantity) => {
+    if (!(control instanceof HTMLElement)) {
+        return;
+    }
+
+    control.dataset.quantity = `${quantity}`;
+
+    const addState = control.querySelector('[data-cart-add-state]');
+    const qtyState = control.querySelector('[data-cart-qty-state]');
+    const qtyValue = control.querySelector('[data-cart-quantity]');
+
+    addState?.classList.toggle('hidden', quantity > 0);
+    qtyState?.classList.toggle('hidden', quantity <= 0);
+
+    if (qtyValue instanceof HTMLInputElement) {
+        qtyValue.value = `${quantity > 0 ? quantity : 1}`;
+
+        return;
+    }
+
+    if (qtyValue instanceof HTMLElement) {
+        qtyValue.textContent = `${quantity}`;
+    }
+};
+
 const syncCartControls = (productId, quantity, cartCount) => {
     document.querySelectorAll(`[data-cart-control][data-product-id="${productId}"]`).forEach((control) => {
-        if (!(control instanceof HTMLElement)) {
-            return;
-        }
-
-        control.dataset.quantity = `${quantity}`;
-
-        const addState = control.querySelector('[data-cart-add-state]');
-        const qtyState = control.querySelector('[data-cart-qty-state]');
-        const qtyValue = control.querySelector('[data-cart-quantity]');
-
-        addState?.classList.toggle('hidden', quantity > 0);
-        qtyState?.classList.toggle('hidden', quantity <= 0);
-
-        if (qtyValue instanceof HTMLElement) {
-            qtyValue.textContent = `${quantity}`;
-        }
+        syncSingleCartControl(control, quantity);
     });
 
     document.querySelectorAll('[data-cart-count]').forEach((node) => {
@@ -242,8 +262,76 @@ const syncCartControls = (productId, quantity, cartCount) => {
     });
 };
 
+const submitProductCardQuantity = async (control, nextQuantity) => {
+    if (!(control instanceof HTMLElement) || control.dataset.loading === '1') {
+        return;
+    }
+
+    const currentQuantity = Math.max(0, Number.parseInt(control.dataset.quantity || '0', 10) || 0);
+    const resolvedNextQuantity = Math.max(0, Math.min(999, Math.trunc(Number(nextQuantity) || 0)));
+
+    if (resolvedNextQuantity === currentQuantity) {
+        syncSingleCartControl(control, currentQuantity);
+
+        return;
+    }
+
+    const token = control.dataset.csrfToken;
+    const body = new FormData();
+
+    if (token) {
+        body.append('_token', token);
+    }
+
+    let url = '';
+
+    if (resolvedNextQuantity <= 0) {
+        url = control.dataset.destroyUrl ?? '';
+        body.append('_method', 'DELETE');
+    } else if (currentQuantity <= 0) {
+        url = control.dataset.storeUrl ?? '';
+        body.append('quantity', `${resolvedNextQuantity}`);
+    } else {
+        url = control.dataset.updateUrl ?? '';
+        body.append('_method', 'PATCH');
+        body.append('quantity', `${resolvedNextQuantity}`);
+    }
+
+    if (!url) {
+        return;
+    }
+
+    control.dataset.loading = '1';
+    control.classList.add('is-loading');
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body,
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            throw new Error('Cart control failed');
+        }
+
+        const payload = await response.json();
+
+        syncCartControls(payload.productId, payload.quantity, payload.cartCount);
+    } catch (error) {
+        window.location.reload();
+    } finally {
+        control.dataset.loading = '0';
+        control.classList.remove('is-loading');
+    }
+};
+
 const setupProductCardCartControls = () => {
-    document.addEventListener('click', async (event) => {
+    document.addEventListener('click', (event) => {
         const target = event.target instanceof Element
             ? event.target.closest('[data-cart-add], [data-cart-inc], [data-cart-dec]')
             : null;
@@ -254,63 +342,63 @@ const setupProductCardCartControls = () => {
 
         const control = target.closest('[data-cart-control]');
 
-        if (!(control instanceof HTMLElement) || control.dataset.loading === '1') {
+        if (!(control instanceof HTMLElement)) {
             return;
         }
 
         event.preventDefault();
 
-        const quantity = Number(control.dataset.quantity || 0);
-        const token = control.dataset.csrfToken;
-        let url = control.dataset.storeUrl;
-        const body = new FormData();
+        const quantityInput = control.querySelector('[data-cart-quantity-input]');
+        const quantity = quantityInput instanceof HTMLInputElement
+            ? normalizeCartQuantity(quantityInput.value, Number.parseInt(control.dataset.quantity || '1', 10) || 1)
+            : Math.max(0, Number.parseInt(control.dataset.quantity || '0', 10) || 0);
+        let nextQuantity = quantity;
 
-        if (token) {
-            body.append('_token', token);
+        if (target.hasAttribute('data-cart-add')) {
+            nextQuantity = 1;
+        } else if (target.hasAttribute('data-cart-inc')) {
+            nextQuantity = quantity + 1;
+        } else if (target.hasAttribute('data-cart-dec')) {
+            nextQuantity = quantity - 1;
         }
 
-        if (target.hasAttribute('data-cart-add') || target.hasAttribute('data-cart-inc')) {
-            body.append('quantity', '1');
-        } else if (quantity > 1) {
-            url = control.dataset.updateUrl;
-            body.append('_method', 'PATCH');
-            body.append('quantity', `${quantity - 1}`);
-        } else {
-            url = control.dataset.destroyUrl;
-            body.append('_method', 'DELETE');
-        }
+        void submitProductCardQuantity(control, nextQuantity);
+    });
 
-        if (!url) {
+    document.addEventListener('change', (event) => {
+        const input = event.target;
+
+        if (!(input instanceof HTMLInputElement) || !input.matches('[data-cart-quantity-input]')) {
             return;
         }
 
-        control.dataset.loading = '1';
-        control.classList.add('is-loading');
+        const control = input.closest('[data-cart-control]');
 
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body,
-                credentials: 'same-origin',
-            });
-
-            if (!response.ok) {
-                throw new Error('Cart control failed');
-            }
-
-            const payload = await response.json();
-
-            syncCartControls(payload.productId, payload.quantity, payload.cartCount);
-        } catch (error) {
-            window.location.reload();
-        } finally {
-            control.dataset.loading = '0';
-            control.classList.remove('is-loading');
+        if (!(control instanceof HTMLElement)) {
+            return;
         }
+
+        const currentQuantity = Math.max(1, Number.parseInt(control.dataset.quantity || '1', 10) || 1);
+        const nextQuantity = normalizeCartQuantity(input.value, currentQuantity);
+
+        input.value = `${nextQuantity}`;
+        void submitProductCardQuantity(control, nextQuantity);
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        const input = event.target;
+
+        if (!(input instanceof HTMLInputElement) || !input.matches('[data-cart-quantity-input]')) {
+            return;
+        }
+
+        event.preventDefault();
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        input.blur();
     });
 };
 
