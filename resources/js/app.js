@@ -408,7 +408,7 @@ const setupProductGalleries = () => {
             return;
         }
 
-        const mainImage = galleryRoot.querySelector('[data-gallery-image]');
+        const mainImage = galleryRoot.querySelector('img[data-gallery-image]');
         const thumbs = Array.from(galleryRoot.querySelectorAll('[data-gallery-thumb]'))
             .filter((thumb) => thumb instanceof HTMLButtonElement);
         const prev = galleryRoot.querySelector('[data-gallery-prev]');
