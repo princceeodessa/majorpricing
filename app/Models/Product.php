@@ -766,12 +766,12 @@ class Product extends Model
 
     private function effectiveSaleStepNumber(): ?float
     {
-        $minimumQuantity = $this->minimumSaleQuantityNumber();
+        $packageQuantity = $this->unitsInPackageNumber();
 
-        if ($minimumQuantity !== null) {
-            return $minimumQuantity;
+        if ($packageQuantity !== null) {
+            return $packageQuantity;
         }
 
-        return $this->unitsInPackageNumber();
+        return $this->minimumSaleQuantityNumber();
     }
 }

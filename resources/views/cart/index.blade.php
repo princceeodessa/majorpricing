@@ -68,7 +68,6 @@
                     @php($stepCartQuantity = $product?->cartQuantityStep() ?? 1)
                     @php($maxCartQuantity = $product?->cartQuantityMax() ?? 999)
                     @php($safeCartQuantity = $product ? $product->normalizeCartQuantity((int) $cartItem->quantity) : (int) $cartItem->quantity)
-                    @php($minimumSaleSummary = $product?->minimumSaleQuantitySummary())
                     @php($unitsInPackageSummary = $product?->unitsInPackageSummary())
 
                     <article class="surface-card reveal-card p-5 sm:p-6" data-cart-item data-cart-item-id="{{ $cartItem->id }}">
@@ -103,9 +102,6 @@
                                         @endif
                                         @if ($product?->color_name)
                                             · Цвет: {{ $product->color_name }}
-                                        @endif
-                                        @if ($minimumSaleSummary)
-                                            · Мин. {{ $minimumSaleSummary }}
                                         @endif
                                         @if ($unitsInPackageSummary)
                                             · Упаковка: {{ $unitsInPackageSummary }}
@@ -245,7 +241,7 @@
                                     >
                                     <span class="catalog-payment-option__content">
                                         <strong>{{ $paymentMethodLabel }}</strong>
-                                        <small>{{ $paymentMethod === 'cash' ? 'Применяется цена со скидкой.' : 'Показывается цена без скидки.' }}</small>
+                                        <small>{{ $paymentMethod === 'cash' ? 'Применяется цена со скидкой.' : 'Цена без скидки.' }}</small>
                                     </span>
                                 </label>
                             @endforeach

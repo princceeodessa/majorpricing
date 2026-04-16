@@ -13,6 +13,7 @@
         $minCartQuantity = $product->cartQuantityMinimum();
         $stepCartQuantity = $product->cartQuantityStep();
         $maxCartQuantity = $product->cartQuantityMax();
+        $safeCartQuantity = $cartQuantity > 0 ? $product->normalizeCartQuantity($cartQuantity) : $minCartQuantity;
         $availabilityLabel = $product->availabilityLabel();
         $availabilityTone = $product->availabilityTone();
         $fallbackImageUrl = asset('brand/product-placeholder.png');
@@ -32,7 +33,6 @@
             ['label' => 'Ед. изм.', 'value' => $unitLabel],
             ['label' => 'Бренд', 'value' => $product->brand_name],
             ['label' => 'Цвет', 'value' => $product->color_name],
-            ['label' => 'Мин. продаваемое кол-во', 'value' => $minimumSaleSummary],
             ['label' => 'Количество в упаковке', 'value' => $unitsInPackageSummary],
             ['label' => 'Наличие', 'value' => $availabilityLabel],
         ])->filter(fn (array $item) => filled($item['value']))->values();
@@ -140,25 +140,42 @@
                     @include('partials.favorite-toggle', ['product' => $product, 'showLabel' => true, 'sizeClass' => 'catalog-favorite-form--wide'])
                 </div>
 
-                <form action="{{ route('cart.store', $product) }}" method="POST" class="catalog-product-actions">
-                    @csrf
+                <div class="catalog-product-actions">
+                    <div
+                        class="catalog-product-card__cart-control"
+                        data-cart-control
+                        data-product-id="{{ $product->id }}"
+                        data-quantity="{{ $cartQuantity > 0 ? $safeCartQuantity : 0 }}"
+                        data-min-quantity="{{ $minCartQuantity }}"
+                        data-step-quantity="{{ $stepCartQuantity }}"
+                        data-store-url="{{ route('cart.store', $product) }}"
+                        data-update-url="{{ route('cart.product.update', $product) }}"
+                        data-destroy-url="{{ route('cart.product.destroy', $product) }}"
+                        data-csrf-token="{{ csrf_token() }}"
+                    >
+                        <div class="{{ $cartQuantity > 0 ? 'hidden' : '' }}" data-cart-add-state>
+                            <button type="button" class="catalog-buy-button" data-cart-add>В корзину</button>
+                        </div>
 
-                    <div class="catalog-qty-control" data-qty>
-                        <button type="button" data-qty-dec aria-label="Уменьшить количество">−</button>
-                        <input
-                            type="number"
-                            min="{{ $minCartQuantity }}"
-                            max="{{ $maxCartQuantity }}"
-                            step="{{ $stepCartQuantity }}"
-                            value="{{ $minCartQuantity }}"
-                            name="quantity"
-                            data-qty-input
-                        >
-                        <button type="button" data-qty-inc aria-label="Увеличить количество">+</button>
+                        <div class="catalog-product-card__stepper {{ $cartQuantity > 0 ? '' : 'hidden' }}" data-cart-qty-state>
+                            <button type="button" class="catalog-product-card__stepper-btn" data-cart-dec aria-label="Уменьшить количество">−</button>
+                            <input
+                                type="number"
+                                min="{{ $minCartQuantity }}"
+                                max="{{ $maxCartQuantity }}"
+                                step="{{ $stepCartQuantity }}"
+                                inputmode="numeric"
+                                class="catalog-product-card__stepper-value"
+                                data-cart-quantity
+                                data-cart-quantity-input
+                                value="{{ $safeCartQuantity }}"
+                                aria-label="Quantity"
+                                title="Enter quantity manually"
+                            >
+                            <button type="button" class="catalog-product-card__stepper-btn" data-cart-inc aria-label="Увеличить количество">+</button>
+                        </div>
                     </div>
-
-                    <button type="submit" class="catalog-buy-button">В корзину</button>
-                </form>
+                </div>
 
                 @if ($productFacts->isNotEmpty())
                     <dl class="catalog-product-facts">

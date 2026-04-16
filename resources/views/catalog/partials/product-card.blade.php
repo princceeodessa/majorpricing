@@ -24,7 +24,6 @@
     $stepCartQuantity = $product->cartQuantityStep();
     $maxCartQuantity = $product->cartQuantityMax();
     $safeCartQuantity = $cartQuantity > 0 ? $product->normalizeCartQuantity($cartQuantity) : $minCartQuantity;
-    $minimumSaleSummary = $product->minimumSaleQuantitySummary();
     $unitsInPackageSummary = $product->unitsInPackageSummary();
 @endphp
 
@@ -139,14 +138,9 @@
                     <button type="button" class="catalog-product-card__stepper-btn" data-cart-inc aria-label="Увеличить количество">+</button>
                 </div>
 
-                @if ($minimumSaleSummary || $unitsInPackageSummary)
+                @if ($unitsInPackageSummary)
                     <p class="catalog-product-card__meta">
-                        @if ($minimumSaleSummary)
-                            Мин. {{ $minimumSaleSummary }}
-                        @endif
-                        @if ($unitsInPackageSummary)
-                            {{ $minimumSaleSummary ? '·' : '' }} Упаковка: {{ $unitsInPackageSummary }}
-                        @endif
+                        Упаковка: {{ $unitsInPackageSummary }}
                     </p>
                 @endif
 
