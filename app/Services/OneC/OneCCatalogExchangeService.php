@@ -278,7 +278,7 @@ class OneCCatalogExchangeService
      */
     private function importOffers(DOMXPath $xpath): array
     {
-        $priceTypeMap = $this->syncPriceTypes($xpath);
+        $priceTypeMap = $this->resolveOfferPriceTypeMap($xpath);
         $count = 0;
         $offersWithoutProducts = 0;
         $offerNodes = $this->queryChildren(
@@ -402,6 +402,32 @@ class OneCCatalogExchangeService
             'prices' => $count,
             'offers_without_products' => $offersWithoutProducts,
         ];
+    }
+
+    /**
+     * @return array<string, array{name:string,column_index:int}>
+     */
+    private function resolveOfferPriceTypeMap(DOMXPath $xpath): array
+    {
+        $map = $this->syncPriceTypes($xpath);
+
+        OneCPriceType::query()
+            ->whereNotNull('one_c_id')
+            ->get(['one_c_id', 'name', 'column_index'])
+            ->each(function (OneCPriceType $priceType) use (&$map): void {
+                $oneCId = trim((string) $priceType->one_c_id);
+
+                if ($oneCId === '' || array_key_exists($oneCId, $map)) {
+                    return;
+                }
+
+                $map[$oneCId] = [
+                    'name' => (string) $priceType->name,
+                    'column_index' => (int) $priceType->column_index,
+                ];
+            });
+
+        return $map;
     }
 
     /**

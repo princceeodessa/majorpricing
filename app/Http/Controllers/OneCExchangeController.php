@@ -112,7 +112,17 @@ class OneCExchangeController extends Controller
     private function importFiles(string $type, string $sessionKey): Response
     {
         if ($type === 'catalog') {
-            $this->catalogExchangeService->import($sessionKey);
+            $result = $this->catalogExchangeService->import($sessionKey);
+
+            Log::info('1C catalog import completed', [
+                'session_key' => substr($sessionKey, 0, 12),
+                'files' => $result['files'],
+                'categories' => $result['categories'],
+                'products' => $result['products'],
+                'prices' => $result['prices'],
+                'offers_without_products' => $result['offers_without_products'],
+                'warnings' => $result['warnings'],
+            ]);
         } elseif ($type === 'sale') {
             $this->saleExchangeService->importStatuses($sessionKey);
         } else {

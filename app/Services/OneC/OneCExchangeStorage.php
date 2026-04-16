@@ -10,6 +10,7 @@ class OneCExchangeStorage
 {
     public function resetUploadState(string $sessionKey, string $type): void
     {
+        Storage::disk('local')->deleteDirectory($this->typeDirectory($sessionKey, $type));
         Storage::disk('local')->delete($this->uploadStatePath($sessionKey, $type));
     }
 
