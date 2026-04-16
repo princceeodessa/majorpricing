@@ -200,11 +200,23 @@ const resolveQuantityConstraints = ({ min = 1, step = 1, max = 999 } = {}) => {
     };
 };
 
-const readInputQuantityConstraints = (input) => resolveQuantityConstraints({
-    min: input instanceof HTMLInputElement ? input.getAttribute('min') : 1,
-    step: input instanceof HTMLInputElement ? input.getAttribute('step') : 1,
-    max: input instanceof HTMLInputElement ? input.getAttribute('max') : 999,
-});
+const readInputQuantityConstraints = (input) => {
+    const quantityRoot = input instanceof HTMLInputElement
+        ? input.closest('[data-qty]')
+        : null;
+
+    return resolveQuantityConstraints({
+        min: quantityRoot instanceof HTMLElement
+            ? quantityRoot.dataset.minQuantity ?? input?.getAttribute('min') ?? 1
+            : input instanceof HTMLInputElement ? input.getAttribute('min') : 1,
+        step: quantityRoot instanceof HTMLElement
+            ? quantityRoot.dataset.stepQuantity ?? input?.getAttribute('step') ?? 1
+            : input instanceof HTMLInputElement ? input.getAttribute('step') : 1,
+        max: quantityRoot instanceof HTMLElement
+            ? quantityRoot.dataset.maxQuantity ?? input?.getAttribute('max') ?? 999
+            : input instanceof HTMLInputElement ? input.getAttribute('max') : 999,
+    });
+};
 
 const readCartControlQuantityConstraints = (control) => resolveQuantityConstraints({
     min: control instanceof HTMLElement ? control.dataset.minQuantity : 1,
@@ -1386,6 +1398,16 @@ const setupCartInlineUpdates = () => {
 
             if (payload.item && itemRoot) {
                 updateItemPricing(itemRoot, payload.item);
+            }
+
+            if (payload.quantity !== undefined) {
+                const qtyInput = form.querySelector('[data-qty-input]');
+
+                if (qtyInput instanceof HTMLInputElement) {
+                    const constraints = readInputQuantityConstraints(qtyInput);
+                    const normalized = normalizeQuantityByConstraints(payload.quantity, constraints.min, constraints);
+                    qtyInput.value = `${normalized}`;
+                }
             }
 
             if (payload.summary) {

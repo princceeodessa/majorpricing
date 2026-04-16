@@ -143,6 +143,7 @@
                 <div class="catalog-product-actions">
                     <div
                         class="catalog-product-card__cart-control"
+                        style="margin-left: 0; align-self: flex-start;"
                         data-cart-control
                         data-product-id="{{ $product->id }}"
                         data-quantity="{{ $cartQuantity > 0 ? $safeCartQuantity : 0 }}"

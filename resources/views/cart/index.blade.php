@@ -116,6 +116,9 @@
                                         class="catalog-cart-qty-form catalog-qty-control"
                                         data-cart-qty-form
                                         data-qty
+                                        data-min-quantity="{{ $minCartQuantity }}"
+                                        data-step-quantity="{{ $stepCartQuantity }}"
+                                        data-max-quantity="{{ $maxCartQuantity }}"
                                     >
                                         @csrf
                                         @method('PATCH')
