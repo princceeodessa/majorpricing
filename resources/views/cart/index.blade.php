@@ -11,7 +11,7 @@
                 <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Корзина</p>
                 <h1 class="mt-2 font-['IBM_Plex_Sans'] text-4xl font-semibold tracking-tight text-slate-950">Оформление заказа</h1>
                 <p class="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-                    Проверьте позиции, выберите адрес доставки и тип оплаты. При оплате наличными применяется цена со скидкой.
+                    Проверьте позиции, выберите адрес доставки и тип оплаты. При оплате наличными действует цена со скидкой.
                 </p>
             </div>
 
@@ -241,7 +241,7 @@
                                     >
                                     <span class="catalog-payment-option__content">
                                         <strong>{{ $paymentMethodLabel }}</strong>
-                                        <small>{{ $paymentMethod === 'cash' ? 'Применяется цена со скидкой.' : 'Цена без скидки.' }}</small>
+                                        <small>{{ $paymentMethod === 'cash' ? 'Цена со скидкой.' : 'Цена без скидки.' }}</small>
                                     </span>
                                 </label>
                             @endforeach

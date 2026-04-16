@@ -3238,6 +3238,10 @@ html {
         margin-top: 1.55rem;
     }
 
+    .catalog-product-actions .catalog-product-card__cart-control {
+        margin-left: 0;
+    }
+
     .catalog-qty-control {
         display: inline-flex;
         align-items: center;
