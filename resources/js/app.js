@@ -617,6 +617,46 @@ const setupProductGalleries = () => {
     });
 };
 
+const applyCatalogCardImageMode = (image) => {
+    if (!(image instanceof HTMLImageElement)) {
+        return;
+    }
+
+    const wrap = image.closest('.catalog-product-card__image-wrap');
+
+    if (!(wrap instanceof HTMLElement)) {
+        return;
+    }
+
+    const naturalWidth = image.naturalWidth;
+    const naturalHeight = image.naturalHeight;
+
+    if (naturalWidth <= 0 || naturalHeight <= 0) {
+        return;
+    }
+
+    const ratio = naturalWidth / naturalHeight;
+    const isUltraWide = ratio >= 6.5;
+    const isWide = !isUltraWide && ratio >= 3.4;
+
+    wrap.classList.toggle('is-ultra-wide', isUltraWide);
+    wrap.classList.toggle('is-wide', isWide);
+};
+
+const setupCatalogCardImageModes = () => {
+    document.querySelectorAll('.catalog-product-card__image').forEach((node) => {
+        if (!(node instanceof HTMLImageElement)) {
+            return;
+        }
+
+        if (node.complete) {
+            applyCatalogCardImageMode(node);
+        } else {
+            node.addEventListener('load', () => applyCatalogCardImageMode(node), { once: true });
+        }
+    });
+};
+
 const setupHomeBanners = () => {
     document.querySelectorAll('[data-home-banners]').forEach((bannerRoot) => {
         if (!(bannerRoot instanceof HTMLElement)) {
@@ -1709,6 +1749,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupQuantityControls();
     setupProductCardCartControls();
     setupProductGalleries();
+    setupCatalogCardImageModes();
     setupHomeBanners();
     setupCatalogMenus();
     setupCategoryRails();
