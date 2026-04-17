@@ -809,22 +809,22 @@ const computeCatalogCardImageAnalysis = (image, cacheKey) => {
     const centerX = ((left + right + 1) / 2) / sampleWidth;
     const centerY = ((top + bottom + 1) / 2) / sampleHeight;
 
-    const targetFill = coverage < 0.2 ? 0.9 : 0.86;
-    const maxScale = coverage < 0.16 ? 1.54 : (coverage < 0.28 ? 1.4 : 1.22);
-    const scaleByWidth = targetFill / Math.max(0.01, boxWidth);
-    const scaleByHeight = targetFill / Math.max(0.01, boxHeight);
-    const candidateScale = clamp(Math.min(scaleByWidth, scaleByHeight), 1, maxScale);
-    const shiftX = clamp((0.5 - centerX) * 100, -20, 20);
-    const shiftY = clamp((0.5 - centerY) * 100, -16, 16);
+    const dominantSide = Math.max(boxWidth, boxHeight);
+    const targetFill = coverage < 0.12 ? 0.9 : (coverage < 0.24 ? 0.86 : 0.82);
+    const desiredScale = targetFill / Math.max(0.01, dominantSide);
+    const safeScaleByBox = clamp(0.985 / Math.max(0.01, dominantSide), 1, 1.34);
+    const candidateScale = clamp(desiredScale, 1, safeScaleByBox);
+    const shiftX = clamp((0.5 - centerX) * 100, -14, 14);
+    const shiftY = clamp((0.5 - centerY) * 100, -11, 11);
 
-    const tinyShift = Math.abs(shiftX) < 0.75 && Math.abs(shiftY) < 0.75;
-    const tinyScale = candidateScale < 1.04;
-    const fit = (coverage >= 0.82 || (tinyShift && tinyScale))
+    const needsShift = Math.abs(shiftX) >= 1.15 || Math.abs(shiftY) >= 1.15;
+    const needsScale = candidateScale >= 1.05 && coverage <= 0.62;
+    const fit = (!needsShift && !needsScale)
         ? null
         : {
             shiftX,
             shiftY,
-            scale: candidateScale,
+            scale: needsScale ? candidateScale : 1,
         };
 
     const score = clamp(coverage, 0, 1) * (0.58 + (0.42 * clamp(density, 0, 1)));
@@ -896,7 +896,35 @@ const pickBestInitialGalleryIndex = async (thumbs) => {
 };
 
 const resolveCatalogCardSmartFit = (image) => {
-    clearCatalogCardSmartFit(image);
+    if (!(image instanceof HTMLImageElement)) {
+        return;
+    }
+
+    const analysis = computeCatalogCardImageAnalysis(image);
+    const fit = analysis?.fit;
+
+    if (!fit) {
+        clearCatalogCardSmartFit(image);
+        return;
+    }
+
+    const isMobile = typeof window !== 'undefined'
+        && window.matchMedia('(max-width: 640px)').matches;
+
+    const adjustedFit = {
+        shiftX: clamp(fit.shiftX, isMobile ? -10 : -13, isMobile ? 10 : 13),
+        shiftY: clamp(fit.shiftY, isMobile ? -8 : -10, isMobile ? 8 : 10),
+        scale: clamp(fit.scale, 1, isMobile ? 1.22 : 1.32),
+    };
+
+    if (adjustedFit.scale < 1.03
+        && Math.abs(adjustedFit.shiftX) < 0.85
+        && Math.abs(adjustedFit.shiftY) < 0.85) {
+        clearCatalogCardSmartFit(image);
+        return;
+    }
+
+    applyCatalogCardSmartFitValues(image, adjustedFit);
 };
 
 const setupCatalogCardImageModes = () => {
