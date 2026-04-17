@@ -10302,8 +10302,10 @@ html {
 /* Mobile catalog image fit for long profile photos */
 @media (max-width: 640px) {
     .catalog-product-card__image-wrap {
-        height: 176px !important;
-        min-height: 176px !important;
+        height: auto !important;
+        min-height: 0 !important;
+        aspect-ratio: 1 / 1 !important;
+        padding: 0.6rem !important;
     }
 
     .catalog-product-card__image {
@@ -10316,11 +10318,12 @@ html {
     }
 
     .catalog-product-card__image-wrap.is-wide {
-        height: 176px !important;
-        min-height: 176px !important;
+        height: auto !important;
+        min-height: 0 !important;
+        aspect-ratio: 1 / 1 !important;
     }
 
-    .catalog-product-card__image-wrap.is-wide .catalog-product-card__image:not(.is-smart-fit) {
+    .catalog-product-card__image-wrap.is-wide .catalog-product-card__image {
         object-fit: contain !important;
         object-position: center center !important;
         transform: none !important;
@@ -10328,26 +10331,24 @@ html {
     }
 
     .catalog-product-card__image-wrap.is-ultra-wide {
-        height: 176px !important;
-        min-height: 176px !important;
+        height: auto !important;
+        min-height: 0 !important;
+        aspect-ratio: 1 / 1 !important;
     }
 
-    .catalog-product-card__image-wrap.is-ultra-wide .catalog-product-card__image:not(.is-smart-fit) {
+    .catalog-product-card__image-wrap.is-ultra-wide .catalog-product-card__image {
         object-fit: contain !important;
         object-position: center center !important;
         transform: none !important;
         transform-origin: center center;
     }
 
+    .catalog-product-card__image-wrap > .catalog-product-card__image {
+        max-width: 92% !important;
+        max-height: 92% !important;
+    }
+
     .catalog-product-card__image-wrap > .catalog-product-card__image.is-smart-fit {
-        max-width: 100% !important;
-        max-height: 100% !important;
-        transform:
-            translate(
-                calc(var(--card-img-shift-x, 0) * 1.05),
-                calc(var(--card-img-shift-y, 0) * 1.28)
-            )
-            scale(calc(var(--card-img-scale, 1) * 1.18)) !important;
-        transform-origin: center center;
+        transform: none !important;
     }
 }
