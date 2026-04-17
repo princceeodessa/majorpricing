@@ -580,8 +580,12 @@ const setupProductGalleries = () => {
 
                 if (mainImage.complete && mainImage.naturalWidth > 0) {
                     applyCatalogCardImageMode(mainImage);
+                    resolveCatalogCardSmartFit(mainImage);
                 } else {
-                    mainImage.addEventListener('load', () => applyCatalogCardImageMode(mainImage), { once: true });
+                    mainImage.addEventListener('load', () => {
+                        applyCatalogCardImageMode(mainImage);
+                        resolveCatalogCardSmartFit(mainImage);
+                    }, { once: true });
                 }
             }
 
@@ -655,6 +659,145 @@ const applyCatalogCardImageMode = (image) => {
     wrap.classList.toggle('is-wide', isWide);
 };
 
+const catalogCardImageFitCache = new Map();
+
+const clearCatalogCardSmartFit = (image) => {
+    image.classList.remove('is-smart-fit');
+    image.style.removeProperty('--card-img-shift-x');
+    image.style.removeProperty('--card-img-shift-y');
+    image.style.removeProperty('--card-img-scale');
+};
+
+const applyCatalogCardSmartFitValues = (image, fit) => {
+    if (!fit) {
+        clearCatalogCardSmartFit(image);
+        return;
+    }
+
+    image.classList.add('is-smart-fit');
+    image.style.setProperty('--card-img-shift-x', `${fit.shiftX.toFixed(2)}%`);
+    image.style.setProperty('--card-img-shift-y', `${fit.shiftY.toFixed(2)}%`);
+    image.style.setProperty('--card-img-scale', fit.scale.toFixed(3));
+};
+
+const resolveCatalogCardSmartFit = (image) => {
+    const src = image.currentSrc || image.src;
+    if (!src) {
+        clearCatalogCardSmartFit(image);
+        return;
+    }
+
+    if (catalogCardImageFitCache.has(src)) {
+        applyCatalogCardSmartFitValues(image, catalogCardImageFitCache.get(src));
+        return;
+    }
+
+    const extension = src.split('?')[0].toLowerCase();
+    const supportsAlpha = (
+        extension.endsWith('.png')
+        || extension.endsWith('.webp')
+        || extension.endsWith('.avif')
+        || extension.endsWith('.gif')
+    );
+
+    if (!supportsAlpha) {
+        catalogCardImageFitCache.set(src, null);
+        clearCatalogCardSmartFit(image);
+        return;
+    }
+
+    const naturalWidth = image.naturalWidth || 0;
+    const naturalHeight = image.naturalHeight || 0;
+    if (naturalWidth <= 1 || naturalHeight <= 1) {
+        catalogCardImageFitCache.set(src, null);
+        clearCatalogCardSmartFit(image);
+        return;
+    }
+
+    const scale = Math.min(1, 320 / naturalWidth, 320 / naturalHeight);
+    const sampleWidth = Math.max(1, Math.round(naturalWidth * scale));
+    const sampleHeight = Math.max(1, Math.round(naturalHeight * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = sampleWidth;
+    canvas.height = sampleHeight;
+
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) {
+        catalogCardImageFitCache.set(src, null);
+        clearCatalogCardSmartFit(image);
+        return;
+    }
+
+    context.clearRect(0, 0, sampleWidth, sampleHeight);
+    context.drawImage(image, 0, 0, sampleWidth, sampleHeight);
+
+    let data;
+    try {
+        data = context.getImageData(0, 0, sampleWidth, sampleHeight).data;
+    } catch (error) {
+        catalogCardImageFitCache.set(src, null);
+        clearCatalogCardSmartFit(image);
+        return;
+    }
+
+    let left = sampleWidth;
+    let right = -1;
+    let top = sampleHeight;
+    let bottom = -1;
+    let opaquePixels = 0;
+
+    for (let y = 0; y < sampleHeight; y++) {
+        for (let x = 0; x < sampleWidth; x++) {
+            const index = ((y * sampleWidth) + x) * 4;
+            const alpha = data[index + 3];
+
+            if (alpha <= 10) {
+                continue;
+            }
+
+            opaquePixels++;
+            if (x < left) left = x;
+            if (x > right) right = x;
+            if (y < top) top = y;
+            if (y > bottom) bottom = y;
+        }
+    }
+
+    if (opaquePixels === 0 || right < left || bottom < top) {
+        catalogCardImageFitCache.set(src, null);
+        clearCatalogCardSmartFit(image);
+        return;
+    }
+
+    const totalPixels = sampleWidth * sampleHeight;
+    const coverage = opaquePixels / totalPixels;
+
+    if (coverage >= 0.78) {
+        catalogCardImageFitCache.set(src, null);
+        clearCatalogCardSmartFit(image);
+        return;
+    }
+
+    const boxWidth = (right - left + 1) / sampleWidth;
+    const boxHeight = (bottom - top + 1) / sampleHeight;
+    const centerX = ((left + right + 1) / 2) / sampleWidth;
+    const centerY = ((top + bottom + 1) / 2) / sampleHeight;
+
+    const targetFill = 0.86;
+    const scaleByWidth = targetFill / Math.max(0.01, boxWidth);
+    const scaleByHeight = targetFill / Math.max(0.01, boxHeight);
+    const maxScale = coverage < 0.18 ? 1.5 : (coverage < 0.3 ? 1.36 : 1.22);
+    const fit = {
+        shiftX: clamp((0.5 - centerX) * 100, -18, 18),
+        shiftY: clamp((0.5 - centerY) * 100, -14, 14),
+        scale: clamp(Math.min(scaleByWidth, scaleByHeight), 1, maxScale),
+    };
+
+    catalogCardImageFitCache.set(src, fit);
+    applyCatalogCardSmartFitValues(image, fit);
+};
+
 const setupCatalogCardImageModes = () => {
     document.querySelectorAll('.catalog-product-card__image').forEach((node) => {
         if (!(node instanceof HTMLImageElement)) {
@@ -663,8 +806,12 @@ const setupCatalogCardImageModes = () => {
 
         if (node.complete) {
             applyCatalogCardImageMode(node);
+            resolveCatalogCardSmartFit(node);
         } else {
-            node.addEventListener('load', () => applyCatalogCardImageMode(node), { once: true });
+            node.addEventListener('load', () => {
+                applyCatalogCardImageMode(node);
+                resolveCatalogCardSmartFit(node);
+            }, { once: true });
         }
     });
 };

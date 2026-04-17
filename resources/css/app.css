@@ -10114,6 +10114,13 @@ html {
     max-height: 96% !important;
 }
 
+.catalog-product-card__image-wrap > .catalog-product-card__image.is-smart-fit {
+    transform:
+        translate(var(--card-img-shift-x, 0), var(--card-img-shift-y, 0))
+        scale(var(--card-img-scale, 1)) !important;
+    transform-origin: center center;
+}
+
 @media (max-width: 640px) {
     .catalog-product-card__image-wrap {
         padding: 0.45rem !important;
@@ -10292,7 +10299,7 @@ html {
     }
 }
 
-/* Mobile catalog image hotfix: enlarge long profile photos in cards */
+/* Mobile catalog image fit for long profile photos */
 @media (max-width: 640px) {
     .catalog-product-card__image-wrap {
         height: 170px !important;
@@ -10309,26 +10316,26 @@ html {
     }
 
     .catalog-product-card__image-wrap.is-wide {
-        height: 186px !important;
-        min-height: 186px !important;
+        height: 170px !important;
+        min-height: 170px !important;
     }
 
     .catalog-product-card__image-wrap.is-wide .catalog-product-card__image {
         object-fit: contain !important;
         object-position: center center !important;
-        transform: scale(1.08);
+        transform: none !important;
         transform-origin: center center;
     }
 
     .catalog-product-card__image-wrap.is-ultra-wide {
-        height: 214px !important;
-        min-height: 214px !important;
+        height: 170px !important;
+        min-height: 170px !important;
     }
 
     .catalog-product-card__image-wrap.is-ultra-wide .catalog-product-card__image {
         object-fit: contain !important;
         object-position: center center !important;
-        transform: scale(1.18);
+        transform: none !important;
         transform-origin: center center;
     }
 }
