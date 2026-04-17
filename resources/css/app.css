@@ -9757,7 +9757,7 @@ html {
     }
 
     .catalog-product-card__image-wrap {
-        height: 120px !important;
+        height: 150px !important;
         padding: 0.55rem !important;
     }
 
@@ -10101,10 +10101,10 @@ html {
 
 .catalog-product-card__image {
     display: block;
-    width: 90% !important;
-    height: 90% !important;
-    max-width: 90% !important;
-    max-height: 90% !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
     object-fit: contain !important;
     object-position: center center !important;
 }
@@ -10115,10 +10115,10 @@ html {
     }
 
     .catalog-product-card__image {
-        width: 92% !important;
-        height: 92% !important;
-        max-width: 92% !important;
-        max-height: 92% !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
     }
 }
 
