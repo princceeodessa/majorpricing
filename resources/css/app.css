@@ -10109,6 +10109,11 @@ html {
     object-position: center center !important;
 }
 
+.catalog-product-card__image-wrap > .catalog-product-card__image {
+    max-width: 96% !important;
+    max-height: 96% !important;
+}
+
 @media (max-width: 640px) {
     .catalog-product-card__image-wrap {
         padding: 0.45rem !important;
