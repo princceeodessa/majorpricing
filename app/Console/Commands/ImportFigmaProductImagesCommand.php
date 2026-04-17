@@ -204,7 +204,15 @@ class ImportFigmaProductImagesCommand extends Command
             return true;
         }
 
-        File::copy($file->getPathname(), $targetDirectory.'/'.basename($relativePath));
+        $sourceBinary = @file_get_contents($file->getPathname());
+
+        if ($sourceBinary === false) {
+            return false;
+        }
+
+        $normalizedBinary = $this->normalizeCatalogImageBinary($sourceBinary, (string) $file->getExtension());
+
+        File::put($targetDirectory.'/'.basename($relativePath), $normalizedBinary);
 
         $isCover = $product->productImages->isEmpty();
         $newImage = $product->productImages()->create([
@@ -236,6 +244,154 @@ class ImportFigmaProductImagesCommand extends Command
 
         $product->productImages()->delete();
         $product->forceFill(['image_path' => null])->save();
+    }
+
+    private function normalizeCatalogImageBinary(string $binary, string $extension): string
+    {
+        if (! function_exists('imagecreatefromstring')) {
+            return $binary;
+        }
+
+        $extension = mb_strtolower(trim($extension));
+        if (in_array($extension, ['svg', 'avif'], true)) {
+            return $binary;
+        }
+
+        $image = @imagecreatefromstring($binary);
+
+        if ($image === false) {
+            return $binary;
+        }
+
+        try {
+            $width = imagesx($image);
+            $height = imagesy($image);
+
+            if ($width <= 1 || $height <= 1) {
+                return $binary;
+            }
+
+            $bounds = $this->detectNonTransparentBounds($image, $width, $height);
+            if ($bounds === null) {
+                return $binary;
+            }
+
+            $trimWidth = $bounds['right'] - $bounds['left'] + 1;
+            $trimHeight = $bounds['bottom'] - $bounds['top'] + 1;
+
+            if ($trimWidth <= 0 || $trimHeight <= 0) {
+                return $binary;
+            }
+
+            if ($trimWidth === $width && $trimHeight === $height) {
+                return $binary;
+            }
+
+            $trimmed = imagecreatetruecolor($trimWidth, $trimHeight);
+            if ($trimmed === false) {
+                return $binary;
+            }
+
+            try {
+                imagealphablending($trimmed, false);
+                $transparent = imagecolorallocatealpha($trimmed, 0, 0, 0, 127);
+                imagefilledrectangle($trimmed, 0, 0, $trimWidth, $trimHeight, $transparent);
+                imagesavealpha($trimmed, true);
+
+                imagecopy(
+                    $trimmed,
+                    $image,
+                    0,
+                    0,
+                    $bounds['left'],
+                    $bounds['top'],
+                    $trimWidth,
+                    $trimHeight,
+                );
+
+                return $this->encodeCatalogImageBinary($trimmed, $extension) ?? $binary;
+            } finally {
+                imagedestroy($trimmed);
+            }
+        } finally {
+            imagedestroy($image);
+        }
+    }
+
+    /**
+     * @return array{left:int,top:int,right:int,bottom:int}|null
+     */
+    private function detectNonTransparentBounds($image, int $width, int $height): ?array
+    {
+        $left = $width;
+        $top = $height;
+        $right = -1;
+        $bottom = -1;
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                $rgba = imagecolorat($image, $x, $y);
+                $alpha = ($rgba >> 24) & 0x7F;
+
+                if ($alpha === 127) {
+                    continue;
+                }
+
+                if ($x < $left) {
+                    $left = $x;
+                }
+
+                if ($x > $right) {
+                    $right = $x;
+                }
+
+                if ($y < $top) {
+                    $top = $y;
+                }
+
+                if ($y > $bottom) {
+                    $bottom = $y;
+                }
+            }
+        }
+
+        if ($right < 0 || $bottom < 0) {
+            return null;
+        }
+
+        return [
+            'left' => $left,
+            'top' => $top,
+            'right' => $right,
+            'bottom' => $bottom,
+        ];
+    }
+
+    private function encodeCatalogImageBinary($image, string $extension): ?string
+    {
+        ob_start();
+
+        try {
+            $saved = match ($extension) {
+                'png' => imagepng($image, null, 6),
+                'gif' => imagegif($image),
+                'webp' => function_exists('imagewebp') ? imagewebp($image, null, 85) : false,
+                default => imagejpeg($image, null, 90),
+            };
+
+            $binary = ob_get_clean();
+        } catch (\Throwable $exception) {
+            ob_end_clean();
+            report($exception);
+
+            return null;
+        }
+
+        if ($saved !== true || ! is_string($binary) || $binary === '') {
+            return null;
+        }
+
+        return $binary;
     }
 
     private function buildTargetRelativePath(Product $product, SplFileInfo $file, string $sourcePath): string

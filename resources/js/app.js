@@ -567,10 +567,21 @@ const setupProductGalleries = () => {
             });
 
             if (mainImage instanceof HTMLImageElement && activeThumb.dataset.galleryImage) {
+                const imageWrap = mainImage.closest('.catalog-product-card__image-wrap');
+                if (imageWrap instanceof HTMLElement) {
+                    imageWrap.classList.remove('is-wide', 'is-ultra-wide');
+                }
+
                 mainImage.src = activeThumb.dataset.galleryImage;
 
                 if (activeThumb.dataset.galleryAlt) {
                     mainImage.alt = activeThumb.dataset.galleryAlt;
+                }
+
+                if (mainImage.complete && mainImage.naturalWidth > 0) {
+                    applyCatalogCardImageMode(mainImage);
+                } else {
+                    mainImage.addEventListener('load', () => applyCatalogCardImageMode(mainImage), { once: true });
                 }
             }
 
@@ -632,6 +643,7 @@ const applyCatalogCardImageMode = (image) => {
     const naturalHeight = image.naturalHeight;
 
     if (naturalWidth <= 0 || naturalHeight <= 0) {
+        wrap.classList.remove('is-ultra-wide', 'is-wide');
         return;
     }
 
