@@ -51,12 +51,25 @@ class OneCDiagnosticsController extends Controller
                 $hasOffers = $sortedFiles->contains(fn (array $file): bool => $file['filename'] === 'offers.xml');
                 $notes = [];
 
-                if (! $hasImport) {
-                    $notes[] = 'Нет import.xml: пакет не содержит каталог товаров и категорий.';
+                if (! $hasImport && ! $hasOffers) {
+                    $notes[] = [
+                        'tone' => 'warning',
+                        'text' => 'Нет import.xml: пакет не содержит каталог товаров и категорий.',
+                    ];
+                }
+
+                if (! $hasImport && $hasOffers) {
+                    $notes[] = [
+                        'tone' => 'info',
+                        'text' => 'Частичный пакет: получен только offers.xml. Это нормально для обмена только изменениями (цены, остатки, предложения).',
+                    ];
                 }
 
                 if (! $hasOffers) {
-                    $notes[] = 'Нет offers.xml: цены из 1С не обновятся.';
+                    $notes[] = [
+                        'tone' => 'warning',
+                        'text' => 'Нет offers.xml: цены из 1С не обновятся.',
+                    ];
                 }
 
                 return [

@@ -4,9 +4,12 @@
 
 @section('content')
     @if ($lastImportReport)
-        <section class="surface-card mb-8 border border-rose-200/80 bg-rose-50/80 p-6">
+        @php($hasImportWarnings = ($lastImportReport['warnings'] ?? []) !== [])
+        <section class="surface-card mb-8 border p-6 {{ $hasImportWarnings ? 'border-rose-200/80 bg-rose-50/80' : 'border-emerald-200/80 bg-emerald-50/80' }}">
             <span class="soft-badge">Последний импорт</span>
-            <h2 class="mt-4 font-['IBM_Plex_Sans'] text-2xl font-semibold text-slate-950">Почему пакет не импортировался полностью</h2>
+            <h2 class="mt-4 font-['IBM_Plex_Sans'] text-2xl font-semibold text-slate-950">
+                {{ $hasImportWarnings ? 'Импорт завершен с предупреждениями' : 'Импорт успешно выполнен' }}
+            </h2>
             <div class="mt-5 grid gap-4 md:grid-cols-4">
                 <div class="stat-card">
                     <span>Категорий</span>
@@ -163,9 +166,13 @@
                                     </div>
 
                                     @if ($package['notes'] !== [])
-                                        <div class="mt-4 space-y-2 text-sm text-amber-700">
+                                        <div class="mt-4 space-y-2 text-sm">
                                             @foreach ($package['notes'] as $note)
-                                                <p class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">{{ $note }}</p>
+                                                @php($noteTone = is_array($note) ? ($note['tone'] ?? 'warning') : 'warning')
+                                                @php($noteText = is_array($note) ? ($note['text'] ?? '') : (string) $note)
+                                                <p class="rounded-2xl border px-4 py-3 {{ $noteTone === 'info' ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-amber-200 bg-amber-50 text-amber-700' }}">
+                                                    {{ $noteText }}
+                                                </p>
                                             @endforeach
                                         </div>
                                     @endif

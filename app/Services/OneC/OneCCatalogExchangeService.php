@@ -83,10 +83,6 @@ class OneCCatalogExchangeService
             }
         }
 
-        if (! $result['has_import']) {
-            $result['warnings'][] = 'В пакете нет import.xml. 1С прислала цены или предложения без каталога товаров.';
-        }
-
         if (! $result['has_offers']) {
             $result['warnings'][] = 'В пакете нет offers.xml. Товары и категории могут загрузиться, но цены не обновятся.';
         }
@@ -96,7 +92,7 @@ class OneCCatalogExchangeService
         }
 
         if ($result['has_offers'] && ! $result['has_import'] && $result['products'] === 0 && $result['prices'] === 0) {
-            $result['warnings'][] = 'Пакет содержит только offers.xml, поэтому импорт завершился без изменений. Сначала нужен import.xml с товарами и категориями.';
+            $result['warnings'][] = 'Пакет содержит только offers.xml, но обновлений не применено. Скорее всего, предложения не нашли соответствующие товары на сайте.';
         }
 
         return $result;
