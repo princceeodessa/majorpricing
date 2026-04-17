@@ -9546,6 +9546,10 @@ html {
     border-left: 4px solid #ef4444;
 }
 
+.catalog-toast--success {
+    border-left: 4px solid #22c55e;
+}
+
 .catalog-toast__content strong {
     display: block;
     font-size: 11px;
