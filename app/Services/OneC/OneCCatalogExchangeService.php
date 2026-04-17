@@ -14,6 +14,7 @@ use DOMNode;
 use DOMXPath;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class OneCCatalogExchangeService
@@ -1032,11 +1033,30 @@ class OneCCatalogExchangeService
         $filename = Str::slug($title ?: $oneCId).'-'.substr(sha1($oneCId.$pictureRef), 0, 10).'.'.$extension;
         $relativePath = 'catalog-media/1c/'.$filename;
         $absolutePath = public_path($relativePath);
+        $binary = @file_get_contents($source);
 
-        File::ensureDirectoryExists(dirname($absolutePath));
-        File::copy($source, $absolutePath);
+        if ($binary === false) {
+            return null;
+        }
 
-        return $relativePath;
+        try {
+            File::ensureDirectoryExists(dirname($absolutePath));
+            File::put($absolutePath, $binary);
+
+            return $relativePath;
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
+        try {
+            Storage::disk('public')->put($relativePath, $binary);
+
+            return 'storage/'.$relativePath;
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
+        return null;
     }
 
     private function createXPath(string $xml): ?DOMXPath
