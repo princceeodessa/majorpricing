@@ -896,13 +896,7 @@ const pickBestInitialGalleryIndex = async (thumbs) => {
 };
 
 const resolveCatalogCardSmartFit = (image) => {
-    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches) {
-        clearCatalogCardSmartFit(image);
-        return;
-    }
-
-    const analysis = computeCatalogCardImageAnalysis(image);
-    applyCatalogCardSmartFitValues(image, analysis?.fit ?? null);
+    clearCatalogCardSmartFit(image);
 };
 
 const setupCatalogCardImageModes = () => {
