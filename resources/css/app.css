@@ -10309,9 +10309,9 @@ html {
     }
 
     .catalog-product-card__image-wrap.is-wide .catalog-product-card__image {
-        object-fit: cover !important;
+        object-fit: contain !important;
         object-position: center center !important;
-        transform: scale(1.16);
+        transform: scale(1.08);
         transform-origin: center center;
     }
 
@@ -10321,9 +10321,9 @@ html {
     }
 
     .catalog-product-card__image-wrap.is-ultra-wide .catalog-product-card__image {
-        object-fit: cover !important;
+        object-fit: contain !important;
         object-position: center center !important;
-        transform: scale(1.42);
+        transform: scale(1.18);
         transform-origin: center center;
     }
 }

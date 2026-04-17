@@ -534,6 +534,90 @@ const setupProductCardCartControls = () => {
     });
 };
 
+const galleryRatioCache = new Map();
+
+const loadGalleryImageRatio = (url) => {
+    if (!url) {
+        return Promise.resolve(0);
+    }
+
+    if (galleryRatioCache.has(url)) {
+        return Promise.resolve(galleryRatioCache.get(url));
+    }
+
+    return new Promise((resolve) => {
+        const image = new Image();
+
+        image.decoding = 'async';
+        image.loading = 'eager';
+        image.onload = () => {
+            const ratio = image.naturalHeight > 0 ? image.naturalWidth / image.naturalHeight : 0;
+            galleryRatioCache.set(url, ratio);
+            resolve(ratio);
+        };
+        image.onerror = () => {
+            galleryRatioCache.set(url, 0);
+            resolve(0);
+        };
+        image.src = url;
+    });
+};
+
+const scoreGalleryRatio = (ratio) => {
+    if (!Number.isFinite(ratio) || ratio <= 0) {
+        return -10000;
+    }
+
+    const target = 1.85;
+    let score = 200 - Math.abs(Math.log(ratio / target)) * 120;
+
+    if (ratio > 6.0) {
+        score -= 260;
+    } else if (ratio > 4.2) {
+        score -= 140;
+    } else if (ratio > 3.2) {
+        score -= 70;
+    }
+
+    if (ratio < 0.5) {
+        score -= 80;
+    }
+
+    return score;
+};
+
+const pickBestInitialGalleryIndex = async (thumbs) => {
+    if (thumbs.length < 2) {
+        return 0;
+    }
+
+    const urls = thumbs.map((thumb) => thumb.dataset.galleryImage || '');
+    const ratios = await Promise.all(urls.map((url) => loadGalleryImageRatio(url)));
+    const firstScore = scoreGalleryRatio(ratios[0] || 0);
+
+    let bestIndex = 0;
+    let bestScore = firstScore;
+
+    ratios.forEach((ratio, index) => {
+        const score = scoreGalleryRatio(ratio);
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestIndex = index;
+        }
+    });
+
+    if (bestIndex === 0) {
+        return 0;
+    }
+
+    if ((bestScore - firstScore) < 35) {
+        return 0;
+    }
+
+    return bestIndex;
+};
+
 const setupProductGalleries = () => {
     document.querySelectorAll('[data-gallery]').forEach((galleryRoot) => {
         if (!(galleryRoot instanceof HTMLElement)) {
@@ -625,6 +709,18 @@ const setupProductGalleries = () => {
         }
 
         activateSlide(Number(galleryRoot.dataset.galleryIndex || 0));
+
+        void pickBestInitialGalleryIndex(thumbs).then((bestIndex) => {
+            if (!Number.isFinite(bestIndex)) {
+                return;
+            }
+
+            if (bestIndex === Number(galleryRoot.dataset.galleryIndex || 0)) {
+                return;
+            }
+
+            activateSlide(bestIndex);
+        });
     });
 };
 

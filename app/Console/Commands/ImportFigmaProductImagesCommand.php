@@ -61,6 +61,7 @@ class ImportFigmaProductImagesCommand extends Command
         $unmatched = [];
         $ambiguous = [];
         $clearedProductIds = [];
+        $touchedProductIds = [];
 
         foreach ($files as $file) {
             $matched++;
@@ -81,6 +82,7 @@ class ImportFigmaProductImagesCommand extends Command
                             $sourcePath,
                             $targetDirectory,
                             $clearedProductIds,
+                            $touchedProductIds,
                         );
 
                         if ($attached) {
@@ -110,6 +112,7 @@ class ImportFigmaProductImagesCommand extends Command
                 $sourcePath,
                 $targetDirectory,
                 $clearedProductIds,
+                $touchedProductIds,
             );
 
             if ($attached) {
@@ -117,6 +120,10 @@ class ImportFigmaProductImagesCommand extends Command
             } else {
                 $skipped++;
             }
+        }
+
+        if (! $this->option('dry-run') && $touchedProductIds !== []) {
+            $this->refreshProductCovers($touchedProductIds);
         }
 
         $this->table(
@@ -158,6 +165,7 @@ class ImportFigmaProductImagesCommand extends Command
 
     /**
      * @param  array<int, int>  $clearedProductIds
+     * @param  array<int, int>  $touchedProductIds
      */
     private function attachImageToProduct(
         Product $product,
@@ -165,6 +173,7 @@ class ImportFigmaProductImagesCommand extends Command
         string $sourcePath,
         string $targetDirectory,
         array &$clearedProductIds,
+        array &$touchedProductIds,
     ): bool {
         if (! $product->relationLoaded('productImages')) {
             $product->load('productImages');
@@ -179,16 +188,15 @@ class ImportFigmaProductImagesCommand extends Command
             $product->setRelation('productImages', collect());
         }
 
-        $relativePath = $this->buildTargetRelativePath($product, $file, $sourcePath);
-
-        $alreadyExists = $product->productImages
-            ->contains(fn (ProductImage $image): bool => $image->path === $relativePath);
-
-        if ($alreadyExists) {
-            return false;
-        }
-
         if ($this->option('dry-run')) {
+            $relativePath = $this->buildTargetRelativePath($product, $file, $sourcePath);
+            $alreadyExists = $product->productImages
+                ->contains(fn (ProductImage $image): bool => $image->path === $relativePath);
+
+            if ($alreadyExists) {
+                return false;
+            }
+
             $nextImages = $product->productImages->push(new ProductImage([
                 'path' => $relativePath,
                 'sort_order' => ((int) $product->productImages->max('sort_order')) + 1,
@@ -201,6 +209,10 @@ class ImportFigmaProductImagesCommand extends Command
                 $product->image_path = $relativePath;
             }
 
+            if (! in_array($product->id, $touchedProductIds, true)) {
+                $touchedProductIds[] = $product->id;
+            }
+
             return true;
         }
 
@@ -211,6 +223,14 @@ class ImportFigmaProductImagesCommand extends Command
         }
 
         $normalizedBinary = $this->normalizeCatalogImageBinary($sourceBinary, (string) $file->getExtension());
+        $contentHash = substr(sha1($normalizedBinary), 0, 12);
+        $relativePath = $this->buildTargetRelativePath($product, $file, $sourcePath, $contentHash);
+        $alreadyExists = $product->productImages
+            ->contains(fn (ProductImage $image): bool => $image->path === $relativePath);
+
+        if ($alreadyExists) {
+            return false;
+        }
 
         File::put($targetDirectory.'/'.basename($relativePath), $normalizedBinary);
 
@@ -226,6 +246,10 @@ class ImportFigmaProductImagesCommand extends Command
         }
 
         $product->setRelation('productImages', $product->productImages->push($newImage)->values());
+
+        if (! in_array($product->id, $touchedProductIds, true)) {
+            $touchedProductIds[] = $product->id;
+        }
 
         return true;
     }
@@ -244,6 +268,105 @@ class ImportFigmaProductImagesCommand extends Command
 
         $product->productImages()->delete();
         $product->forceFill(['image_path' => null])->save();
+    }
+
+    /**
+     * @param  list<int>  $productIds
+     */
+    private function refreshProductCovers(array $productIds): void
+    {
+        Product::query()
+            ->whereIn('id', array_values(array_unique($productIds)))
+            ->with('productImages')
+            ->get()
+            ->each(function (Product $product): void {
+                if (! $product->relationLoaded('productImages')) {
+                    $product->load('productImages');
+                }
+
+                if ($product->productImages->isEmpty()) {
+                    return;
+                }
+
+                $bestImage = $this->pickBestCoverImage($product);
+                if (! $bestImage) {
+                    return;
+                }
+
+                $product->productImages()
+                    ->where('id', '!=', $bestImage->id)
+                    ->where('is_cover', true)
+                    ->update(['is_cover' => false]);
+
+                if (! $bestImage->is_cover) {
+                    $bestImage->is_cover = true;
+                    $bestImage->save();
+                }
+
+                if ($product->image_path !== $bestImage->path) {
+                    $product->forceFill(['image_path' => $bestImage->path])->save();
+                }
+            });
+    }
+
+    private function pickBestCoverImage(Product $product): ?ProductImage
+    {
+        $bestImage = null;
+        $bestScore = null;
+
+        foreach ($product->productImages as $image) {
+            $score = $this->scoreProductImageForCover($image);
+
+            if ($bestScore === null || $score > $bestScore) {
+                $bestScore = $score;
+                $bestImage = $image;
+            }
+        }
+
+        return $bestImage ?? $product->productImages->first();
+    }
+
+    private function scoreProductImageForCover(ProductImage $image): float
+    {
+        $absolutePath = public_path($image->path);
+
+        if (! is_file($absolutePath)) {
+            return -10000.0;
+        }
+
+        $size = @getimagesize($absolutePath);
+        if (! is_array($size)) {
+            return -5000.0;
+        }
+
+        $width = (int) ($size[0] ?? 0);
+        $height = (int) ($size[1] ?? 0);
+
+        if ($width <= 0 || $height <= 0) {
+            return -4000.0;
+        }
+
+        $ratio = $width / $height;
+        $targetRatio = 1.8;
+        $ratioDistance = abs(log(max(0.05, $ratio) / $targetRatio));
+        $score = 220.0 - ($ratioDistance * 120.0);
+
+        if ($ratio > 6.0) {
+            $score -= 260.0;
+        } elseif ($ratio > 4.2) {
+            $score -= 140.0;
+        } elseif ($ratio > 3.2) {
+            $score -= 70.0;
+        }
+
+        $pixelArea = max(1, $width * $height);
+        $score += min(45.0, log($pixelArea, 2));
+
+        if ($image->is_cover) {
+            $score += 8.0;
+        }
+
+        return $score;
     }
 
     private function normalizeCatalogImageBinary(string $binary, string $extension): string
@@ -274,6 +397,11 @@ class ImportFigmaProductImagesCommand extends Command
             $bounds = $this->detectNonTransparentBounds($image, $width, $height);
             if ($bounds === null) {
                 return $binary;
+            }
+
+            $uniformBounds = $this->detectUniformBackgroundBounds($image, $width, $height);
+            if ($uniformBounds !== null) {
+                $bounds = $this->intersectBounds($bounds, $uniformBounds);
             }
 
             $trimWidth = $bounds['right'] - $bounds['left'] + 1;
@@ -367,6 +495,177 @@ class ImportFigmaProductImagesCommand extends Command
         ];
     }
 
+    /**
+     * @param  array{left:int,top:int,right:int,bottom:int}  $first
+     * @param  array{left:int,top:int,right:int,bottom:int}  $second
+     * @return array{left:int,top:int,right:int,bottom:int}
+     */
+    private function intersectBounds(array $first, array $second): array
+    {
+        return [
+            'left' => max($first['left'], $second['left']),
+            'top' => max($first['top'], $second['top']),
+            'right' => min($first['right'], $second['right']),
+            'bottom' => min($first['bottom'], $second['bottom']),
+        ];
+    }
+
+    /**
+     * @return array{left:int,top:int,right:int,bottom:int}|null
+     */
+    private function detectUniformBackgroundBounds($image, int $width, int $height): ?array
+    {
+        if ($width < 24 || $height < 24) {
+            return null;
+        }
+
+        $corners = [
+            $this->extractColorChannels((int) imagecolorat($image, 0, 0)),
+            $this->extractColorChannels((int) imagecolorat($image, $width - 1, 0)),
+            $this->extractColorChannels((int) imagecolorat($image, 0, $height - 1)),
+            $this->extractColorChannels((int) imagecolorat($image, $width - 1, $height - 1)),
+        ];
+
+        $base = $corners[0];
+
+        foreach ($corners as $corner) {
+            if (! $this->isBackgroundColorSimilar($base, $corner)) {
+                return null;
+            }
+        }
+
+        $background = [
+            'r' => (int) round(array_sum(array_column($corners, 'r')) / count($corners)),
+            'g' => (int) round(array_sum(array_column($corners, 'g')) / count($corners)),
+            'b' => (int) round(array_sum(array_column($corners, 'b')) / count($corners)),
+            'a' => (int) round(array_sum(array_column($corners, 'a')) / count($corners)),
+        ];
+
+        $top = 0;
+        $bottom = $height - 1;
+        $left = 0;
+        $right = $width - 1;
+
+        while ($top < $bottom && $this->isBackgroundRow($image, $width, $top, $background)) {
+            $top++;
+        }
+
+        while ($bottom > $top && $this->isBackgroundRow($image, $width, $bottom, $background)) {
+            $bottom--;
+        }
+
+        while ($left < $right && $this->isBackgroundColumn($image, $height, $left, $background)) {
+            $left++;
+        }
+
+        while ($right > $left && $this->isBackgroundColumn($image, $height, $right, $background)) {
+            $right--;
+        }
+
+        if ($left === 0 && $top === 0 && $right === ($width - 1) && $bottom === ($height - 1)) {
+            return null;
+        }
+
+        $trimWidth = $right - $left + 1;
+        $trimHeight = $bottom - $top + 1;
+
+        if ($trimWidth < max(16, (int) round($width * 0.08)) || $trimHeight < max(16, (int) round($height * 0.08))) {
+            return null;
+        }
+
+        if (($trimWidth * $trimHeight) < ((int) round($width * $height * 0.03))) {
+            return null;
+        }
+
+        $padding = 2;
+        $left = max(0, $left - $padding);
+        $top = max(0, $top - $padding);
+        $right = min($width - 1, $right + $padding);
+        $bottom = min($height - 1, $bottom + $padding);
+
+        return [
+            'left' => $left,
+            'top' => $top,
+            'right' => $right,
+            'bottom' => $bottom,
+        ];
+    }
+
+    /**
+     * @param  array{r:int,g:int,b:int,a:int}  $first
+     * @param  array{r:int,g:int,b:int,a:int}  $second
+     */
+    private function isBackgroundColorSimilar(array $first, array $second): bool
+    {
+        $distance = abs($first['r'] - $second['r']) + abs($first['g'] - $second['g']) + abs($first['b'] - $second['b']);
+        $alphaDistance = abs($first['a'] - $second['a']);
+
+        return $distance <= 48 && $alphaDistance <= 20;
+    }
+
+    /**
+     * @param  array{r:int,g:int,b:int,a:int}  $background
+     */
+    private function isBackgroundRow($image, int $width, int $y, array $background): bool
+    {
+        $step = max(1, (int) floor($width / 96));
+        $samples = 0;
+        $matches = 0;
+
+        for ($x = 0; $x < $width; $x += $step) {
+            $samples++;
+
+            $color = $this->extractColorChannels((int) imagecolorat($image, $x, $y));
+            if ($this->isBackgroundColorSimilar($background, $color)) {
+                $matches++;
+            }
+        }
+
+        if ($samples === 0) {
+            return false;
+        }
+
+        return ($matches / $samples) >= 0.975;
+    }
+
+    /**
+     * @param  array{r:int,g:int,b:int,a:int}  $background
+     */
+    private function isBackgroundColumn($image, int $height, int $x, array $background): bool
+    {
+        $step = max(1, (int) floor($height / 96));
+        $samples = 0;
+        $matches = 0;
+
+        for ($y = 0; $y < $height; $y += $step) {
+            $samples++;
+
+            $color = $this->extractColorChannels((int) imagecolorat($image, $x, $y));
+            if ($this->isBackgroundColorSimilar($background, $color)) {
+                $matches++;
+            }
+        }
+
+        if ($samples === 0) {
+            return false;
+        }
+
+        return ($matches / $samples) >= 0.975;
+    }
+
+    /**
+     * @return array{r:int,g:int,b:int,a:int}
+     */
+    private function extractColorChannels(int $rgba): array
+    {
+        return [
+            'a' => ($rgba >> 24) & 0x7F,
+            'r' => ($rgba >> 16) & 0xFF,
+            'g' => ($rgba >> 8) & 0xFF,
+            'b' => $rgba & 0xFF,
+        ];
+    }
+
     private function encodeCatalogImageBinary($image, string $extension): ?string
     {
         ob_start();
@@ -394,12 +693,19 @@ class ImportFigmaProductImagesCommand extends Command
         return $binary;
     }
 
-    private function buildTargetRelativePath(Product $product, SplFileInfo $file, string $sourcePath): string
+    private function buildTargetRelativePath(
+        Product $product,
+        SplFileInfo $file,
+        string $sourcePath,
+        ?string $contentHash = null,
+    ): string
     {
         $extension = mb_strtolower($file->getExtension());
         $baseName = $product->slug ?: Str::slug($product->publicTitle());
         $baseName = $baseName !== '' ? $baseName : 'product';
-        $variantHash = substr(md5($this->relativePath($file, $sourcePath)), 0, 12);
+        $variantHash = $contentHash !== null && $contentHash !== ''
+            ? $contentHash
+            : substr(md5($this->relativePath($file, $sourcePath)), 0, 12);
         $fileName = sprintf('%d-%s-%s.%s', $product->id, $baseName, $variantHash, $extension);
 
         return 'catalog-media/figma/'.$fileName;
