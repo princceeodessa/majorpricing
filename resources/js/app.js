@@ -629,6 +629,18 @@ const setupProductGalleries = () => {
         }
 
         activateSlide(Number(galleryRoot.dataset.galleryIndex || 0));
+
+        void pickBestInitialGalleryIndex(thumbs).then((bestIndex) => {
+            if (!Number.isFinite(bestIndex)) {
+                return;
+            }
+
+            if (bestIndex === Number(galleryRoot.dataset.galleryIndex || 0)) {
+                return;
+            }
+
+            activateSlide(bestIndex);
+        });
     });
 };
 
@@ -659,7 +671,7 @@ const applyCatalogCardImageMode = (image) => {
     wrap.classList.toggle('is-wide', isWide);
 };
 
-const catalogCardImageFitCache = new Map();
+const catalogCardImageAnalysisCache = new Map();
 
 const clearCatalogCardSmartFit = (image) => {
     image.classList.remove('is-smart-fit');
@@ -680,43 +692,34 @@ const applyCatalogCardSmartFitValues = (image, fit) => {
     image.style.setProperty('--card-img-scale', fit.scale.toFixed(3));
 };
 
-const resolveCatalogCardSmartFit = (image) => {
-    const src = image.currentSrc || image.src;
+const colorDistanceRgb = (r1, g1, b1, r2, g2, b2) => (
+    Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2)
+);
+
+const computeCatalogCardImageAnalysis = (image, cacheKey) => {
+    if (!(image instanceof HTMLImageElement)) {
+        return null;
+    }
+
+    const src = cacheKey || image.currentSrc || image.src;
     if (!src) {
-        clearCatalogCardSmartFit(image);
-        return;
+        return null;
     }
 
-    if (catalogCardImageFitCache.has(src)) {
-        applyCatalogCardSmartFitValues(image, catalogCardImageFitCache.get(src));
-        return;
-    }
-
-    const extension = src.split('?')[0].toLowerCase();
-    const supportsAlpha = (
-        extension.endsWith('.png')
-        || extension.endsWith('.webp')
-        || extension.endsWith('.avif')
-        || extension.endsWith('.gif')
-    );
-
-    if (!supportsAlpha) {
-        catalogCardImageFitCache.set(src, null);
-        clearCatalogCardSmartFit(image);
-        return;
+    if (catalogCardImageAnalysisCache.has(src)) {
+        return catalogCardImageAnalysisCache.get(src);
     }
 
     const naturalWidth = image.naturalWidth || 0;
     const naturalHeight = image.naturalHeight || 0;
     if (naturalWidth <= 1 || naturalHeight <= 1) {
-        catalogCardImageFitCache.set(src, null);
-        clearCatalogCardSmartFit(image);
-        return;
+        catalogCardImageAnalysisCache.set(src, null);
+        return null;
     }
 
-    const scale = Math.min(1, 320 / naturalWidth, 320 / naturalHeight);
-    const sampleWidth = Math.max(1, Math.round(naturalWidth * scale));
-    const sampleHeight = Math.max(1, Math.round(naturalHeight * scale));
+    const sampleScale = Math.min(1, 260 / Math.max(naturalWidth, naturalHeight));
+    const sampleWidth = Math.max(1, Math.round(naturalWidth * sampleScale));
+    const sampleHeight = Math.max(1, Math.round(naturalHeight * sampleScale));
 
     const canvas = document.createElement('canvas');
     canvas.width = sampleWidth;
@@ -724,39 +727,64 @@ const resolveCatalogCardSmartFit = (image) => {
 
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) {
-        catalogCardImageFitCache.set(src, null);
-        clearCatalogCardSmartFit(image);
-        return;
+        catalogCardImageAnalysisCache.set(src, null);
+        return null;
     }
 
     context.clearRect(0, 0, sampleWidth, sampleHeight);
     context.drawImage(image, 0, 0, sampleWidth, sampleHeight);
 
-    let data;
+    let imageData;
     try {
-        data = context.getImageData(0, 0, sampleWidth, sampleHeight).data;
+        imageData = context.getImageData(0, 0, sampleWidth, sampleHeight).data;
     } catch (error) {
-        catalogCardImageFitCache.set(src, null);
-        clearCatalogCardSmartFit(image);
-        return;
+        catalogCardImageAnalysisCache.set(src, null);
+        return null;
     }
+
+    const cornerRead = (x, y) => {
+        const idx = ((y * sampleWidth) + x) * 4;
+        return [imageData[idx], imageData[idx + 1], imageData[idx + 2]];
+    };
+
+    const corners = [
+        cornerRead(0, 0),
+        cornerRead(sampleWidth - 1, 0),
+        cornerRead(0, sampleHeight - 1),
+        cornerRead(sampleWidth - 1, sampleHeight - 1),
+    ];
+
+    const bgR = Math.round((corners[0][0] + corners[1][0] + corners[2][0] + corners[3][0]) / 4);
+    const bgG = Math.round((corners[0][1] + corners[1][1] + corners[2][1] + corners[3][1]) / 4);
+    const bgB = Math.round((corners[0][2] + corners[1][2] + corners[2][2] + corners[3][2]) / 4);
+    const bgThreshold = 36;
 
     let left = sampleWidth;
     let right = -1;
     let top = sampleHeight;
     let bottom = -1;
-    let opaquePixels = 0;
+    let contentPixels = 0;
 
     for (let y = 0; y < sampleHeight; y++) {
         for (let x = 0; x < sampleWidth; x++) {
             const index = ((y * sampleWidth) + x) * 4;
-            const alpha = data[index + 3];
+            const r = imageData[index];
+            const g = imageData[index + 1];
+            const b = imageData[index + 2];
+            const a = imageData[index + 3];
 
-            if (alpha <= 10) {
+            if (a <= 10) {
                 continue;
             }
 
-            opaquePixels++;
+            const foregroundByAlpha = a < 245;
+            const foregroundByColor = colorDistanceRgb(r, g, b, bgR, bgG, bgB) > bgThreshold;
+
+            if (!foregroundByAlpha && !foregroundByColor) {
+                continue;
+            }
+
+            contentPixels++;
             if (x < left) left = x;
             if (x > right) right = x;
             if (y < top) top = y;
@@ -764,38 +792,112 @@ const resolveCatalogCardSmartFit = (image) => {
         }
     }
 
-    if (opaquePixels === 0 || right < left || bottom < top) {
-        catalogCardImageFitCache.set(src, null);
-        clearCatalogCardSmartFit(image);
-        return;
+    if (contentPixels === 0 || right < left || bottom < top) {
+        catalogCardImageAnalysisCache.set(src, null);
+        return null;
     }
 
-    const totalPixels = sampleWidth * sampleHeight;
-    const coverage = opaquePixels / totalPixels;
+    const boxWidthPx = right - left + 1;
+    const boxHeightPx = bottom - top + 1;
+    const boxAreaPx = boxWidthPx * boxHeightPx;
+    const fullAreaPx = sampleWidth * sampleHeight;
+    const coverage = boxAreaPx / Math.max(1, fullAreaPx);
+    const density = contentPixels / Math.max(1, boxAreaPx);
 
-    if (coverage >= 0.78) {
-        catalogCardImageFitCache.set(src, null);
-        clearCatalogCardSmartFit(image);
-        return;
-    }
-
-    const boxWidth = (right - left + 1) / sampleWidth;
-    const boxHeight = (bottom - top + 1) / sampleHeight;
+    const boxWidth = boxWidthPx / sampleWidth;
+    const boxHeight = boxHeightPx / sampleHeight;
     const centerX = ((left + right + 1) / 2) / sampleWidth;
     const centerY = ((top + bottom + 1) / 2) / sampleHeight;
 
-    const targetFill = 0.86;
+    const targetFill = coverage < 0.2 ? 0.9 : 0.86;
+    const maxScale = coverage < 0.16 ? 1.54 : (coverage < 0.28 ? 1.4 : 1.22);
     const scaleByWidth = targetFill / Math.max(0.01, boxWidth);
     const scaleByHeight = targetFill / Math.max(0.01, boxHeight);
-    const maxScale = coverage < 0.18 ? 1.5 : (coverage < 0.3 ? 1.36 : 1.22);
-    const fit = {
-        shiftX: clamp((0.5 - centerX) * 100, -18, 18),
-        shiftY: clamp((0.5 - centerY) * 100, -14, 14),
-        scale: clamp(Math.min(scaleByWidth, scaleByHeight), 1, maxScale),
+    const candidateScale = clamp(Math.min(scaleByWidth, scaleByHeight), 1, maxScale);
+    const shiftX = clamp((0.5 - centerX) * 100, -20, 20);
+    const shiftY = clamp((0.5 - centerY) * 100, -16, 16);
+
+    const tinyShift = Math.abs(shiftX) < 0.75 && Math.abs(shiftY) < 0.75;
+    const tinyScale = candidateScale < 1.04;
+    const fit = (coverage >= 0.82 || (tinyShift && tinyScale))
+        ? null
+        : {
+            shiftX,
+            shiftY,
+            scale: candidateScale,
+        };
+
+    const score = clamp(coverage, 0, 1) * (0.58 + (0.42 * clamp(density, 0, 1)));
+
+    const analysis = {
+        fit,
+        coverage,
+        density,
+        score,
     };
 
-    catalogCardImageFitCache.set(src, fit);
-    applyCatalogCardSmartFitValues(image, fit);
+    catalogCardImageAnalysisCache.set(src, analysis);
+    return analysis;
+};
+
+const loadCatalogCardImageAnalysis = (url) => {
+    if (!url) {
+        return Promise.resolve(null);
+    }
+
+    if (catalogCardImageAnalysisCache.has(url)) {
+        return Promise.resolve(catalogCardImageAnalysisCache.get(url));
+    }
+
+    return new Promise((resolve) => {
+        const image = new Image();
+        image.decoding = 'async';
+        image.loading = 'eager';
+        image.onload = () => {
+            resolve(computeCatalogCardImageAnalysis(image, url));
+        };
+        image.onerror = () => {
+            catalogCardImageAnalysisCache.set(url, null);
+            resolve(null);
+        };
+        image.src = url;
+    });
+};
+
+const pickBestInitialGalleryIndex = async (thumbs) => {
+    if (thumbs.length < 2) {
+        return 0;
+    }
+
+    const urls = thumbs.map((thumb) => thumb.dataset.galleryImage || '');
+    const analyses = await Promise.all(urls.map((url) => loadCatalogCardImageAnalysis(url)));
+    const firstScore = analyses[0]?.score ?? 0;
+
+    let bestIndex = 0;
+    let bestScore = firstScore;
+
+    analyses.forEach((analysis, index) => {
+        const score = analysis?.score ?? 0;
+        if (score > bestScore) {
+            bestScore = score;
+            bestIndex = index;
+        }
+    });
+
+    if (bestIndex === 0) {
+        return 0;
+    }
+
+    if ((bestScore - firstScore) < 0.08) {
+        return 0;
+    }
+
+    return bestIndex;
+};
+
+const resolveCatalogCardSmartFit = (image) => {
+    const analysis = computeCatalogCardImageAnalysis(image);
+    applyCatalogCardSmartFitValues(image, analysis?.fit ?? null);
 };
 
 const setupCatalogCardImageModes = () => {
