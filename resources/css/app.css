@@ -10286,3 +10286,20 @@ html {
         height: 28px;
     }
 }
+
+/* Mobile catalog image hotfix: enlarge long profile photos in cards */
+@media (max-width: 640px) {
+    .catalog-product-card__image-wrap {
+        height: 170px !important;
+        min-height: 170px !important;
+    }
+
+    .catalog-product-card__image {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        object-fit: cover !important;
+        object-position: center bottom !important;
+    }
+}
