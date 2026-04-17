@@ -350,6 +350,9 @@
 
 .catalog-product-card__cart-control {
     min-width: 0;
+}
+
+.catalog-product-card__footer > .catalog-product-card__cart-control {
     margin-left: auto;
 }
 
@@ -3239,7 +3242,9 @@ html {
     }
 
     .catalog-product-actions .catalog-product-card__cart-control {
-        margin-left: 0;
+        margin-left: 0 !important;
+        margin-right: auto;
+        align-self: flex-start;
     }
 
     .catalog-qty-control {

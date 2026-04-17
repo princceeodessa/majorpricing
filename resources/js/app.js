@@ -1,6 +1,7 @@
 ﻿import './bootstrap';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const CART_CONTROL_REQUEST_TIMEOUT_MS = 12000;
 
 const syncFavoriteForms = (productId, favorited, favoritesCount, storeUrl, destroyUrl) => {
     document.querySelectorAll(`[data-favorite-form][data-product-id="${productId}"]`).forEach((form) => {
@@ -378,6 +379,13 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
     control.dataset.loading = '1';
     control.classList.add('is-loading');
 
+    const requestController = typeof AbortController === 'function'
+        ? new AbortController()
+        : null;
+    const requestTimeoutId = requestController
+        ? window.setTimeout(() => requestController.abort(), CART_CONTROL_REQUEST_TIMEOUT_MS)
+        : null;
+
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -387,18 +395,62 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
             },
             body,
             credentials: 'same-origin',
+            signal: requestController?.signal,
         });
+
+        if (response.status === 401 || response.status === 419) {
+            window.location.reload();
+
+            return;
+        }
 
         if (!response.ok) {
             throw new Error('Cart control failed');
         }
 
-        const payload = await response.json();
+        const responseContentType = response.headers.get('content-type') ?? '';
 
-        syncCartControls(payload.productId, payload.quantity, payload.cartCount);
+        if (!responseContentType.includes('application/json')) {
+            if (response.redirected && response.url) {
+                window.location.assign(response.url);
+
+                return;
+            }
+
+            throw new Error('Cart control response is not JSON');
+        }
+
+        const payload = await response.json();
+        const payloadProductId = Number(payload?.productId);
+        const payloadQuantity = Number(payload?.quantity);
+        const payloadCartCount = Number(payload?.cartCount);
+
+        if (
+            !Number.isFinite(payloadProductId)
+            || !Number.isFinite(payloadQuantity)
+            || !Number.isFinite(payloadCartCount)
+        ) {
+            throw new Error('Cart control payload invalid');
+        }
+
+        syncCartControls(payloadProductId, payloadQuantity, payloadCartCount);
     } catch (error) {
-        window.location.reload();
+        syncSingleCartControl(control, currentQuantity);
+
+        const isTimeoutAbort = typeof DOMException !== 'undefined'
+            && error instanceof DOMException
+            && error.name === 'AbortError';
+        pushToast(
+            'Ошибка',
+            isTimeoutAbort
+                ? 'Сервер долго отвечает. Попробуйте еще раз.'
+                : 'Не удалось обновить корзину. Проверьте соединение.',
+        );
     } finally {
+        if (requestTimeoutId !== null) {
+            window.clearTimeout(requestTimeoutId);
+        }
+
         control.dataset.loading = '0';
         control.classList.remove('is-loading');
     }
