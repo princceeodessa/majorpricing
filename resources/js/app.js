@@ -888,7 +888,7 @@ const pickBestInitialGalleryIndex = async (thumbs) => {
         return 0;
     }
 
-    if ((bestScore - firstScore) < 0.08) {
+    if ((bestScore - firstScore) < 0.03) {
         return 0;
     }
 
