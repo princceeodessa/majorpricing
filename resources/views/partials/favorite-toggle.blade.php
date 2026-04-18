@@ -2,6 +2,14 @@
     $isFavorite = in_array($product->id, $favoriteProductIds ?? [], true);
     $sizeClass = $sizeClass ?? '';
     $showLabel = $showLabel ?? false;
+    $favoritePayload = [
+        'productId' => $product->id,
+        'favorited' => $isFavorite,
+        'storeUrl' => route('favorites.store', $product),
+        'destroyUrl' => route('favorites.destroy', $product),
+        'csrfToken' => csrf_token(),
+        'showLabel' => (bool) $showLabel,
+    ];
 @endphp
 
 <form
@@ -9,6 +17,8 @@
     method="POST"
     class="catalog-favorite-form {{ $sizeClass }}"
     data-favorite-form
+    data-vue-favorite
+    data-vue-favorite-props='@json($favoritePayload, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)'
     data-product-id="{{ $product->id }}"
     data-store-url="{{ route('favorites.store', $product) }}"
     data-destroy-url="{{ route('favorites.destroy', $product) }}"

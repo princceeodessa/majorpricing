@@ -18,11 +18,11 @@
             <div class="catalog-list-header__stats">
                 <div class="catalog-stat-box">
                     <span>Позиций</span>
-                    <strong>{{ $summary['items_count'] }}</strong>
+                    <strong data-cart-items-count>{{ $summary['items_count'] }}</strong>
                 </div>
                 <div class="catalog-stat-box">
                     <span>Штук</span>
-                    <strong>{{ $summary['total_quantity'] }}</strong>
+                    <strong data-cart-total-quantity>{{ $summary['total_quantity'] }}</strong>
                 </div>
                 <div class="catalog-stat-box">
                     <span>Сумма</span>
@@ -69,12 +69,44 @@
                     @php($maxCartQuantity = $product?->cartQuantityMax() ?? 999)
                     @php($safeCartQuantity = $product ? $product->normalizeCartQuantity((int) $cartItem->quantity) : (int) $cartItem->quantity)
                     @php($unitsInPackageSummary = $product?->unitsInPackageSummary())
+                    @php($cartImageUrl = $product?->image_path ? asset($product->image_path) : $fallbackImageUrl)
+                    @php($cartItemPayload = [
+                        'itemId' => $cartItem->id,
+                        'productId' => $product?->id,
+                        'productUrl' => $product ? route('products.show', $product) : null,
+                        'title' => $product?->publicTitle() ?? 'Товар из каталога',
+                        'categoryName' => $product?->category?->name ?? 'Каталог',
+                        'vendorCode' => $product?->vendor_code,
+                        'unitLabel' => $unitLabel,
+                        'colorName' => $product?->color_name,
+                        'unitsInPackageSummary' => $unitsInPackageSummary,
+                        'imageUrl' => $cartImageUrl,
+                        'fallbackImageUrl' => $fallbackImageUrl,
+                        'quantity' => $safeCartQuantity,
+                        'minQuantity' => $minCartQuantity,
+                        'stepQuantity' => $stepCartQuantity,
+                        'maxQuantity' => $maxCartQuantity,
+                        'updateUrl' => route('cart.items.update', $cartItem),
+                        'destroyUrl' => route('cart.items.destroy', $cartItem),
+                        'csrfToken' => csrf_token(),
+                        'paymentMethod' => $selectedPaymentMethod,
+                        'pricing' => [
+                            'baseUnitAmount' => $baseUnitAmount,
+                            'discountUnitAmount' => $discountUnitAmount,
+                            'baseLineAmount' => $baseLineAmount,
+                            'discountLineAmount' => $discountLineAmount,
+                        ],
+                    ])
 
                     <article class="surface-card reveal-card p-5 sm:p-6" data-cart-item data-cart-item-id="{{ $cartItem->id }}">
+                        <div
+                            data-vue-cart-line
+                            data-vue-cart-line-props='@json($cartItemPayload, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)'
+                        >
                         <div class="catalog-cart-item">
                             <div class="catalog-cart-item__visual">
                                 <img
-                                    src="{{ $product?->image_path ? asset($product->image_path) : $fallbackImageUrl }}"
+                                    src="{{ $cartImageUrl }}"
                                     alt="{{ $product?->publicTitle() ?? 'Товар из каталога' }}"
                                     class="catalog-cart-item__image"
                                     data-fallback-src="{{ $fallbackImageUrl }}"
@@ -182,35 +214,63 @@
                                 </p>
                             </div>
                         </div>
+                        </div>
                     </article>
                 @endforeach
             </div>
 
-            <aside class="surface-card reveal-card p-6 sm:p-7 lg:sticky lg:top-6">
+            @php
+                $checkoutPaymentOptions = collect($paymentMethods)
+                    ->map(fn (string $label, string $value): array => [
+                        'value' => $value,
+                        'label' => $label,
+                        'note' => $value === 'cash' ? 'Цена со скидкой.' : 'Цена без скидки.',
+                    ])
+                    ->values()
+                    ->all();
+                $checkoutPanelPayload = [
+                    'summary' => [
+                        'itemsCount' => (int) ($summary['items_count'] ?? 0),
+                        'totalQuantity' => (int) ($summary['total_quantity'] ?? 0),
+                        'pricedItemsCount' => (int) ($summary['priced_items_count'] ?? 0),
+                        'unpricedItemsCount' => (int) ($summary['unpriced_items_count'] ?? 0),
+                        'baseTotal' => $summary['base_total_amount'] ?? null,
+                        'discountTotal' => $summary['discount_total_amount'] ?? null,
+                    ],
+                    'paymentOptions' => $checkoutPaymentOptions,
+                    'selectedPaymentMethod' => $selectedPaymentMethod,
+                ];
+            @endphp
+
+            <aside class="surface-card reveal-card p-6 sm:p-7 lg:sticky lg:top-6 catalog-checkout-v2">
                 <form action="{{ route('cart.checkout') }}" method="POST" class="space-y-6">
                     @csrf
 
-                    <div>
-                        <h2 class="font-['IBM_Plex_Sans'] text-3xl font-semibold tracking-tight text-slate-950">Подтверждение заявки</h2>
-                    </div>
+                    <div
+                        data-vue-cart-checkout
+                        data-vue-cart-checkout-props='@json($checkoutPanelPayload, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)'
+                    >
+                        <div>
+                            <h2 class="font-['IBM_Plex_Sans'] text-3xl font-semibold tracking-tight text-slate-950">Подтверждение заявки</h2>
+                        </div>
 
-                    <div class="space-y-3">
+                        <div class="space-y-3 mt-4">
                         <div class="catalog-summary-row">
                             <span>Позиций</span>
-                            <strong>{{ $summary['items_count'] }}</strong>
+                            <strong data-cart-items-count>{{ $summary['items_count'] }}</strong>
                         </div>
                         <div class="catalog-summary-row">
                             <span>Количество</span>
-                            <strong>{{ $summary['total_quantity'] }}</strong>
+                            <strong data-cart-total-quantity>{{ $summary['total_quantity'] }}</strong>
                         </div>
                         <div class="catalog-summary-row">
                             <span>С ценой</span>
-                            <strong>{{ $summary['priced_items_count'] }}</strong>
+                            <strong data-cart-priced-count>{{ $summary['priced_items_count'] }}</strong>
                         </div>
                         @if ($summary['unpriced_items_count'] > 0)
                             <div class="catalog-summary-row">
                                 <span>По запросу</span>
-                                <strong>{{ $summary['unpriced_items_count'] }}</strong>
+                                <strong data-cart-unpriced-count>{{ $summary['unpriced_items_count'] }}</strong>
                             </div>
                         @endif
                         <div class="catalog-summary-row is-total">
@@ -229,7 +289,7 @@
                         </div>
                     </div>
 
-                    <div class="space-y-3">
+                        <div class="space-y-3 mt-5">
                         <label class="catalog-filter-title">Тип оплаты</label>
 
                         <div class="catalog-payment-options">
@@ -251,6 +311,7 @@
                         </div>
                     </div>
 
+                    </div>
                     <div class="space-y-3">
                         <label class="catalog-filter-title">Выберите адрес доставки</label>
 

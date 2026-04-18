@@ -146,11 +146,25 @@ class CartController extends Controller
         return back()->with('status', 'Количество в корзине обновлено.');
     }
 
-    public function destroy(Request $request, CartItem $cartItem): RedirectResponse
+    public function destroy(Request $request, CartItem $cartItem): RedirectResponse|JsonResponse
     {
         $this->ensureOwner($request, $cartItem);
 
+        $deletedItemId = $cartItem->id;
         $cartItem->delete();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            $paymentMethod = $this->normalizePaymentMethod($request->input('payment_method'));
+            [$cartItems, $summary] = $this->resolveCartState($request->user(), $paymentMethod);
+            $cartCount = (int) $cartItems->sum('quantity');
+
+            return response()->json([
+                'itemId' => $deletedItemId,
+                'removed' => true,
+                'cartCount' => $cartCount,
+                'summary' => $summary,
+            ]);
+        }
 
         return back()->with('status', 'Товар удален из корзины.');
     }

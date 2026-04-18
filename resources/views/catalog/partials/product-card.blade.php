@@ -25,6 +25,25 @@
     $maxCartQuantity = $product->cartQuantityMax();
     $safeCartQuantity = $cartQuantity > 0 ? $product->normalizeCartQuantity($cartQuantity) : $minCartQuantity;
     $unitsInPackageSummary = $product->unitsInPackageSummary();
+    $galleryPayload = [
+        'productUrl' => route('products.show', $product),
+        'title' => $publicTitle,
+        'fallbackImageUrl' => $fallbackImageUrl,
+        'images' => $galleryImages->values()->all(),
+    ];
+    $cartPayload = [
+        'productId' => $product->id,
+        'quantity' => $cartQuantity > 0 ? $safeCartQuantity : 0,
+        'minQuantity' => $minCartQuantity,
+        'stepQuantity' => $stepCartQuantity,
+        'maxQuantity' => $maxCartQuantity,
+        'storeUrl' => route('cart.store', $product),
+        'updateUrl' => route('cart.product.update', $product),
+        'destroyUrl' => route('cart.product.destroy', $product),
+        'csrfToken' => csrf_token(),
+        'unitsInPackageSummary' => $unitsInPackageSummary,
+        'colorName' => filled($product->color_name) ? $product->color_name : null,
+    ];
 @endphp
 
 <article
@@ -37,7 +56,11 @@
         @include('partials.favorite-toggle', ['product' => $product])
     </div>
 
-    <div class="catalog-product-card__visual" data-gallery data-gallery-index="0">
+    <div
+        class="catalog-product-card__visual"
+        data-vue-gallery
+        data-vue-gallery-props='@json($galleryPayload, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)'
+    >
         <a href="{{ route('products.show', $product) }}" class="catalog-product-card__visual-link">
             <div class="catalog-product-card__image-wrap">
                 <img
@@ -106,15 +129,8 @@
 
             <div
                 class="catalog-product-card__cart-control"
-                data-cart-control
-                data-product-id="{{ $product->id }}"
-                data-quantity="{{ $cartQuantity > 0 ? $safeCartQuantity : 0 }}"
-                data-min-quantity="{{ $minCartQuantity }}"
-                data-step-quantity="{{ $stepCartQuantity }}"
-                data-store-url="{{ route('cart.store', $product) }}"
-                data-update-url="{{ route('cart.product.update', $product) }}"
-                data-destroy-url="{{ route('cart.product.destroy', $product) }}"
-                data-csrf-token="{{ csrf_token() }}"
+                data-vue-cart-control
+                data-vue-cart-props='@json($cartPayload, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)'
             >
                 <div class="{{ $cartQuantity > 0 ? 'hidden' : '' }}" data-cart-add-state>
                     <button type="button" class="catalog-product-card__cta" data-cart-add>В корзину</button>

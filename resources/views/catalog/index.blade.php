@@ -64,7 +64,7 @@
         </section>
     @endif
 
-    <section class="mt-10">
+    <section class="mt-10 catalog-v2-feed-section">
         <div class="catalog-section-head catalog-section-head--clean catalog-section-head--with-filters">
             <div>
                 <h2 class="catalog-section-title">{{ ($hasSearch ?? false) ? 'Результаты поиска' : 'Каталог товаров' }}</h2>
@@ -89,9 +89,25 @@
                     'hit' => 'Хит',
                     'in_stock' => 'В наличии',
                 ];
+                $feedItems = collect($feedLinks)
+                    ->map(fn (string $feedLabel, string $feedKey): array => [
+                        'key' => $feedKey,
+                        'label' => $feedLabel,
+                        'url' => route('catalog.index', array_merge(request()->except('page', 'feed'), ['feed' => $feedKey])),
+                    ])
+                    ->values();
+                $feedSwitcherProps = [
+                    'initialFeed' => $feed ?? 'new',
+                    'items' => $feedItems->all(),
+                ];
             @endphp
 
-            <div class="catalog-feed-filters" aria-label="Сортировка каталога">
+            <div
+                class="catalog-feed-filters"
+                data-vue-feed-switcher
+                data-vue-feed-props='@json($feedSwitcherProps, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)'
+                aria-label="Сортировка каталога"
+            >
                 @foreach ($feedLinks as $feedKey => $feedLabel)
                     <a
                         href="{{ route('catalog.index', array_merge(request()->except('page', 'feed'), ['feed' => $feedKey])) }}"

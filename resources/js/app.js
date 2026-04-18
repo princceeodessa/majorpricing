@@ -1,16 +1,89 @@
-﻿import './bootstrap';
+import './bootstrap';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const CART_CONTROL_REQUEST_TIMEOUT_MS = 12000;
 
+const parseJsonDataset = (value, fallback = null) => {
+    if (typeof value !== 'string' || value.trim() === '') {
+        return fallback;
+    }
+
+    try {
+        return JSON.parse(value);
+    } catch (error) {
+        return fallback;
+    }
+};
+
+const FAVORITE_SYNC_EVENT = 'catalog:favorite-sync';
+
+const setFavoritesCount = (favoritesCount) => {
+    const parsedCount = Number.parseInt(`${favoritesCount ?? ''}`, 10);
+    if (!Number.isFinite(parsedCount)) {
+        return;
+    }
+
+    document.querySelectorAll('[data-favorites-count]').forEach((node) => {
+        if (node instanceof HTMLElement) {
+            node.textContent = `${parsedCount}`;
+        }
+    });
+};
+
+const syncFavoritesPageState = (productId, favorited) => {
+    const favoritesPage = document.querySelector('[data-favorites-page]');
+
+    if (!(favoritesPage instanceof HTMLElement) || favorited) {
+        return;
+    }
+
+    document.querySelectorAll(`[data-product-card][data-product-id="${productId}"]`).forEach((card) => {
+        if (card instanceof HTMLElement) {
+            card.remove();
+        }
+    });
+
+    const grid = favoritesPage.querySelector('[data-favorites-grid]');
+    const emptyState = favoritesPage.querySelector('[data-favorites-empty-state]');
+
+    if (
+        grid instanceof HTMLElement
+        && emptyState instanceof HTMLElement
+        && grid.querySelectorAll('[data-product-card]').length === 0
+    ) {
+        grid.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+    }
+};
+
+const dispatchFavoriteSync = ({ productId, favorited, favoritesCount, storeUrl, destroyUrl }) => {
+    document.dispatchEvent(new CustomEvent(FAVORITE_SYNC_EVENT, {
+        detail: {
+            productId,
+            favorited,
+            favoritesCount,
+            storeUrl,
+            destroyUrl,
+        },
+    }));
+};
+
 const syncFavoriteForms = (productId, favorited, favoritesCount, storeUrl, destroyUrl) => {
     document.querySelectorAll(`[data-favorite-form][data-product-id="${productId}"]`).forEach((form) => {
-        const button = form.querySelector('[data-favorite-button]');
-        const label = form.querySelector('[data-favorite-label]');
-        let methodInput = form.querySelector('[data-favorite-method]');
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
 
         form.dataset.favorited = favorited ? '1' : '0';
         form.action = favorited ? destroyUrl : storeUrl;
+
+        if (form.dataset.vueMountedFavorite === '1') {
+            return;
+        }
+
+        const button = form.querySelector('[data-favorite-button]');
+        const label = form.querySelector('[data-favorite-label]');
+        let methodInput = form.querySelector('[data-favorite-method]');
 
         if (favorited && !methodInput) {
             methodInput = document.createElement('input');
@@ -21,44 +94,33 @@ const syncFavoriteForms = (productId, favorited, favoritesCount, storeUrl, destr
             form.append(methodInput);
         }
 
-        if (!favorited && methodInput) {
+        if (!favorited && methodInput instanceof HTMLElement) {
             methodInput.remove();
         }
 
-        if (!button) {
+        if (!(button instanceof HTMLButtonElement)) {
             return;
         }
 
-        const ariaLabel = favorited ? 'РЈР±СЂР°С‚СЊ РёР· РёР·Р±СЂР°РЅРЅРѕРіРѕ' : 'Р”РѕР±Р°РІРёС‚СЊ РІ РёР·Р±СЂР°РЅРЅРѕРµ';
-
+        const ariaLabel = favorited ? 'Убрать из избранного' : 'Добавить в избранное';
         button.classList.toggle('is-active', favorited);
         button.setAttribute('aria-label', ariaLabel);
         button.setAttribute('title', ariaLabel);
 
-        if (label) {
-            label.textContent = favorited ? 'Р’ РёР·Р±СЂР°РЅРЅРѕРј' : 'Р’ РёР·Р±СЂР°РЅРЅРѕРµ';
+        if (label instanceof HTMLElement) {
+            label.textContent = favorited ? 'В избранном' : 'В избранное';
         }
     });
 
-    document.querySelectorAll('[data-favorites-count]').forEach((node) => {
-        node.textContent = `${favoritesCount}`;
+    setFavoritesCount(favoritesCount);
+    syncFavoritesPageState(productId, favorited);
+    dispatchFavoriteSync({
+        productId,
+        favorited,
+        favoritesCount,
+        storeUrl,
+        destroyUrl,
     });
-
-    const favoritesPage = document.querySelector('[data-favorites-page]');
-
-    if (favoritesPage && !favorited) {
-        document.querySelectorAll(`[data-product-card][data-product-id="${productId}"]`).forEach((card) => {
-            card.remove();
-        });
-
-        const grid = favoritesPage.querySelector('[data-favorites-grid]');
-        const emptyState = favoritesPage.querySelector('[data-favorites-empty-state]');
-
-        if (grid && emptyState && grid.querySelectorAll('[data-product-card]').length === 0) {
-            grid.classList.add('hidden');
-            emptyState.classList.remove('hidden');
-        }
-    }
 };
 
 const setupFavoriteToggles = () => {
@@ -69,10 +131,13 @@ const setupFavoriteToggles = () => {
             return;
         }
 
+        if (form.dataset.vueMountedFavorite === '1') {
+            return;
+        }
+
         event.preventDefault();
 
         const button = form.querySelector('[data-favorite-button]');
-
         if (!(button instanceof HTMLButtonElement)) {
             return;
         }
@@ -95,7 +160,6 @@ const setupFavoriteToggles = () => {
             }
 
             const payload = await response.json();
-
             syncFavoriteForms(
                 payload.productId,
                 payload.favorited,
@@ -108,6 +172,230 @@ const setupFavoriteToggles = () => {
         } finally {
             button.disabled = false;
         }
+    });
+};
+
+const mountVueFavoriteToggles = (scope = document) => {
+    if (typeof window === 'undefined' || !window.Vue?.createApp) {
+        return;
+    }
+
+    const { createApp } = window.Vue;
+    const roots = scope.querySelectorAll('[data-vue-favorite]');
+
+    roots.forEach((root) => {
+        if (!(root instanceof HTMLFormElement) || root.dataset.vueMountedFavorite === '1') {
+            return;
+        }
+
+        const rawProps = parseJsonDataset(root.dataset.vueFavoriteProps, {}) ?? {};
+        const parseBool = (value, fallback = false) => {
+            if (typeof value === 'boolean') {
+                return value;
+            }
+
+            if (typeof value === 'number') {
+                return value !== 0;
+            }
+
+            if (typeof value === 'string') {
+                const normalized = value.trim().toLowerCase();
+                if (normalized === '1' || normalized === 'true') {
+                    return true;
+                }
+                if (normalized === '0' || normalized === 'false') {
+                    return false;
+                }
+            }
+
+            return fallback;
+        };
+
+        const parseIntSafe = (value, fallback = 0) => {
+            const parsed = Number.parseInt(`${value ?? ''}`, 10);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        };
+
+        const initialProductId = parseIntSafe(rawProps.productId ?? root.dataset.productId, 0);
+        if (initialProductId <= 0) {
+            return;
+        }
+
+        const initialStoreUrl = typeof rawProps.storeUrl === 'string' && rawProps.storeUrl.trim() !== ''
+            ? rawProps.storeUrl
+            : root.dataset.storeUrl ?? '';
+        const initialDestroyUrl = typeof rawProps.destroyUrl === 'string' && rawProps.destroyUrl.trim() !== ''
+            ? rawProps.destroyUrl
+            : root.dataset.destroyUrl ?? '';
+
+        if (initialStoreUrl === '' || initialDestroyUrl === '') {
+            return;
+        }
+
+        const initialFavorited = parseBool(rawProps.favorited ?? root.dataset.favorited, false);
+        const csrfToken = typeof rawProps.csrfToken === 'string' ? rawProps.csrfToken : '';
+        const showLabel = parseBool(rawProps.showLabel, root.querySelector('[data-favorite-label]') instanceof HTMLElement);
+
+        const app = createApp({
+            data() {
+                return {
+                    productId: initialProductId,
+                    favorited: initialFavorited,
+                    storeUrl: initialStoreUrl,
+                    destroyUrl: initialDestroyUrl,
+                    csrfToken,
+                    showLabel,
+                    isLoading: false,
+                };
+            },
+            computed: {
+                actionUrl() {
+                    return this.favorited ? this.destroyUrl : this.storeUrl;
+                },
+                ariaLabel() {
+                    return this.favorited ? 'Убрать из избранного' : 'Добавить в избранное';
+                },
+                buttonLabel() {
+                    return this.favorited ? 'В избранном' : 'В избранное';
+                },
+            },
+            methods: {
+                applyRootState() {
+                    if (!(this.$el instanceof HTMLFormElement)) {
+                        return;
+                    }
+
+                    this.$el.action = this.actionUrl;
+                    this.$el.dataset.favorited = this.favorited ? '1' : '0';
+                    this.$el.dataset.storeUrl = this.storeUrl;
+                    this.$el.dataset.destroyUrl = this.destroyUrl;
+                    this.$el.dataset.productId = `${this.productId}`;
+                },
+                handleFavoriteSync(event) {
+                    const detail = event instanceof CustomEvent ? event.detail : null;
+                    const productId = parseIntSafe(detail?.productId, 0);
+
+                    if (productId !== this.productId) {
+                        return;
+                    }
+
+                    this.favorited = parseBool(detail?.favorited, this.favorited);
+                    if (typeof detail?.storeUrl === 'string' && detail.storeUrl.trim() !== '') {
+                        this.storeUrl = detail.storeUrl;
+                    }
+                    if (typeof detail?.destroyUrl === 'string' && detail.destroyUrl.trim() !== '') {
+                        this.destroyUrl = detail.destroyUrl;
+                    }
+
+                    this.applyRootState();
+                },
+                async submit() {
+                    if (this.isLoading || this.actionUrl === '') {
+                        return;
+                    }
+
+                    this.isLoading = true;
+                    const body = new FormData();
+                    if (this.csrfToken) {
+                        body.append('_token', this.csrfToken);
+                    }
+                    if (this.favorited) {
+                        body.append('_method', 'DELETE');
+                    }
+
+                    try {
+                        const response = await fetch(this.actionUrl, {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body,
+                            credentials: 'same-origin',
+                        });
+
+                        if (response.status === 401 || response.status === 419) {
+                            window.location.reload();
+                            return;
+                        }
+
+                        if (!response.ok) {
+                            throw new Error('Vue favorite toggle failed');
+                        }
+
+                        const payload = await response.json();
+                        const nextFavorited = parseBool(payload?.favorited, !this.favorited);
+                        const nextStoreUrl = typeof payload?.storeUrl === 'string' && payload.storeUrl.trim() !== ''
+                            ? payload.storeUrl
+                            : this.storeUrl;
+                        const nextDestroyUrl = typeof payload?.destroyUrl === 'string' && payload.destroyUrl.trim() !== ''
+                            ? payload.destroyUrl
+                            : this.destroyUrl;
+                        const nextFavoritesCount = parseIntSafe(payload?.favoritesCount, 0);
+
+                        this.favorited = nextFavorited;
+                        this.storeUrl = nextStoreUrl;
+                        this.destroyUrl = nextDestroyUrl;
+                        this.applyRootState();
+
+                        syncFavoriteForms(
+                            this.productId,
+                            nextFavorited,
+                            nextFavoritesCount,
+                            nextStoreUrl,
+                            nextDestroyUrl,
+                        );
+                    } catch (error) {
+                        if (this.$el instanceof HTMLFormElement) {
+                            HTMLFormElement.prototype.submit.call(this.$el);
+                            return;
+                        }
+
+                        pushToast('Ошибка', 'Не удалось обновить избранное.');
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+                onSubmit(event) {
+                    event.preventDefault();
+                    this.submit();
+                },
+            },
+            mounted() {
+                this.applyRootState();
+                document.addEventListener(FAVORITE_SYNC_EVENT, this.handleFavoriteSync);
+                if (this.$el instanceof HTMLFormElement) {
+                    this.$el.addEventListener('submit', this.onSubmit);
+                }
+            },
+            beforeUnmount() {
+                document.removeEventListener(FAVORITE_SYNC_EVENT, this.handleFavoriteSync);
+                if (this.$el instanceof HTMLFormElement) {
+                    this.$el.removeEventListener('submit', this.onSubmit);
+                }
+            },
+            template: `
+                <input v-if="csrfToken" type="hidden" name="_token" :value="csrfToken">
+                <input v-if="favorited" type="hidden" name="_method" value="DELETE" data-favorite-method>
+                <button
+                    type="submit"
+                    class="catalog-favorite-button"
+                    :class="{ 'is-active': favorited }"
+                    data-favorite-button
+                    :aria-label="ariaLabel"
+                    :title="ariaLabel"
+                    :disabled="isLoading"
+                >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 21.35 10.55 20C5.4 15.24 2 12.09 2 8.25 2 5.1 4.42 2.75 7.5 2.75c1.74 0 3.41.81 4.5 2.09 1.09-1.28 2.76-2.09 4.5-2.09 3.08 0 5.5 2.35 5.5 5.5 0 3.84-3.4 6.99-8.55 11.76L12 21.35Z"/>
+                    </svg>
+                    <span v-if="showLabel" data-favorite-label>{{ buttonLabel }}</span>
+                </button>
+            `,
+        });
+
+        app.mount(root);
+        root.dataset.vueMountedFavorite = '1';
     });
 };
 
@@ -322,6 +610,14 @@ const syncCartControls = (productId, quantity, cartCount) => {
     document.querySelectorAll('[data-cart-count]').forEach((node) => {
         node.textContent = `${cartCount}`;
     });
+
+    document.dispatchEvent(new CustomEvent('catalog:cart-sync', {
+        detail: {
+            productId,
+            quantity,
+            cartCount,
+        },
+    }));
 };
 
 const submitProductCardQuantity = async (control, nextQuantity) => {
@@ -909,12 +1205,28 @@ const resolveCatalogCardSmartFit = (image) => {
     }
 
     const isMobile = typeof window !== 'undefined'
-        && window.matchMedia('(max-width: 640px)').matches;
+        && window.matchMedia('(max-width: 768px)').matches;
+
+    if (isMobile) {
+        const mobileFit = {
+            shiftX: clamp(fit.shiftX, -6, 6),
+            shiftY: clamp(fit.shiftY, -6, 6),
+            scale: 1,
+        };
+
+        if (Math.abs(mobileFit.shiftX) < 0.8 && Math.abs(mobileFit.shiftY) < 0.8) {
+            clearCatalogCardSmartFit(image);
+            return;
+        }
+
+        applyCatalogCardSmartFitValues(image, mobileFit);
+        return;
+    }
 
     const adjustedFit = {
-        shiftX: clamp(fit.shiftX, isMobile ? -10 : -13, isMobile ? 10 : 13),
-        shiftY: clamp(fit.shiftY, isMobile ? -8 : -10, isMobile ? 8 : 10),
-        scale: clamp(fit.scale, 1, isMobile ? 1.22 : 1.32),
+        shiftX: clamp(fit.shiftX, -11, 11),
+        shiftY: clamp(fit.shiftY, -8, 8),
+        scale: clamp(fit.scale, 1, 1.26),
     };
 
     if (adjustedFit.scale < 1.03
@@ -942,6 +1254,1301 @@ const setupCatalogCardImageModes = () => {
                 resolveCatalogCardSmartFit(node);
             }, { once: true });
         }
+    });
+};
+
+const mountVueCatalogGalleries = (scope = document) => {
+    if (typeof window === 'undefined' || !window.Vue?.createApp) {
+        return;
+    }
+
+    const { createApp } = window.Vue;
+    const roots = scope.querySelectorAll('[data-vue-gallery]');
+
+    roots.forEach((root) => {
+        if (!(root instanceof HTMLElement) || root.dataset.vueMountedGallery === '1') {
+            return;
+        }
+
+        const rawProps = parseJsonDataset(root.dataset.vueGalleryProps, {}) ?? {};
+        const images = Array.isArray(rawProps.images)
+            ? rawProps.images.filter((url) => typeof url === 'string' && url.trim() !== '')
+            : [];
+        const fallbackImageUrl = typeof rawProps.fallbackImageUrl === 'string'
+            ? rawProps.fallbackImageUrl
+            : '';
+        const safeImages = images.length > 0
+            ? images
+            : (fallbackImageUrl ? [fallbackImageUrl] : []);
+
+        if (safeImages.length === 0) {
+            return;
+        }
+
+        const productUrl = typeof rawProps.productUrl === 'string' && rawProps.productUrl.trim() !== ''
+            ? rawProps.productUrl
+            : '#';
+        const title = typeof rawProps.title === 'string'
+            ? rawProps.title
+            : '';
+
+        const app = createApp({
+            data() {
+                return {
+                    images: safeImages,
+                    fallbackImageUrl,
+                    productUrl,
+                    title,
+                    currentIndex: 0,
+                };
+            },
+            computed: {
+                currentImage() {
+                    return this.images[this.currentIndex] ?? this.fallbackImageUrl;
+                },
+                hasControls() {
+                    return this.images.length > 1;
+                },
+            },
+            methods: {
+                normalizeIndex(index) {
+                    if (this.images.length === 0) {
+                        return 0;
+                    }
+
+                    return ((index % this.images.length) + this.images.length) % this.images.length;
+                },
+                activate(index) {
+                    this.currentIndex = this.normalizeIndex(index);
+                    this.$nextTick(() => {
+                        this.applyImageFit();
+                    });
+                },
+                activatePrev() {
+                    this.activate(this.currentIndex - 1);
+                },
+                activateNext() {
+                    this.activate(this.currentIndex + 1);
+                },
+                applyImageFit() {
+                    const image = this.$refs.mainImage;
+
+                    if (!(image instanceof HTMLImageElement)) {
+                        return;
+                    }
+
+                    const wrap = image.closest('.catalog-product-card__image-wrap');
+                    if (wrap instanceof HTMLElement) {
+                        wrap.classList.remove('is-wide', 'is-ultra-wide');
+                    }
+
+                    if (image.complete && image.naturalWidth > 0) {
+                        applyCatalogCardImageMode(image);
+                        resolveCatalogCardSmartFit(image);
+                    }
+                },
+                onImageLoad() {
+                    this.applyImageFit();
+                },
+                onImageError(event) {
+                    const target = event.target;
+
+                    if (!(target instanceof HTMLImageElement)) {
+                        return;
+                    }
+
+                    if (this.fallbackImageUrl && target.src !== this.fallbackImageUrl) {
+                        target.src = this.fallbackImageUrl;
+                    }
+                },
+            },
+            mounted() {
+                this.$nextTick(() => {
+                    this.applyImageFit();
+                });
+            },
+            template: `
+                <div>
+                    <a :href="productUrl" class="catalog-product-card__visual-link">
+                        <div class="catalog-product-card__image-wrap">
+                            <img
+                                ref="mainImage"
+                                :src="currentImage"
+                                :alt="title"
+                                class="catalog-product-card__image"
+                                loading="lazy"
+                                decoding="async"
+                                @load="onImageLoad"
+                                @error="onImageError"
+                            >
+                        </div>
+                    </a>
+
+                    <template v-if="hasControls">
+                        <button
+                            type="button"
+                            class="catalog-product-card__gallery-arrow is-prev"
+                            aria-label="Предыдущее фото"
+                            @click.prevent.stop="activatePrev"
+                        >
+                            &#8249;
+                        </button>
+                        <button
+                            type="button"
+                            class="catalog-product-card__gallery-arrow is-next"
+                            aria-label="Следующее фото"
+                            @click.prevent.stop="activateNext"
+                        >
+                            &#8250;
+                        </button>
+
+                        <div class="catalog-product-card__gallery-dots">
+                            <button
+                                v-for="(imageUrl, index) in images"
+                                :key="imageUrl + '-' + index"
+                                type="button"
+                                class="catalog-product-card__gallery-dot"
+                                :class="{ 'is-active': index === currentIndex }"
+                                :aria-label="'Фото ' + (index + 1)"
+                                :aria-pressed="index === currentIndex ? 'true' : 'false'"
+                                @click.prevent.stop="activate(index)"
+                            ></button>
+                        </div>
+                    </template>
+                </div>
+            `,
+        });
+
+        app.mount(root);
+        root.dataset.vueMountedGallery = '1';
+    });
+};
+
+const mountVueCatalogCartControls = (scope = document) => {
+    if (typeof window === 'undefined' || !window.Vue?.createApp) {
+        return;
+    }
+
+    const { createApp } = window.Vue;
+    const roots = scope.querySelectorAll('[data-vue-cart-control]');
+
+    roots.forEach((root) => {
+        if (!(root instanceof HTMLElement) || root.dataset.vueMountedCart === '1') {
+            return;
+        }
+
+        const rawProps = parseJsonDataset(root.dataset.vueCartProps, {}) ?? {};
+        const constraints = resolveQuantityConstraints({
+            min: rawProps.minQuantity,
+            step: rawProps.stepQuantity,
+            max: rawProps.maxQuantity,
+        });
+
+        const initialQuantity = Number(rawProps.quantity) > 0
+            ? normalizeCartQuantity(rawProps.quantity, constraints.min, constraints)
+            : 0;
+
+        const app = createApp({
+            data() {
+                return {
+                    productId: readIntWithFallback(rawProps.productId, 0),
+                    quantity: initialQuantity,
+                    minQuantity: constraints.min,
+                    stepQuantity: constraints.step,
+                    maxQuantity: constraints.max,
+                    storeUrl: typeof rawProps.storeUrl === 'string' ? rawProps.storeUrl : '',
+                    updateUrl: typeof rawProps.updateUrl === 'string' ? rawProps.updateUrl : '',
+                    destroyUrl: typeof rawProps.destroyUrl === 'string' ? rawProps.destroyUrl : '',
+                    csrfToken: typeof rawProps.csrfToken === 'string' ? rawProps.csrfToken : '',
+                    unitsInPackageSummary: typeof rawProps.unitsInPackageSummary === 'string'
+                        ? rawProps.unitsInPackageSummary
+                        : '',
+                    colorName: typeof rawProps.colorName === 'string' ? rawProps.colorName : '',
+                    draftQuantity: `${initialQuantity > 0 ? initialQuantity : constraints.min}`,
+                    isLoading: false,
+                };
+            },
+            computed: {
+                hasQuantity() {
+                    return this.quantity > 0;
+                },
+            },
+            methods: {
+                quantityConstraints() {
+                    return {
+                        min: this.minQuantity,
+                        step: this.stepQuantity,
+                        max: this.maxQuantity,
+                    };
+                },
+                normalize(value, fallback) {
+                    return normalizeCartQuantity(value, fallback, this.quantityConstraints());
+                },
+                syncLocalQuantity(quantity) {
+                    const safeQuantity = quantity > 0
+                        ? this.normalize(quantity, this.minQuantity)
+                        : 0;
+
+                    this.quantity = safeQuantity;
+                    this.draftQuantity = `${safeQuantity > 0 ? safeQuantity : this.minQuantity}`;
+                },
+                addToCart() {
+                    this.submit(this.minQuantity);
+                },
+                increment() {
+                    const base = this.quantity > 0 ? this.quantity : this.minQuantity;
+                    this.submit(base + this.stepQuantity);
+                },
+                decrement() {
+                    const base = this.quantity > 0 ? this.quantity : this.minQuantity;
+                    this.submit(base - this.stepQuantity);
+                },
+                onQuantityChange() {
+                    const fallback = this.quantity > 0 ? this.quantity : this.minQuantity;
+                    const normalized = this.normalize(this.draftQuantity, fallback);
+                    this.draftQuantity = `${normalized}`;
+                    this.submit(normalized);
+                },
+                handleCartSync(event) {
+                    const detail = event instanceof CustomEvent ? event.detail : null;
+                    const productId = Number(detail?.productId);
+
+                    if (productId !== this.productId) {
+                        return;
+                    }
+
+                    const quantity = Number(detail?.quantity);
+                    this.syncLocalQuantity(Number.isFinite(quantity) ? quantity : 0);
+                },
+                async submit(nextQuantity) {
+                    if (this.isLoading) {
+                        return;
+                    }
+
+                    const quantityConstraints = this.quantityConstraints();
+                    const currentQuantity = Math.max(0, this.quantity);
+                    let resolvedNextQuantity = Math.trunc(Number(nextQuantity) || 0);
+
+                    if (resolvedNextQuantity > 0) {
+                        resolvedNextQuantity = normalizeCartQuantity(
+                            resolvedNextQuantity,
+                            currentQuantity > 0 ? currentQuantity : quantityConstraints.min,
+                            quantityConstraints,
+                        );
+                    }
+
+                    if (resolvedNextQuantity > 0 && resolvedNextQuantity < quantityConstraints.min) {
+                        resolvedNextQuantity = quantityConstraints.min;
+                    }
+
+                    if (resolvedNextQuantity === currentQuantity) {
+                        this.syncLocalQuantity(currentQuantity);
+                        return;
+                    }
+
+                    const body = new FormData();
+
+                    if (this.csrfToken) {
+                        body.append('_token', this.csrfToken);
+                    }
+
+                    let url = '';
+
+                    if (resolvedNextQuantity <= 0) {
+                        url = this.destroyUrl;
+                        body.append('_method', 'DELETE');
+                    } else if (currentQuantity <= 0) {
+                        url = this.storeUrl;
+                        body.append('quantity', `${resolvedNextQuantity}`);
+                    } else {
+                        url = this.updateUrl;
+                        body.append('_method', 'PATCH');
+                        body.append('quantity', `${resolvedNextQuantity}`);
+                    }
+
+                    if (!url) {
+                        return;
+                    }
+
+                    this.isLoading = true;
+                    if (this.$el instanceof HTMLElement) {
+                        this.$el.classList.add('is-loading');
+                    }
+
+                    const requestController = typeof AbortController === 'function'
+                        ? new AbortController()
+                        : null;
+                    const requestTimeoutId = requestController
+                        ? window.setTimeout(() => requestController.abort(), CART_CONTROL_REQUEST_TIMEOUT_MS)
+                        : null;
+
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body,
+                            credentials: 'same-origin',
+                            signal: requestController?.signal,
+                        });
+
+                        if (response.status === 401 || response.status === 419) {
+                            window.location.reload();
+                            return;
+                        }
+
+                        if (!response.ok) {
+                            throw new Error('Vue cart control failed');
+                        }
+
+                        const responseContentType = response.headers.get('content-type') ?? '';
+
+                        if (!responseContentType.includes('application/json')) {
+                            if (response.redirected && response.url) {
+                                window.location.assign(response.url);
+                                return;
+                            }
+
+                            throw new Error('Vue cart response is not JSON');
+                        }
+
+                        const payload = await response.json();
+                        const payloadProductId = Number(payload?.productId);
+                        const payloadQuantity = Number(payload?.quantity);
+                        const payloadCartCount = Number(payload?.cartCount);
+
+                        if (
+                            !Number.isFinite(payloadProductId)
+                            || !Number.isFinite(payloadQuantity)
+                            || !Number.isFinite(payloadCartCount)
+                        ) {
+                            throw new Error('Vue cart payload invalid');
+                        }
+
+                        syncCartControls(payloadProductId, payloadQuantity, payloadCartCount);
+                    } catch (error) {
+                        this.syncLocalQuantity(currentQuantity);
+
+                        const isTimeoutAbort = typeof DOMException !== 'undefined'
+                            && error instanceof DOMException
+                            && error.name === 'AbortError';
+                        pushToast(
+                            'Ошибка',
+                            isTimeoutAbort
+                                ? 'Сервер долго отвечает. Попробуйте еще раз.'
+                                : 'Не удалось обновить корзину. Проверьте соединение.',
+                        );
+                    } finally {
+                        if (requestTimeoutId !== null) {
+                            window.clearTimeout(requestTimeoutId);
+                        }
+
+                        this.isLoading = false;
+                        if (this.$el instanceof HTMLElement) {
+                            this.$el.classList.remove('is-loading');
+                        }
+                    }
+                },
+            },
+            mounted() {
+                document.addEventListener('catalog:cart-sync', this.handleCartSync);
+                this.syncLocalQuantity(this.quantity);
+            },
+            beforeUnmount() {
+                document.removeEventListener('catalog:cart-sync', this.handleCartSync);
+            },
+            template: `
+                <div>
+                    <div :class="{ hidden: hasQuantity }" data-cart-add-state>
+                        <button
+                            type="button"
+                            class="catalog-product-card__cta"
+                            :disabled="isLoading"
+                            @click.prevent="addToCart"
+                        >
+                            В корзину
+                        </button>
+                    </div>
+
+                    <div
+                        class="catalog-product-card__stepper"
+                        :class="{ hidden: !hasQuantity }"
+                        data-cart-qty-state
+                    >
+                        <button
+                            type="button"
+                            class="catalog-product-card__stepper-btn"
+                            :disabled="isLoading"
+                            aria-label="Уменьшить количество"
+                            @click.prevent="decrement"
+                        >
+                            -
+                        </button>
+                        <input
+                            type="number"
+                            :min="minQuantity"
+                            :max="maxQuantity"
+                            :step="stepQuantity"
+                            inputmode="numeric"
+                            class="catalog-product-card__stepper-value"
+                            data-cart-quantity
+                            data-cart-quantity-input
+                            :disabled="isLoading"
+                            v-model="draftQuantity"
+                            @change="onQuantityChange"
+                            @keydown.enter.prevent="onQuantityChange"
+                        >
+                        <button
+                            type="button"
+                            class="catalog-product-card__stepper-btn"
+                            :disabled="isLoading"
+                            aria-label="Увеличить количество"
+                            @click.prevent="increment"
+                        >
+                            +
+                        </button>
+                    </div>
+
+                    <p v-if="unitsInPackageSummary" class="catalog-product-card__meta">
+                        Упаковка: {{ unitsInPackageSummary }}
+                    </p>
+                    <p v-if="colorName" class="catalog-product-card__meta">
+                        Цвет: {{ colorName }}
+                    </p>
+                </div>
+            `,
+        });
+
+        app.mount(root);
+        root.dataset.vueMountedCart = '1';
+    });
+};
+
+const mountVueCatalogIslands = (scope = document) => {
+    mountVueFavoriteToggles(scope);
+    mountVueCatalogGalleries(scope);
+    mountVueCatalogCartControls(scope);
+};
+
+const mountVueCatalogFeedSwitchers = (scope = document) => {
+    if (typeof window === 'undefined' || !window.Vue?.createApp) {
+        return;
+    }
+
+    const { createApp } = window.Vue;
+    const roots = scope.querySelectorAll('[data-vue-feed-switcher]');
+
+    roots.forEach((root) => {
+        if (!(root instanceof HTMLElement) || root.dataset.vueMountedFeedSwitcher === '1') {
+            return;
+        }
+
+        const rawProps = parseJsonDataset(root.dataset.vueFeedProps, {}) ?? {};
+        const items = Array.isArray(rawProps.items)
+            ? rawProps.items
+                .map((item) => ({
+                    key: typeof item?.key === 'string' ? item.key : '',
+                    label: typeof item?.label === 'string' ? item.label : '',
+                    url: typeof item?.url === 'string' ? item.url : '',
+                }))
+                .filter((item) => item.key !== '' && item.url !== '')
+            : [];
+
+        if (items.length === 0) {
+            return;
+        }
+
+        const initialFeed = typeof rawProps.initialFeed === 'string' && rawProps.initialFeed !== ''
+            ? rawProps.initialFeed
+            : items[0].key;
+
+        const app = createApp({
+            data() {
+                return {
+                    items,
+                    activeKey: initialFeed,
+                    loading: false,
+                };
+            },
+            methods: {
+                normalizeUrl(url) {
+                    if (typeof url !== 'string' || url.trim() === '') {
+                        return '';
+                    }
+
+                    try {
+                        const parsed = new URL(url, window.location.origin);
+                        const normalizedPath = parsed.pathname.length > 1
+                            ? parsed.pathname.replace(/\/+$/, '')
+                            : parsed.pathname;
+                        return `${normalizedPath}${parsed.search}`;
+                    } catch (error) {
+                        return url;
+                    }
+                },
+                findItemByUrl(url) {
+                    const normalizedUrl = this.normalizeUrl(url);
+
+                    if (!normalizedUrl) {
+                        return null;
+                    }
+
+                    return this.items.find((item) => this.normalizeUrl(item.url) === normalizedUrl) ?? null;
+                },
+                resolveFeedRoot() {
+                    const section = this.$el instanceof HTMLElement
+                        ? this.$el.closest('section')
+                        : null;
+                    if (section instanceof HTMLElement) {
+                        const feedRoot = section.querySelector('[data-infinite-feed]');
+                        if (feedRoot instanceof HTMLElement) {
+                            return feedRoot;
+                        }
+                    }
+
+                    const fallback = document.querySelector('[data-infinite-feed]');
+                    return fallback instanceof HTMLElement ? fallback : null;
+                },
+                setActiveKeyFromUrl(url) {
+                    const matchedItem = this.findItemByUrl(url);
+                    if (matchedItem !== null) {
+                        this.activeKey = matchedItem.key;
+                    }
+
+                    return matchedItem;
+                },
+                async activate(item, { pushState = true, force = false } = {}) {
+                    if (!item || this.loading || (!force && item.key === this.activeKey)) {
+                        return;
+                    }
+
+                    const feedRoot = this.resolveFeedRoot();
+                    const grid = feedRoot?.querySelector('[data-infinite-grid]');
+
+                    if (!(grid instanceof HTMLElement) || !(feedRoot instanceof HTMLElement)) {
+                        window.location.assign(item.url);
+                        return;
+                    }
+
+                    this.loading = true;
+                    root.classList.add('is-loading');
+                    feedRoot.classList.add('is-feed-switching');
+                    grid.setAttribute('aria-busy', 'true');
+
+                    try {
+                        const response = await fetch(item.url, {
+                            headers: {
+                                Accept: 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'same-origin',
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Feed switch failed');
+                        }
+
+                        const payload = await response.json();
+                        const html = typeof payload?.html === 'string' ? payload.html : '';
+                        grid.innerHTML = html;
+                        mountVueCatalogIslands(grid);
+
+                        const nextPageUrl = typeof payload?.nextPageUrl === 'string'
+                            ? payload.nextPageUrl
+                            : '';
+
+                        if (typeof feedRoot.__setInfiniteNextPage === 'function') {
+                            feedRoot.__setInfiniteNextPage(nextPageUrl);
+                        } else {
+                            feedRoot.dataset.nextPage = nextPageUrl;
+                            const trigger = feedRoot.querySelector('[data-infinite-trigger]');
+                            if (trigger instanceof HTMLElement) {
+                                trigger.classList.toggle('hidden', nextPageUrl.trim() === '');
+                            }
+                        }
+
+                        this.activeKey = item.key;
+
+                        if (pushState && typeof window.history?.pushState === 'function') {
+                            window.history.pushState({ feed: item.key }, '', item.url);
+                        }
+                    } catch (error) {
+                        window.location.assign(item.url);
+                    } finally {
+                        this.loading = false;
+                        root.classList.remove('is-loading');
+                        feedRoot.classList.remove('is-feed-switching');
+                        grid.setAttribute('aria-busy', 'false');
+                    }
+                },
+                onPopState() {
+                    const matchedItem = this.findItemByUrl(window.location.href);
+                    if (matchedItem === null) {
+                        return;
+                    }
+
+                    this.activate(matchedItem, { pushState: false, force: true });
+                },
+            },
+            mounted() {
+                this.setActiveKeyFromUrl(window.location.href);
+                window.addEventListener('popstate', this.onPopState);
+            },
+            beforeUnmount() {
+                window.removeEventListener('popstate', this.onPopState);
+            },
+            template: `
+                <a
+                    v-for="item in items"
+                    :key="item.key"
+                    :href="item.url"
+                    class="catalog-feed-filter"
+                    :class="{ 'is-active': activeKey === item.key }"
+                    :aria-current="activeKey === item.key ? 'page' : null"
+                    @click.prevent="activate(item)"
+                >
+                    {{ item.label }}
+                </a>
+            `,
+        });
+
+        app.mount(root);
+        root.dataset.vueMountedFeedSwitcher = '1';
+    });
+};
+
+const mountVueCartLines = (scope = document) => {
+    if (typeof window === 'undefined' || !window.Vue?.createApp) {
+        return;
+    }
+
+    const { createApp } = window.Vue;
+    const roots = scope.querySelectorAll('[data-vue-cart-line]');
+
+    roots.forEach((root) => {
+        if (!(root instanceof HTMLElement) || root.dataset.vueMountedCartLine === '1') {
+            return;
+        }
+
+        const rawProps = parseJsonDataset(root.dataset.vueCartLineProps, {}) ?? {};
+        const pricingRaw = rawProps.pricing && typeof rawProps.pricing === 'object'
+            ? rawProps.pricing
+            : {};
+        const quantityConstraints = resolveQuantityConstraints({
+            min: rawProps.minQuantity,
+            step: rawProps.stepQuantity,
+            max: rawProps.maxQuantity,
+        });
+
+        const parseAmount = (value) => {
+            const parsed = Number.parseFloat(`${value ?? ''}`.replace(',', '.'));
+            return Number.isFinite(parsed) ? parsed : null;
+        };
+
+        const initialQuantity = normalizeCartQuantity(
+            rawProps.quantity,
+            quantityConstraints.min,
+            quantityConstraints,
+        );
+
+        const productUrl = typeof rawProps.productUrl === 'string' ? rawProps.productUrl : '';
+        const fallbackImageUrl = typeof rawProps.fallbackImageUrl === 'string' ? rawProps.fallbackImageUrl : '';
+        const imageUrl = typeof rawProps.imageUrl === 'string' && rawProps.imageUrl.trim() !== ''
+            ? rawProps.imageUrl
+            : fallbackImageUrl;
+
+        const app = createApp({
+            data() {
+                return {
+                    itemId: readIntWithFallback(rawProps.itemId, 0),
+                    title: typeof rawProps.title === 'string' ? rawProps.title : 'Товар из каталога',
+                    categoryName: typeof rawProps.categoryName === 'string' ? rawProps.categoryName : 'Каталог',
+                    vendorCode: typeof rawProps.vendorCode === 'string' ? rawProps.vendorCode : '',
+                    unitLabel: typeof rawProps.unitLabel === 'string' ? rawProps.unitLabel : '',
+                    colorName: typeof rawProps.colorName === 'string' ? rawProps.colorName : '',
+                    unitsInPackageSummary: typeof rawProps.unitsInPackageSummary === 'string'
+                        ? rawProps.unitsInPackageSummary
+                        : '',
+                    imageUrl,
+                    fallbackImageUrl,
+                    productUrl,
+                    quantity: initialQuantity,
+                    draftQuantity: `${initialQuantity}`,
+                    minQuantity: quantityConstraints.min,
+                    stepQuantity: quantityConstraints.step,
+                    maxQuantity: quantityConstraints.max,
+                    updateUrl: typeof rawProps.updateUrl === 'string' ? rawProps.updateUrl : '',
+                    destroyUrl: typeof rawProps.destroyUrl === 'string' ? rawProps.destroyUrl : '',
+                    csrfToken: typeof rawProps.csrfToken === 'string' ? rawProps.csrfToken : '',
+                    paymentMethod: typeof rawProps.paymentMethod === 'string' ? rawProps.paymentMethod : 'bank_transfer',
+                    baseUnitAmount: parseAmount(pricingRaw.baseUnitAmount),
+                    discountUnitAmount: parseAmount(pricingRaw.discountUnitAmount),
+                    baseLineAmount: parseAmount(pricingRaw.baseLineAmount),
+                    discountLineAmount: parseAmount(pricingRaw.discountLineAmount),
+                    isLoading: false,
+                };
+            },
+            computed: {
+                isCash() {
+                    return this.paymentMethod === 'cash';
+                },
+                hasDiscount() {
+                    return this.baseUnitAmount !== null
+                        && this.discountUnitAmount !== null
+                        && this.baseUnitAmount > this.discountUnitAmount;
+                },
+                unitAmount() {
+                    return this.isCash ? this.discountUnitAmount : this.baseUnitAmount;
+                },
+                lineAmount() {
+                    return this.isCash ? this.discountLineAmount : this.baseLineAmount;
+                },
+                hasPrice() {
+                    return this.unitAmount !== null;
+                },
+                priceLabel() {
+                    return this.isCash ? 'Со скидкой' : 'Без скидки';
+                },
+                paymentNote() {
+                    return this.isCash ? 'Наличный расчет' : 'Безналичный расчет';
+                },
+                metaLine() {
+                    const parts = [];
+
+                    if (this.vendorCode) {
+                        parts.push(`Артикул ${this.vendorCode}`);
+                    } else {
+                        parts.push('Каталог');
+                    }
+
+                    if (this.unitLabel) {
+                        parts.push(this.unitLabel);
+                    }
+
+                    if (this.colorName) {
+                        parts.push(`Цвет: ${this.colorName}`);
+                    }
+
+                    if (this.unitsInPackageSummary) {
+                        parts.push(`Упаковка: ${this.unitsInPackageSummary}`);
+                    }
+
+                    return parts.join(' · ');
+                },
+            },
+            methods: {
+                formatAmount(amount) {
+                    return formatRubles(amount);
+                },
+                normalize(value, fallback) {
+                    return normalizeCartQuantity(value, fallback, {
+                        min: this.minQuantity,
+                        step: this.stepQuantity,
+                        max: this.maxQuantity,
+                    });
+                },
+                applyPricing(payloadItem) {
+                    if (!payloadItem || typeof payloadItem !== 'object') {
+                        return;
+                    }
+
+                    if (payloadItem.base_unit_amount !== undefined) {
+                        this.baseUnitAmount = parseAmount(payloadItem.base_unit_amount);
+                    }
+                    if (payloadItem.discount_unit_amount !== undefined) {
+                        this.discountUnitAmount = parseAmount(payloadItem.discount_unit_amount);
+                    }
+                    if (payloadItem.base_line_amount !== undefined) {
+                        this.baseLineAmount = parseAmount(payloadItem.base_line_amount);
+                    }
+                    if (payloadItem.discount_line_amount !== undefined) {
+                        this.discountLineAmount = parseAmount(payloadItem.discount_line_amount);
+                    }
+                },
+                syncCartCount(cartCount) {
+                    const parsed = Number.parseInt(`${cartCount ?? ''}`, 10);
+                    if (!Number.isFinite(parsed)) {
+                        return;
+                    }
+
+                    document.querySelectorAll('[data-cart-count]').forEach((node) => {
+                        if (node instanceof HTMLElement) {
+                            node.textContent = `${parsed}`;
+                        }
+                    });
+                },
+                handlePaymentSync(event) {
+                    const detail = event instanceof CustomEvent ? event.detail : null;
+                    const paymentMethod = typeof detail?.paymentMethod === 'string'
+                        ? detail.paymentMethod
+                        : '';
+
+                    if (paymentMethod === 'cash' || paymentMethod === 'bank_transfer') {
+                        this.paymentMethod = paymentMethod;
+                    }
+                },
+                onQuantityChange() {
+                    const normalized = this.normalize(
+                        this.draftQuantity,
+                        this.quantity > 0 ? this.quantity : this.minQuantity,
+                    );
+                    this.draftQuantity = `${normalized}`;
+                    this.submitQuantity(normalized);
+                },
+                increment() {
+                    this.submitQuantity(this.quantity + this.stepQuantity);
+                },
+                decrement() {
+                    this.submitQuantity(this.quantity - this.stepQuantity);
+                },
+                async submitQuantity(nextQuantity) {
+                    if (this.isLoading) {
+                        return;
+                    }
+
+                    const previousQuantity = this.quantity;
+                    const resolvedQuantity = this.normalize(nextQuantity, previousQuantity);
+
+                    if (resolvedQuantity === previousQuantity) {
+                        this.draftQuantity = `${resolvedQuantity}`;
+                        return;
+                    }
+
+                    if (!this.updateUrl) {
+                        return;
+                    }
+
+                    this.isLoading = true;
+
+                    const body = new FormData();
+                    if (this.csrfToken) {
+                        body.append('_token', this.csrfToken);
+                    }
+                    body.append('_method', 'PATCH');
+                    body.append('quantity', `${resolvedQuantity}`);
+                    body.append('payment_method', this.paymentMethod);
+
+                    try {
+                        const response = await fetch(this.updateUrl, {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body,
+                            credentials: 'same-origin',
+                        });
+
+                        if (response.status === 401 || response.status === 419) {
+                            window.location.reload();
+                            return;
+                        }
+
+                        if (!response.ok) {
+                            throw new Error('Cart line update failed');
+                        }
+
+                        const payload = await response.json();
+                        const payloadQuantity = Number.parseInt(`${payload?.quantity ?? ''}`, 10);
+                        this.quantity = Number.isFinite(payloadQuantity)
+                            ? this.normalize(payloadQuantity, this.minQuantity)
+                            : resolvedQuantity;
+                        this.draftQuantity = `${this.quantity}`;
+
+                        this.applyPricing(payload?.item);
+                        this.syncCartCount(payload?.cartCount);
+                        syncCartSummaryNodes(payload?.summary);
+                    } catch (error) {
+                        this.quantity = previousQuantity;
+                        this.draftQuantity = `${previousQuantity}`;
+                        pushToast('Ошибка', 'Не удалось обновить корзину. Проверьте соединение.');
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+                async removeItem() {
+                    if (this.isLoading || !this.destroyUrl) {
+                        return;
+                    }
+
+                    this.isLoading = true;
+
+                    const body = new FormData();
+                    if (this.csrfToken) {
+                        body.append('_token', this.csrfToken);
+                    }
+                    body.append('_method', 'DELETE');
+                    body.append('payment_method', this.paymentMethod);
+
+                    try {
+                        const response = await fetch(this.destroyUrl, {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body,
+                            credentials: 'same-origin',
+                        });
+
+                        if (response.status === 401 || response.status === 419) {
+                            window.location.reload();
+                            return;
+                        }
+
+                        if (!response.ok) {
+                            throw new Error('Cart line remove failed');
+                        }
+
+                        const payload = await response.json();
+                        this.syncCartCount(payload?.cartCount);
+                        syncCartSummaryNodes(payload?.summary);
+
+                        const row = this.$el instanceof HTMLElement
+                            ? this.$el.closest('[data-cart-item]')
+                            : null;
+
+                        if (row instanceof HTMLElement) {
+                            row.remove();
+                        }
+
+                        const hasRows = document.querySelector('[data-cart-item]') instanceof HTMLElement;
+                        if (!hasRows) {
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        pushToast('Ошибка', 'Не удалось удалить товар из корзины.');
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+                onImageError(event) {
+                    const target = event.target;
+                    if (!(target instanceof HTMLImageElement)) {
+                        return;
+                    }
+
+                    if (this.fallbackImageUrl && target.src !== this.fallbackImageUrl) {
+                        target.src = this.fallbackImageUrl;
+                    }
+                },
+            },
+            mounted() {
+                document.addEventListener('catalog:cart-payment-sync', this.handlePaymentSync);
+            },
+            beforeUnmount() {
+                document.removeEventListener('catalog:cart-payment-sync', this.handlePaymentSync);
+            },
+            template: `
+                <div class="catalog-cart-item">
+                    <div class="catalog-cart-item__visual">
+                        <img
+                            :src="imageUrl"
+                            :alt="title"
+                            class="catalog-cart-item__image"
+                            @error="onImageError"
+                        >
+                    </div>
+
+                    <div class="catalog-cart-item__content">
+                        <div>
+                            <p class="catalog-cart-item__eyebrow">{{ categoryName }}</p>
+                            <a v-if="productUrl" :href="productUrl" class="catalog-cart-item__title">{{ title }}</a>
+                            <p v-else class="catalog-cart-item__title">{{ title }}</p>
+                            <p class="catalog-cart-item__meta">{{ metaLine }}</p>
+                        </div>
+
+                        <div class="catalog-cart-item__controls">
+                            <div class="catalog-cart-qty-form catalog-qty-control">
+                                <button
+                                    type="button"
+                                    class="catalog-qty-control__button"
+                                    :disabled="isLoading"
+                                    @click.prevent="decrement"
+                                >-</button>
+                                <input
+                                    type="number"
+                                    :min="minQuantity"
+                                    :max="maxQuantity"
+                                    :step="stepQuantity"
+                                    :disabled="isLoading"
+                                    class="catalog-clean-input"
+                                    v-model="draftQuantity"
+                                    @change="onQuantityChange"
+                                    @keydown.enter.prevent="onQuantityChange"
+                                >
+                                <button
+                                    type="button"
+                                    class="catalog-qty-control__button"
+                                    :disabled="isLoading"
+                                    @click.prevent="increment"
+                                >+</button>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="catalog-inline-action"
+                                :disabled="isLoading"
+                                @click.prevent="removeItem"
+                            >Удалить</button>
+                        </div>
+                    </div>
+
+                    <div class="catalog-cart-item__price">
+                        <p class="catalog-cart-item__price-label">{{ priceLabel }}</p>
+                        <p v-if="hasDiscount && isCash" class="catalog-cart-item__compare-price">
+                            {{ formatAmount(baseUnitAmount) }}
+                        </p>
+                        <p
+                            v-if="hasPrice"
+                            class="catalog-cart-item__price-value"
+                            :class="{ 'catalog-cart-item__price-value--accent': hasDiscount && isCash }"
+                        >
+                            {{ formatAmount(unitAmount) }}
+                        </p>
+                        <p v-else class="catalog-cart-item__price-value catalog-cart-item__price-value--empty">
+                            Цена по запросу
+                        </p>
+                        <p v-if="hasPrice" class="catalog-cart-item__line-total">
+                            Итого: {{ formatAmount(lineAmount) }}
+                        </p>
+                        <p class="catalog-cart-item__payment-note">{{ paymentNote }}</p>
+                    </div>
+                </div>
+            `,
+        });
+
+        app.mount(root);
+        root.dataset.vueMountedCartLine = '1';
+    });
+};
+
+const mountVueCartCheckout = (scope = document) => {
+    if (typeof window === 'undefined' || !window.Vue?.createApp) {
+        return;
+    }
+
+    const { createApp } = window.Vue;
+    const roots = scope.querySelectorAll('[data-vue-cart-checkout]');
+
+    roots.forEach((root) => {
+        if (!(root instanceof HTMLElement) || root.dataset.vueMountedCartCheckout === '1') {
+            return;
+        }
+
+        const rawProps = parseJsonDataset(root.dataset.vueCartCheckoutProps, {}) ?? {};
+        const summaryRaw = rawProps.summary && typeof rawProps.summary === 'object'
+            ? rawProps.summary
+            : {};
+        const paymentOptions = Array.isArray(rawProps.paymentOptions)
+            ? rawProps.paymentOptions
+                .map((option) => ({
+                    value: typeof option?.value === 'string' ? option.value : '',
+                    label: typeof option?.label === 'string' ? option.label : '',
+                    note: typeof option?.note === 'string' ? option.note : '',
+                }))
+                .filter((option) => option.value !== '' && option.label !== '')
+            : [];
+
+        if (paymentOptions.length === 0) {
+            return;
+        }
+
+        const parseIntSafe = (value, fallback = 0) => {
+            const parsed = Number.parseInt(`${value ?? ''}`, 10);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        };
+
+        const parseFloatSafe = (value, fallback = null) => {
+            const parsed = Number.parseFloat(`${value ?? ''}`.replace(',', '.'));
+            return Number.isFinite(parsed) ? parsed : fallback;
+        };
+
+        const initialPaymentMethod = typeof rawProps.selectedPaymentMethod === 'string'
+            && paymentOptions.some((option) => option.value === rawProps.selectedPaymentMethod)
+            ? rawProps.selectedPaymentMethod
+            : paymentOptions[0].value;
+
+        const app = createApp({
+            data() {
+                return {
+                    paymentMethod: initialPaymentMethod,
+                    paymentOptions,
+                    summary: {
+                        itemsCount: parseIntSafe(summaryRaw.itemsCount, 0),
+                        totalQuantity: parseIntSafe(summaryRaw.totalQuantity, 0),
+                        pricedItemsCount: parseIntSafe(summaryRaw.pricedItemsCount, 0),
+                        unpricedItemsCount: parseIntSafe(summaryRaw.unpricedItemsCount, 0),
+                        baseTotal: parseFloatSafe(summaryRaw.baseTotal, null),
+                        discountTotal: parseFloatSafe(summaryRaw.discountTotal, null),
+                    },
+                };
+            },
+            computed: {
+                isCash() {
+                    return this.paymentMethod === 'cash';
+                },
+                totalAmount() {
+                    return this.isCash ? this.summary.discountTotal : this.summary.baseTotal;
+                },
+                hasUnpricedItems() {
+                    return this.summary.unpricedItemsCount > 0;
+                },
+            },
+            methods: {
+                formatAmount(amount) {
+                    return formatRubles(amount);
+                },
+                formatCount(value) {
+                    const parsed = Number.parseInt(`${value ?? ''}`, 10);
+                    return Number.isFinite(parsed) ? `${parsed}` : '0';
+                },
+                applySummary(summary) {
+                    if (!summary || typeof summary !== 'object') {
+                        return;
+                    }
+
+                    const nextItemsCount = parseIntSafe(
+                        summary.items_count ?? summary.itemsCount,
+                        this.summary.itemsCount,
+                    );
+                    const nextTotalQuantity = parseIntSafe(
+                        summary.total_quantity ?? summary.totalQuantity,
+                        this.summary.totalQuantity,
+                    );
+                    const nextPricedItemsCount = parseIntSafe(
+                        summary.priced_items_count ?? summary.pricedItemsCount,
+                        this.summary.pricedItemsCount,
+                    );
+                    const nextUnpricedItemsCount = parseIntSafe(
+                        summary.unpriced_items_count ?? summary.unpricedItemsCount,
+                        this.summary.unpricedItemsCount,
+                    );
+                    const nextBaseTotal = parseFloatSafe(
+                        summary.base_total_amount ?? summary.baseTotal,
+                        this.summary.baseTotal,
+                    );
+                    const nextDiscountTotal = parseFloatSafe(
+                        summary.discount_total_amount ?? summary.discountTotal,
+                        this.summary.discountTotal,
+                    );
+
+                    this.summary.itemsCount = nextItemsCount;
+                    this.summary.totalQuantity = nextTotalQuantity;
+                    this.summary.pricedItemsCount = nextPricedItemsCount;
+                    this.summary.unpricedItemsCount = nextUnpricedItemsCount;
+                    this.summary.baseTotal = nextBaseTotal;
+                    this.summary.discountTotal = nextDiscountTotal;
+
+                    const nextPaymentMethod = summary.payment_method ?? summary.paymentMethod;
+                    if (
+                        typeof nextPaymentMethod === 'string'
+                        && this.paymentOptions.some((option) => option.value === nextPaymentMethod)
+                    ) {
+                        this.paymentMethod = nextPaymentMethod;
+                    }
+                },
+                emitPaymentSync() {
+                    document.dispatchEvent(new CustomEvent('catalog:cart-payment-sync', {
+                        detail: {
+                            paymentMethod: this.paymentMethod,
+                        },
+                    }));
+                },
+                handleSummarySync(event) {
+                    const detail = event instanceof CustomEvent ? event.detail : null;
+                    this.applySummary(detail?.summary ?? null);
+                },
+                handlePaymentSync(event) {
+                    const detail = event instanceof CustomEvent ? event.detail : null;
+                    const paymentMethod = typeof detail?.paymentMethod === 'string'
+                        ? detail.paymentMethod
+                        : '';
+
+                    if (this.paymentOptions.some((option) => option.value === paymentMethod)) {
+                        this.paymentMethod = paymentMethod;
+                    }
+                },
+                onPaymentChange() {
+                    this.emitPaymentSync();
+                },
+            },
+            mounted() {
+                document.addEventListener('catalog:cart-summary-sync', this.handleSummarySync);
+                document.addEventListener('catalog:cart-payment-sync', this.handlePaymentSync);
+                this.emitPaymentSync();
+            },
+            beforeUnmount() {
+                document.removeEventListener('catalog:cart-summary-sync', this.handleSummarySync);
+                document.removeEventListener('catalog:cart-payment-sync', this.handlePaymentSync);
+            },
+            template: `
+                <div class="catalog-checkout-v2__panel">
+                    <div class="catalog-checkout-v2__head">
+                        <h2 class="catalog-checkout-v2__title">Подтверждение заявки</h2>
+                    </div>
+
+                    <div class="catalog-checkout-v2__summary">
+                        <div class="catalog-summary-row">
+                            <span>Позиций</span>
+                            <strong data-cart-items-count>{{ formatCount(summary.itemsCount) }}</strong>
+                        </div>
+                        <div class="catalog-summary-row">
+                            <span>Количество</span>
+                            <strong data-cart-total-quantity>{{ formatCount(summary.totalQuantity) }}</strong>
+                        </div>
+                        <div class="catalog-summary-row">
+                            <span>С ценой</span>
+                            <strong data-cart-priced-count>{{ formatCount(summary.pricedItemsCount) }}</strong>
+                        </div>
+                        <div v-if="hasUnpricedItems" class="catalog-summary-row">
+                            <span>По запросу</span>
+                            <strong data-cart-unpriced-count>{{ formatCount(summary.unpricedItemsCount) }}</strong>
+                        </div>
+                        <div class="catalog-summary-row is-total">
+                            <span>Итого</span>
+                            <strong
+                                data-cart-summary-total
+                                :data-base-total="summary.baseTotal ?? ''"
+                                :data-discount-total="summary.discountTotal ?? ''"
+                            >
+                                {{ formatAmount(totalAmount) }}
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div class="catalog-checkout-v2__payments">
+                        <label class="catalog-filter-title">Тип оплаты</label>
+
+                        <div class="catalog-payment-options">
+                            <label
+                                v-for="option in paymentOptions"
+                                :key="option.value"
+                                class="catalog-payment-option"
+                            >
+                                <input
+                                    type="radio"
+                                    name="payment_method"
+                                    :value="option.value"
+                                    data-cart-payment-method
+                                    v-model="paymentMethod"
+                                    @change="onPaymentChange"
+                                >
+                                <span class="catalog-payment-option__content">
+                                    <strong>{{ option.label }}</strong>
+                                    <small>{{ option.note }}</small>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            `,
+        });
+
+        app.mount(root);
+        root.dataset.vueMountedCartCheckout = '1';
     });
 };
 
@@ -1309,6 +2916,9 @@ const setupInfiniteFeeds = () => {
         }
 
         let observer = null;
+        const loadingLabel = trigger.dataset.loadingLabel || 'Подгружаем еще товары';
+        const fallbackLabel = trigger.dataset.fallbackLabel || 'Показать еще';
+        const retryLabel = 'Повторить загрузку';
 
         const setLoadingState = (loading) => {
             feedRoot.dataset.loading = loading ? '1' : '0';
@@ -1322,7 +2932,7 @@ const setupInfiniteFeeds = () => {
             }
         };
 
-        const showFallback = (label = 'РџРѕРєР°Р·Р°С‚СЊ РµС‰Рµ') => {
+        const showFallback = (label = fallbackLabel) => {
             if (button instanceof HTMLButtonElement) {
                 button.textContent = label;
                 button.classList.remove('hidden');
@@ -1335,11 +2945,40 @@ const setupInfiniteFeeds = () => {
             }
         };
 
-        const stopFeed = () => {
-            feedRoot.dataset.nextPage = '';
-            observer?.disconnect();
-            trigger.remove();
+        const applyFeedState = (nextPageUrl = '') => {
+            const resolvedNextPage = typeof nextPageUrl === 'string' ? nextPageUrl : '';
+            const hasNextPage = resolvedNextPage.trim() !== '';
+
+            feedRoot.dataset.nextPage = hasNextPage ? resolvedNextPage : '';
+            setLoadingState(false);
+            hideFallback();
+            trigger.classList.toggle('hidden', !hasNextPage);
+
+            if (observer) {
+                observer.unobserve(trigger);
+
+                if (hasNextPage) {
+                    requestAnimationFrame(() => observer?.observe(trigger));
+                }
+            } else if (hasNextPage) {
+                showFallback(fallbackLabel);
+            }
         };
+
+        const stopFeed = () => {
+            applyFeedState('');
+        };
+
+        feedRoot.__setInfiniteNextPage = (nextPageUrl = '') => {
+            applyFeedState(nextPageUrl);
+        };
+
+        if (loader instanceof HTMLElement) {
+            const loaderLabelNode = loader.querySelector('.catalog-infinite-loader__label');
+            if (loaderLabelNode instanceof HTMLElement) {
+                loaderLabelNode.textContent = loadingLabel;
+            }
+        }
 
         const loadNextPage = async ({ manual = false } = {}) => {
             const nextPageUrl = feedRoot.dataset.nextPage;
@@ -1373,25 +3012,19 @@ const setupInfiniteFeeds = () => {
 
                 if (typeof payload.html === 'string' && payload.html.trim() !== '') {
                     grid.insertAdjacentHTML('beforeend', payload.html);
+                    mountVueCatalogIslands(grid);
                 }
 
                 if (payload.nextPageUrl) {
-                    feedRoot.dataset.nextPage = payload.nextPageUrl;
-                    setLoadingState(false);
-
-                    if (observer) {
-                        requestAnimationFrame(() => observer.observe(trigger));
-                    } else {
-                        showFallback('РџРѕРєР°Р·Р°С‚СЊ РµС‰Рµ');
-                    }
-
+                    applyFeedState(payload.nextPageUrl);
                     return;
                 }
 
                 stopFeed();
             } catch (error) {
                 setLoadingState(false);
-                showFallback('РџРѕРІС‚РѕСЂРёС‚СЊ Р·Р°РіСЂСѓР·РєСѓ');
+                trigger.classList.remove('hidden');
+                showFallback(retryLabel);
             }
         };
 
@@ -1411,11 +3044,9 @@ const setupInfiniteFeeds = () => {
             }, {
                 rootMargin: '700px 0px',
             });
-
-            observer.observe(trigger);
-        } else {
-            showFallback('РџРѕРєР°Р·Р°С‚СЊ РµС‰Рµ');
         }
+
+        applyFeedState(feedRoot.dataset.nextPage ?? '');
     });
 };
 
@@ -1573,6 +3204,96 @@ const formatRubles = (amount) => {
     }).format(value)} ₽`;
 };
 
+const syncCartSummaryNodes = (summary) => {
+    if (!summary || typeof summary !== 'object') {
+        return;
+    }
+
+    const readCount = (candidate, fallback = null) => {
+        const parsed = Number.parseInt(`${candidate ?? ''}`, 10);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    };
+
+    const readAmount = (candidate, fallback = null) => {
+        const parsed = Number.parseFloat(`${candidate ?? ''}`.replace(',', '.'));
+        return Number.isFinite(parsed) ? parsed : fallback;
+    };
+
+    const itemsCount = readCount(summary.items_count ?? summary.itemsCount, null);
+    const totalQuantity = readCount(summary.total_quantity ?? summary.totalQuantity, null);
+    const pricedItemsCount = readCount(summary.priced_items_count ?? summary.pricedItemsCount, null);
+    const unpricedItemsCount = readCount(summary.unpriced_items_count ?? summary.unpricedItemsCount, null);
+
+    if (itemsCount !== null) {
+        document.querySelectorAll('[data-cart-items-count]').forEach((node) => {
+            if (node instanceof HTMLElement) {
+                node.textContent = `${itemsCount}`;
+            }
+        });
+    }
+
+    if (totalQuantity !== null) {
+        document.querySelectorAll('[data-cart-total-quantity]').forEach((node) => {
+            if (node instanceof HTMLElement) {
+                node.textContent = `${totalQuantity}`;
+            }
+        });
+    }
+
+    if (pricedItemsCount !== null) {
+        document.querySelectorAll('[data-cart-priced-count]').forEach((node) => {
+            if (node instanceof HTMLElement) {
+                node.textContent = `${pricedItemsCount}`;
+            }
+        });
+    }
+
+    if (unpricedItemsCount !== null) {
+        document.querySelectorAll('[data-cart-unpriced-count]').forEach((node) => {
+            if (node instanceof HTMLElement) {
+                node.textContent = `${unpricedItemsCount}`;
+            }
+        });
+    }
+
+    const baseTotal = readAmount(summary.base_total_amount ?? summary.baseTotal, null);
+    const discountTotal = readAmount(summary.discount_total_amount ?? summary.discountTotal, null);
+    const paymentMethod = typeof (summary.payment_method ?? summary.paymentMethod) === 'string'
+        ? (summary.payment_method ?? summary.paymentMethod)
+        : 'bank_transfer';
+    const nextAmount = paymentMethod === 'cash' ? discountTotal : baseTotal;
+
+    document.querySelectorAll('[data-cart-hero-total], [data-cart-summary-total]').forEach((node) => {
+        if (!(node instanceof HTMLElement)) {
+            return;
+        }
+
+        if (baseTotal !== null) {
+            node.dataset.baseTotal = `${baseTotal}`;
+        }
+        if (discountTotal !== null) {
+            node.dataset.discountTotal = `${discountTotal}`;
+        }
+
+        node.textContent = formatRubles(nextAmount);
+    });
+
+    document.dispatchEvent(new CustomEvent('catalog:cart-summary-sync', {
+        detail: {
+            summary: {
+                ...summary,
+                items_count: itemsCount ?? summary.items_count ?? summary.itemsCount ?? 0,
+                total_quantity: totalQuantity ?? summary.total_quantity ?? summary.totalQuantity ?? 0,
+                priced_items_count: pricedItemsCount ?? summary.priced_items_count ?? summary.pricedItemsCount ?? 0,
+                unpriced_items_count: unpricedItemsCount ?? summary.unpriced_items_count ?? summary.unpricedItemsCount ?? 0,
+                base_total_amount: baseTotal ?? summary.base_total_amount ?? summary.baseTotal ?? null,
+                discount_total_amount: discountTotal ?? summary.discount_total_amount ?? summary.discountTotal ?? null,
+                payment_method: paymentMethod,
+            },
+        },
+    }));
+};
+
 const setupCartPaymentModes = () => {
     const scope = document.querySelector('[data-cart-payment-scope]');
 
@@ -1637,6 +3358,12 @@ const setupCartPaymentModes = () => {
                 node.textContent = isCash ? 'Наличный расчет' : 'Безналичный расчет';
             }
         });
+
+        document.dispatchEvent(new CustomEvent('catalog:cart-payment-sync', {
+            detail: {
+                paymentMethod,
+            },
+        }));
     };
 
     paymentInputs.forEach((input) => input.addEventListener('change', sync));
@@ -1656,44 +3383,7 @@ const setupCartInlineUpdates = () => {
     };
 
     const updateSummary = (summary) => {
-        if (!summary || typeof summary !== 'object') {
-            return;
-        }
-
-        const setText = (selector, value) => {
-            scope.querySelectorAll(selector).forEach((node) => {
-                if (node instanceof HTMLElement) {
-                    node.textContent = `${value}`;
-                }
-            });
-        };
-
-        if (summary.items_count !== undefined) {
-            setText('[data-cart-items-count]', summary.items_count);
-        }
-
-        if (summary.total_quantity !== undefined) {
-            setText('[data-cart-total-quantity]', summary.total_quantity);
-        }
-
-        if (summary.priced_items_count !== undefined) {
-            setText('[data-cart-priced-count]', summary.priced_items_count);
-        }
-
-        if (summary.unpriced_items_count !== undefined) {
-            setText('[data-cart-unpriced-count]', summary.unpriced_items_count);
-        }
-
-        scope.querySelectorAll('[data-cart-hero-total], [data-cart-summary-total]').forEach((node) => {
-            if (!(node instanceof HTMLElement)) {
-                return;
-            }
-
-            const nextAmount = summary.payment_method === 'cash'
-                ? summary.discount_total_amount
-                : summary.base_total_amount;
-            node.textContent = formatRubles(nextAmount);
-        });
+        syncCartSummaryNodes(summary);
     };
 
     const updateItemPricing = (itemRoot, payload) => {
@@ -1976,8 +3666,8 @@ const setupAccountRoleForms = () => {
 
             if (heading instanceof HTMLElement) {
                 heading.textContent = role === 'manager'
-                    ? (form.dataset.managerTitle || 'РЎРѕР·РґР°С‚СЊ РјРµРЅРµРґР¶РµСЂР°')
-                    : (form.dataset.clientTitle || 'РЎРѕР·РґР°С‚СЊ РєР»РёРµРЅС‚Р°');
+                    ? (form.dataset.managerTitle || 'Создать менеджера')
+                    : (form.dataset.clientTitle || 'Создать клиента');
             }
 
             if (description instanceof HTMLElement) {
@@ -1988,8 +3678,8 @@ const setupAccountRoleForms = () => {
 
             if (submit instanceof HTMLElement) {
                 submit.textContent = role === 'manager'
-                    ? (form.dataset.managerSubmit || 'РЎРѕР·РґР°С‚СЊ РјРµРЅРµРґР¶РµСЂР°')
-                    : (form.dataset.clientSubmit || 'РЎРѕР·РґР°С‚СЊ РєР»РёРµРЅС‚Р°');
+                    ? (form.dataset.managerSubmit || 'Создать менеджера')
+                    : (form.dataset.clientSubmit || 'Создать клиента');
             }
 
             presetButtons.forEach((button) => {
@@ -2035,6 +3725,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupFavoriteToggles();
     setupPriceFilters();
     setupQuantityControls();
+    mountVueCatalogIslands();
     setupProductCardCartControls();
     setupProductGalleries();
     setupCatalogCardImageModes();
@@ -2043,9 +3734,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCategoryRails();
     setupRepeatables();
     setupAccountRoleForms();
+    mountVueCartLines();
+    mountVueCartCheckout();
     setupCartPaymentModes();
     setupCartInlineUpdates();
     setupInfiniteFeeds();
+    mountVueCatalogFeedSwitchers();
     setupSupportWidget();
     setupToasts();
     setupNotificationsPoller();
