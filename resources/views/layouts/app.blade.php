@@ -191,20 +191,20 @@
                 @if ($errors->any())
                     <div class="catalog-toast catalog-toast--error" data-toast>
                         <div class="catalog-toast__content">
-                            <strong>������</strong>
+                            <strong>Ошибка</strong>
                             <p>{{ $errors->first() }}</p>
                         </div>
-                        <button type="button" class="catalog-toast__close" data-toast-close aria-label="�������">?</button>
+                        <button type="button" class="catalog-toast__close" data-toast-close aria-label="Закрыть">&times;</button>
                     </div>
                 @endif
 
                 @if (session('status'))
                     <div class="catalog-toast catalog-toast--success" data-toast>
                         <div class="catalog-toast__content">
-                            <strong>Status</strong>
+                            <strong>Статус</strong>
                             <p>{{ session('status') }}</p>
                         </div>
-                        <button type="button" class="catalog-toast__close" data-toast-close aria-label="Close">&times;</button>
+                        <button type="button" class="catalog-toast__close" data-toast-close aria-label="Закрыть">&times;</button>
                     </div>
                 @endif
                 @yield('content')

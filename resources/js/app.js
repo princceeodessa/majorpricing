@@ -869,6 +869,7 @@ const setupProductGalleries = () => {
                 }
 
                 mainImage.src = activeThumb.dataset.galleryImage;
+                setCatalogCardImageBackdrop(mainImage, activeThumb.dataset.galleryImage);
 
                 if (activeThumb.dataset.galleryAlt) {
                     mainImage.alt = activeThumb.dataset.galleryAlt;
@@ -951,6 +952,8 @@ const applyCatalogCardImageMode = (image) => {
         return;
     }
 
+    setCatalogCardImageBackdrop(image);
+
     const naturalWidth = image.naturalWidth;
     const naturalHeight = image.naturalHeight;
 
@@ -968,6 +971,32 @@ const applyCatalogCardImageMode = (image) => {
 };
 
 const catalogCardImageAnalysisCache = new Map();
+
+const escapeCssUrlToken = (value) => `${value}`
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n|\r/g, '');
+
+const setCatalogCardImageBackdrop = (image, sourceUrl = '') => {
+    if (!(image instanceof HTMLImageElement)) {
+        return;
+    }
+
+    const wrap = image.closest('.catalog-product-card__image-wrap');
+    if (!(wrap instanceof HTMLElement)) {
+        return;
+    }
+
+    const imageUrl = `${sourceUrl || image.currentSrc || image.src || ''}`.trim();
+    if (imageUrl === '') {
+        wrap.style.removeProperty('--card-image-url');
+        wrap.classList.remove('has-image-backdrop');
+        return;
+    }
+
+    wrap.style.setProperty('--card-image-url', `url("${escapeCssUrlToken(imageUrl)}")`);
+    wrap.classList.add('has-image-backdrop');
+};
 
 const clearCatalogCardSmartFit = (image) => {
     image.classList.remove('is-smart-fit');
@@ -1160,31 +1189,40 @@ const loadCatalogCardImageAnalysis = (url) => {
     });
 };
 
+const MAX_INITIAL_GALLERY_CANDIDATES = 4;
+
 const pickBestInitialGalleryIndex = async (thumbs) => {
     if (thumbs.length < 2) {
         return 0;
     }
 
-    const urls = thumbs.map((thumb) => thumb.dataset.galleryImage || '');
-    const analyses = await Promise.all(urls.map((url) => loadCatalogCardImageAnalysis(url)));
-    const firstScore = analyses[0]?.score ?? 0;
-
+    const candidates = thumbs.slice(0, MAX_INITIAL_GALLERY_CANDIDATES);
+    const firstUrl = candidates[0]?.dataset.galleryImage || '';
+    const firstAnalysis = await loadCatalogCardImageAnalysis(firstUrl);
+    const firstScore = firstAnalysis?.score ?? 0;
     let bestIndex = 0;
     let bestScore = firstScore;
 
-    analyses.forEach((analysis, index) => {
+    if (firstScore >= 0.56) {
+        return 0;
+    }
+
+    for (let index = 1; index < candidates.length; index++) {
+        const candidateUrl = candidates[index]?.dataset.galleryImage || '';
+        // Sequential analysis keeps initial page load lighter on mobile.
+        const analysis = await loadCatalogCardImageAnalysis(candidateUrl);
         const score = analysis?.score ?? 0;
         if (score > bestScore) {
             bestScore = score;
             bestIndex = index;
         }
-    });
+    }
 
     if (bestIndex === 0) {
         return 0;
     }
 
-    if ((bestScore - firstScore) < 0.03) {
+    if ((bestScore - firstScore) < 0.045) {
         return 0;
     }
 
@@ -1204,22 +1242,34 @@ const resolveCatalogCardSmartFit = (image) => {
         return;
     }
 
-    const isMobile = typeof window !== 'undefined'
-        && window.matchMedia('(max-width: 768px)').matches;
+    const viewportWidth = typeof window !== 'undefined' ? (window.innerWidth || 1200) : 1200;
+    const isCompactViewport = viewportWidth <= 1024;
 
-    if (isMobile) {
-        const mobileFit = {
-            shiftX: clamp(fit.shiftX, -6, 6),
-            shiftY: clamp(fit.shiftY, -6, 6),
-            scale: 1,
+    if (isCompactViewport) {
+        const isNarrowViewport = viewportWidth <= 768;
+        const compactScale = fit.scale > 1
+            ? clamp(
+                1 + ((fit.scale - 1) * (isNarrowViewport ? 0.45 : 0.62)),
+                1,
+                isNarrowViewport ? 1.1 : 1.16,
+            )
+            : 1;
+        const compactFit = {
+            shiftX: clamp(fit.shiftX, isNarrowViewport ? -7 : -9, isNarrowViewport ? 7 : 9),
+            shiftY: clamp(fit.shiftY, isNarrowViewport ? -7 : -8, isNarrowViewport ? 7 : 8),
+            scale: compactScale,
         };
 
-        if (Math.abs(mobileFit.shiftX) < 0.8 && Math.abs(mobileFit.shiftY) < 0.8) {
+        if (
+            compactFit.scale < (isNarrowViewport ? 1.04 : 1.03)
+            && Math.abs(compactFit.shiftX) < 0.8
+            && Math.abs(compactFit.shiftY) < 0.8
+        ) {
             clearCatalogCardSmartFit(image);
             return;
         }
 
-        applyCatalogCardSmartFitValues(image, mobileFit);
+        applyCatalogCardSmartFitValues(image, compactFit);
         return;
     }
 
@@ -1300,6 +1350,8 @@ const mountVueCatalogGalleries = (scope = document) => {
                     productUrl,
                     title,
                     currentIndex: 0,
+                    touchStartX: null,
+                    touchStartY: null,
                 };
             },
             computed: {
@@ -1330,6 +1382,46 @@ const mountVueCatalogGalleries = (scope = document) => {
                 activateNext() {
                     this.activate(this.currentIndex + 1);
                 },
+                onTouchStart(event) {
+                    const point = event?.changedTouches?.[0];
+                    if (!point) {
+                        return;
+                    }
+
+                    this.touchStartX = point.clientX;
+                    this.touchStartY = point.clientY;
+                },
+                onTouchEnd(event) {
+                    if (!this.hasControls || this.touchStartX === null || this.touchStartY === null) {
+                        this.touchStartX = null;
+                        this.touchStartY = null;
+                        return;
+                    }
+
+                    const point = event?.changedTouches?.[0];
+                    if (!point) {
+                        this.touchStartX = null;
+                        this.touchStartY = null;
+                        return;
+                    }
+
+                    const deltaX = point.clientX - this.touchStartX;
+                    const deltaY = point.clientY - this.touchStartY;
+
+                    this.touchStartX = null;
+                    this.touchStartY = null;
+
+                    if (Math.abs(deltaX) < 26 || Math.abs(deltaX) <= (Math.abs(deltaY) * 1.15)) {
+                        return;
+                    }
+
+                    if (deltaX > 0) {
+                        this.activatePrev();
+                        return;
+                    }
+
+                    this.activateNext();
+                },
                 applyImageFit() {
                     const image = this.$refs.mainImage;
 
@@ -1359,6 +1451,7 @@ const mountVueCatalogGalleries = (scope = document) => {
 
                     if (this.fallbackImageUrl && target.src !== this.fallbackImageUrl) {
                         target.src = this.fallbackImageUrl;
+                        setCatalogCardImageBackdrop(target, this.fallbackImageUrl);
                     }
                 },
             },
@@ -1370,7 +1463,11 @@ const mountVueCatalogGalleries = (scope = document) => {
             template: `
                 <div>
                     <a :href="productUrl" class="catalog-product-card__visual-link">
-                        <div class="catalog-product-card__image-wrap">
+                        <div
+                            class="catalog-product-card__image-wrap"
+                            @touchstart.passive="onTouchStart"
+                            @touchend.passive="onTouchEnd"
+                        >
                             <img
                                 ref="mainImage"
                                 :src="currentImage"
@@ -1466,6 +1563,7 @@ const mountVueCatalogCartControls = (scope = document) => {
                     colorName: typeof rawProps.colorName === 'string' ? rawProps.colorName : '',
                     draftQuantity: `${initialQuantity > 0 ? initialQuantity : constraints.min}`,
                     isLoading: false,
+                    pendingQuantity: null,
                 };
             },
             computed: {
@@ -1484,6 +1582,14 @@ const mountVueCatalogCartControls = (scope = document) => {
                 normalize(value, fallback) {
                     return normalizeCartQuantity(value, fallback, this.quantityConstraints());
                 },
+                resolveActionBaseQuantity() {
+                    const pending = Math.max(0, Math.trunc(Number(this.pendingQuantity) || 0));
+                    if (this.isLoading && pending > 0) {
+                        return pending;
+                    }
+
+                    return this.quantity > 0 ? this.quantity : this.minQuantity;
+                },
                 syncLocalQuantity(quantity) {
                     const safeQuantity = quantity > 0
                         ? this.normalize(quantity, this.minQuantity)
@@ -1496,15 +1602,18 @@ const mountVueCatalogCartControls = (scope = document) => {
                     this.submit(this.minQuantity);
                 },
                 increment() {
-                    const base = this.quantity > 0 ? this.quantity : this.minQuantity;
+                    const base = this.resolveActionBaseQuantity();
                     this.submit(base + this.stepQuantity);
                 },
                 decrement() {
-                    const base = this.quantity > 0 ? this.quantity : this.minQuantity;
+                    const base = this.resolveActionBaseQuantity();
                     this.submit(base - this.stepQuantity);
                 },
                 onQuantityChange() {
-                    const fallback = this.quantity > 0 ? this.quantity : this.minQuantity;
+                    const pending = Math.max(0, Math.trunc(Number(this.pendingQuantity) || 0));
+                    const fallback = (this.isLoading && pending > 0)
+                        ? pending
+                        : (this.quantity > 0 ? this.quantity : this.minQuantity);
                     const normalized = this.normalize(this.draftQuantity, fallback);
                     this.draftQuantity = `${normalized}`;
                     this.submit(normalized);
@@ -1521,24 +1630,30 @@ const mountVueCatalogCartControls = (scope = document) => {
                     this.syncLocalQuantity(Number.isFinite(quantity) ? quantity : 0);
                 },
                 async submit(nextQuantity) {
-                    if (this.isLoading) {
-                        return;
-                    }
-
                     const quantityConstraints = this.quantityConstraints();
                     const currentQuantity = Math.max(0, this.quantity);
+                    const pendingBaseQuantity = Math.max(0, Math.trunc(Number(this.pendingQuantity) || 0));
+                    const normalizationFallback = pendingBaseQuantity > 0
+                        ? pendingBaseQuantity
+                        : (currentQuantity > 0 ? currentQuantity : quantityConstraints.min);
                     let resolvedNextQuantity = Math.trunc(Number(nextQuantity) || 0);
 
                     if (resolvedNextQuantity > 0) {
                         resolvedNextQuantity = normalizeCartQuantity(
                             resolvedNextQuantity,
-                            currentQuantity > 0 ? currentQuantity : quantityConstraints.min,
+                            normalizationFallback,
                             quantityConstraints,
                         );
                     }
 
                     if (resolvedNextQuantity > 0 && resolvedNextQuantity < quantityConstraints.min) {
                         resolvedNextQuantity = quantityConstraints.min;
+                    }
+
+                    if (this.isLoading) {
+                        this.pendingQuantity = resolvedNextQuantity;
+                        this.draftQuantity = `${resolvedNextQuantity > 0 ? resolvedNextQuantity : this.minQuantity}`;
+                        return;
                     }
 
                     if (resolvedNextQuantity === currentQuantity) {
@@ -1571,8 +1686,10 @@ const mountVueCatalogCartControls = (scope = document) => {
                     }
 
                     this.isLoading = true;
+                    this.pendingQuantity = null;
                     if (this.$el instanceof HTMLElement) {
                         this.$el.classList.add('is-loading');
+                        this.$el.setAttribute('aria-busy', 'true');
                     }
 
                     const requestController = typeof AbortController === 'function'
@@ -1648,6 +1765,14 @@ const mountVueCatalogCartControls = (scope = document) => {
                         this.isLoading = false;
                         if (this.$el instanceof HTMLElement) {
                             this.$el.classList.remove('is-loading');
+                            this.$el.removeAttribute('aria-busy');
+                        }
+
+                        const queuedQuantity = Number(this.pendingQuantity);
+                        this.pendingQuantity = null;
+
+                        if (Number.isFinite(queuedQuantity) && Math.trunc(queuedQuantity) !== Math.max(0, this.quantity)) {
+                            this.submit(queuedQuantity);
                         }
                     }
                 },
@@ -1665,7 +1790,6 @@ const mountVueCatalogCartControls = (scope = document) => {
                         <button
                             type="button"
                             class="catalog-product-card__cta"
-                            :disabled="isLoading"
                             @click.prevent="addToCart"
                         >
                             В корзину
@@ -1680,7 +1804,6 @@ const mountVueCatalogCartControls = (scope = document) => {
                         <button
                             type="button"
                             class="catalog-product-card__stepper-btn"
-                            :disabled="isLoading"
                             aria-label="Уменьшить количество"
                             @click.prevent="decrement"
                         >
@@ -1695,7 +1818,6 @@ const mountVueCatalogCartControls = (scope = document) => {
                             class="catalog-product-card__stepper-value"
                             data-cart-quantity
                             data-cart-quantity-input
-                            :disabled="isLoading"
                             v-model="draftQuantity"
                             @change="onQuantityChange"
                             @keydown.enter.prevent="onQuantityChange"
@@ -1703,7 +1825,6 @@ const mountVueCatalogCartControls = (scope = document) => {
                         <button
                             type="button"
                             class="catalog-product-card__stepper-btn"
-                            :disabled="isLoading"
                             aria-label="Увеличить количество"
                             @click.prevent="increment"
                         >
@@ -1711,12 +1832,16 @@ const mountVueCatalogCartControls = (scope = document) => {
                         </button>
                     </div>
 
-                    <p v-if="unitsInPackageSummary" class="catalog-product-card__meta">
-                        Упаковка: {{ unitsInPackageSummary }}
-                    </p>
-                    <p v-if="colorName" class="catalog-product-card__meta">
-                        Цвет: {{ colorName }}
-                    </p>
+                    <div v-if="unitsInPackageSummary || colorName" class="catalog-product-card__traits">
+                        <p v-if="unitsInPackageSummary" class="catalog-product-card__trait">
+                            <span>Упаковка</span>
+                            <strong>{{ unitsInPackageSummary }}</strong>
+                        </p>
+                        <p v-if="colorName" class="catalog-product-card__trait">
+                            <span>Цвет</span>
+                            <strong>{{ colorName }}</strong>
+                        </p>
+                    </div>
                 </div>
             `,
         });
@@ -1726,7 +1851,218 @@ const mountVueCatalogCartControls = (scope = document) => {
     });
 };
 
+const mountVueCategoryShowcases = (scope = document) => {
+    if (typeof window === 'undefined' || !window.Vue?.createApp) {
+        return;
+    }
+
+    const { createApp } = window.Vue;
+    const roots = scope.querySelectorAll('[data-vue-category-showcase]');
+
+    roots.forEach((root) => {
+        if (!(root instanceof HTMLElement) || root.dataset.vueMountedCategoryShowcase === '1') {
+            return;
+        }
+
+        const rawProps = parseJsonDataset(root.dataset.vueCategoryShowcaseProps, {}) ?? {};
+        const items = Array.isArray(rawProps.items)
+            ? rawProps.items
+                .map((item) => {
+                    const slug = typeof item?.slug === 'string' ? item.slug.trim() : '';
+                    const url = typeof item?.url === 'string' ? item.url.trim() : '';
+                    const name = typeof item?.name === 'string' ? item.name.trim() : '';
+
+                    if (slug === '' || url === '' || name === '') {
+                        return null;
+                    }
+
+                    const sections = Array.isArray(item?.sections)
+                        ? item.sections
+                            .map((section) => ({
+                                name: typeof section?.name === 'string' ? section.name : '',
+                                url: typeof section?.url === 'string' ? section.url : '',
+                            }))
+                            .filter((section) => section.name !== '')
+                        : [];
+
+                    return {
+                        id: readIntWithFallback(item?.id, 0),
+                        slug,
+                        name,
+                        url,
+                        accentColor: typeof item?.accentColor === 'string' && item.accentColor.trim() !== ''
+                            ? item.accentColor
+                            : '#163459',
+                        childrenCount: readIntWithFallback(item?.childrenCount, 0),
+                        productsCount: readIntWithFallback(item?.productsCount, 0),
+                        previewImage: typeof item?.previewImage === 'string' ? item.previewImage : '',
+                        previewTitle: typeof item?.previewTitle === 'string' ? item.previewTitle : name,
+                        mark: typeof item?.mark === 'string' && item.mark.trim() !== ''
+                            ? item.mark.trim().slice(0, 2)
+                            : name.slice(0, 2).toUpperCase(),
+                        sections,
+                    };
+                })
+                .filter((item) => item !== null)
+            : [];
+
+        if (items.length === 0) {
+            return;
+        }
+
+        const initialActiveSlug = items[0].slug;
+        const title = typeof rawProps.title === 'string' && rawProps.title.trim() !== ''
+            ? rawProps.title
+            : 'Основные категории';
+        const subtitle = typeof rawProps.subtitle === 'string' ? rawProps.subtitle : '';
+        const summary = typeof rawProps.summary === 'string' ? rawProps.summary : '';
+
+        const app = createApp({
+            data() {
+                return {
+                    title,
+                    subtitle,
+                    summary,
+                    items,
+                    activeSlug: initialActiveSlug,
+                };
+            },
+            methods: {
+                setActive(slug, options = {}) {
+                    if (typeof slug !== 'string' || slug.trim() === '') {
+                        return;
+                    }
+
+                    this.activeSlug = slug;
+
+                    if (options.scrollCard === true) {
+                        this.$nextTick(() => {
+                            this.scrollCardIntoView(slug);
+                        });
+                    }
+                },
+                scrollCardIntoView(slug) {
+                    const links = Array.isArray(this.$refs.cardLinks)
+                        ? this.$refs.cardLinks
+                        : [this.$refs.cardLinks];
+
+                    const activeCard = links.find((node) => (
+                        node instanceof HTMLAnchorElement
+                        && node.dataset.categorySlug === slug
+                    ));
+
+                    if (!(activeCard instanceof HTMLAnchorElement)) {
+                        return;
+                    }
+
+                    activeCard.scrollIntoView({
+                        behavior: 'smooth',
+                        inline: 'center',
+                        block: 'nearest',
+                    });
+                },
+            },
+            template: `
+                <div>
+                    <div class="catalog-section-head catalog-section-head--clean">
+                        <h2 class="catalog-section-title">{{ title }}</h2>
+                        <p v-if="subtitle" class="catalog-category-v3__subtitle">{{ subtitle }}</p>
+                        <p v-if="summary" class="catalog-category-v3__summary">{{ summary }}</p>
+                    </div>
+
+                    <div class="catalog-category-v3__tabs" role="tablist" aria-label="Категории каталога">
+                        <button
+                            v-for="item in items"
+                            :key="item.slug"
+                            type="button"
+                            class="catalog-category-v3__tab"
+                            :class="{ 'is-active': item.slug === activeSlug }"
+                            :aria-pressed="item.slug === activeSlug ? 'true' : 'false'"
+                            @click="setActive(item.slug, { scrollCard: true })"
+                        >
+                            <span class="catalog-category-v3__tab-mark">{{ item.mark }}</span>
+                            <span class="catalog-category-v3__tab-title">{{ item.name }}</span>
+                            <span class="catalog-category-v3__tab-count">{{ item.productsCount }}</span>
+                        </button>
+                    </div>
+
+                    <div class="catalog-category-showcase mt-4" data-category-rail>
+                        <button type="button" class="catalog-category-showcase__arrow is-left" data-category-rail-prev aria-label="Прокрутить категории влево">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M14.5 5 8 12l6.5 7" />
+                            </svg>
+                        </button>
+
+                        <div class="catalog-category-showcase__viewport" data-category-rail-track>
+                            <div class="catalog-category-showcase__track">
+                                <a
+                                    v-for="(item, index) in items"
+                                    :key="item.slug"
+                                    ref="cardLinks"
+                                    :href="item.url"
+                                    class="catalog-category-card reveal-card"
+                                    :class="{ 'is-active': item.slug === activeSlug }"
+                                    :style="{
+                                        animationDelay: (index * 70) + 'ms',
+                                        '--category-accent': item.accentColor
+                                    }"
+                                    :data-category-slug="item.slug"
+                                    @mouseenter="setActive(item.slug)"
+                                    @focusin="setActive(item.slug)"
+                                >
+                                    <div class="catalog-category-card__copy">
+                                        <div class="catalog-category-card__head">
+                                            <span class="catalog-category-card__badge">{{ item.childrenCount }} секц.</span>
+                                        </div>
+
+                                        <h3 class="catalog-category-card__title">{{ item.name }}</h3>
+                                        <p class="catalog-category-card__meta">{{ item.productsCount }} товаров в наличии</p>
+
+                                        <div v-if="item.sections.length > 0" class="catalog-category-card__sections">
+                                            <span
+                                                v-for="(section, sectionIndex) in item.sections.slice(0, 4)"
+                                                :key="item.slug + '-section-' + sectionIndex"
+                                                class="catalog-category-card__section"
+                                            >
+                                                {{ section.name }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="catalog-category-card__visual">
+                                        <div class="catalog-category-card__media">
+                                            <img
+                                                v-if="item.previewImage"
+                                                :src="item.previewImage"
+                                                :alt="item.previewTitle || item.name"
+                                                class="catalog-category-card__image"
+                                                loading="lazy"
+                                                decoding="async"
+                                            >
+                                            <div v-else class="catalog-category-card__mark">{{ item.mark }}</div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+
+                        <button type="button" class="catalog-category-showcase__arrow is-right" data-category-rail-next aria-label="Прокрутить категории вправо">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m9.5 5 6.5 7-6.5 7" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `,
+        });
+
+        app.mount(root);
+        root.dataset.vueMountedCategoryShowcase = '1';
+    });
+};
+
 const mountVueCatalogIslands = (scope = document) => {
+    mountVueCategoryShowcases(scope);
     mountVueFavoriteToggles(scope);
     mountVueCatalogGalleries(scope);
     mountVueCatalogCartControls(scope);
@@ -1770,6 +2106,7 @@ const mountVueCatalogFeedSwitchers = (scope = document) => {
                     items,
                     activeKey: initialFeed,
                     loading: false,
+                    pendingActivation: null,
                 };
             },
             methods: {
@@ -1820,7 +2157,20 @@ const mountVueCatalogFeedSwitchers = (scope = document) => {
                     return matchedItem;
                 },
                 async activate(item, { pushState = true, force = false } = {}) {
-                    if (!item || this.loading || (!force && item.key === this.activeKey)) {
+                    if (!item) {
+                        return;
+                    }
+
+                    if (this.loading) {
+                        this.pendingActivation = {
+                            key: item.key,
+                            pushState,
+                            force,
+                        };
+                        return;
+                    }
+
+                    if (!force && item.key === this.activeKey) {
                         return;
                     }
 
@@ -1881,6 +2231,22 @@ const mountVueCatalogFeedSwitchers = (scope = document) => {
                         root.classList.remove('is-loading');
                         feedRoot.classList.remove('is-feed-switching');
                         grid.setAttribute('aria-busy', 'false');
+
+                        const pendingActivation = this.pendingActivation;
+                        this.pendingActivation = null;
+
+                        if (
+                            pendingActivation
+                            && pendingActivation.key !== this.activeKey
+                        ) {
+                            const nextItem = this.items.find((candidate) => candidate.key === pendingActivation.key);
+                            if (nextItem) {
+                                this.activate(nextItem, {
+                                    pushState: pendingActivation.pushState,
+                                    force: true,
+                                });
+                            }
+                        }
                     }
                 },
                 onPopState() {
@@ -2824,6 +3190,66 @@ const setupCatalogMenus = () => {
     });
 };
 
+const setupHeaderScrollState = () => {
+    const header = document.querySelector('.catalog-site-header');
+
+    if (!(header instanceof HTMLElement)) {
+        return;
+    }
+
+    let ticking = false;
+    const sync = () => {
+        header.classList.toggle('is-scrolled', window.scrollY > 18);
+        ticking = false;
+    };
+
+    window.addEventListener('scroll', () => {
+        if (ticking) {
+            return;
+        }
+
+        ticking = true;
+        window.requestAnimationFrame(sync);
+    }, { passive: true });
+
+    sync();
+};
+
+const setupResponsiveUiMetrics = () => {
+    const root = document.documentElement;
+
+    if (!(root instanceof HTMLElement)) {
+        return;
+    }
+
+    const apply = () => {
+        const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+        root.style.setProperty('--catalog-vh', `${Math.max(1, viewportHeight) * 0.01}px`);
+
+        const isMobileLayout = window.matchMedia('(max-width: 900px)').matches;
+        const mobileNav = document.querySelector('.catalog-mobile-nav');
+        const mobileNavVisible = isMobileLayout
+            && mobileNav instanceof HTMLElement
+            && window.getComputedStyle(mobileNav).display !== 'none';
+        const navHeight = mobileNavVisible
+            ? Math.ceil(mobileNav.getBoundingClientRect().height)
+            : 0;
+
+        root.style.setProperty('--catalog-mobile-nav-height', `${Math.max(0, navHeight)}px`);
+    };
+
+    const scheduleApply = () => window.requestAnimationFrame(apply);
+
+    window.addEventListener('resize', scheduleApply, { passive: true });
+    window.addEventListener('orientationchange', scheduleApply);
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scheduleApply);
+    }
+
+    apply();
+};
+
 const setupRepeatables = () => {
     document.querySelectorAll('[data-repeatable]').forEach((repeatableRoot) => {
         if (!(repeatableRoot instanceof HTMLElement)) {
@@ -3731,6 +4157,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCatalogCardImageModes();
     setupHomeBanners();
     setupCatalogMenus();
+    setupHeaderScrollState();
+    setupResponsiveUiMetrics();
     setupCategoryRails();
     setupRepeatables();
     setupAccountRoleForms();

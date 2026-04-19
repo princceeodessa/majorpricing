@@ -154,14 +154,22 @@
                     <button type="button" class="catalog-product-card__stepper-btn" data-cart-inc aria-label="Увеличить количество">+</button>
                 </div>
 
-                @if ($unitsInPackageSummary)
-                    <p class="catalog-product-card__meta">
-                        Упаковка: {{ $unitsInPackageSummary }}
-                    </p>
-                @endif
+                @if ($unitsInPackageSummary || filled($product->color_name))
+                    <div class="catalog-product-card__traits">
+                        @if ($unitsInPackageSummary)
+                            <p class="catalog-product-card__trait">
+                                <span>Упаковка</span>
+                                <strong>{{ $unitsInPackageSummary }}</strong>
+                            </p>
+                        @endif
 
-                @if (filled($product->color_name))
-                    <p class="catalog-product-card__meta">Цвет: {{ $product->color_name }}</p>
+                        @if (filled($product->color_name))
+                            <p class="catalog-product-card__trait">
+                                <span>Цвет</span>
+                                <strong>{{ $product->color_name }}</strong>
+                            </p>
+                        @endif
+                    </div>
                 @endif
             </div>
         </div>
