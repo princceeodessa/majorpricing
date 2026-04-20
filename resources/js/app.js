@@ -1306,10 +1306,67 @@ const resolveCatalogCardSmartFit = (image) => {
         return;
     }
 
-    // Catalog cards should always show the source image fully without auto-cropping.
     clearCatalogCardSmartFit(image);
     clearCatalogCardFocusCover(image);
     clearCatalogCardPreserveFit(image);
+
+    if (!image.complete || image.naturalWidth <= 1 || image.naturalHeight <= 1) {
+        return;
+    }
+
+    const analysis = computeCatalogCardImageAnalysis(image);
+    if (!analysis) {
+        return;
+    }
+
+    const coverage = Number(analysis.coverage ?? 1);
+    const density = Number(analysis.density ?? 1);
+    const boxWidth = Number(analysis.boxWidth ?? 1);
+    const boxHeight = Number(analysis.boxHeight ?? 1);
+    const centerX = Number(analysis.centerX ?? 0.5);
+    const centerY = Number(analysis.centerY ?? 0.5);
+    const dominantSide = Math.max(boxWidth, boxHeight);
+
+    let nextFit = analysis.fit ? {
+        shiftX: Number(analysis.fit.shiftX ?? 0),
+        shiftY: Number(analysis.fit.shiftY ?? 0),
+        scale: Number(analysis.fit.scale ?? 1),
+    } : null;
+
+    if (!nextFit && coverage < 0.29) {
+        nextFit = {
+            shiftX: clamp((0.5 - centerX) * 6.8, -5.4, 5.4),
+            shiftY: clamp((0.5 - centerY) * 5.8, -4.8, 4.8),
+            scale: clamp(0.9 / Math.max(0.01, dominantSide), 1.05, 1.32),
+        };
+    }
+
+    if (!nextFit) {
+        return;
+    }
+
+    const scaleCap = coverage < 0.19 ? 1.42 : (coverage < 0.32 ? 1.36 : 1.3);
+    const tunedScale = coverage <= 0.64
+        ? clamp(nextFit.scale, 1.02, scaleCap)
+        : 1;
+
+    const allowShift = coverage <= 0.44 && density >= 0.07;
+    const tunedShiftX = allowShift ? clamp(nextFit.shiftX * 0.56, -7.2, 7.2) : 0;
+    const tunedShiftY = allowShift ? clamp(nextFit.shiftY * 0.48, -6.2, 6.2) : 0;
+
+    const barelyChanged = tunedScale < 1.04
+        && Math.abs(tunedShiftX) < 0.75
+        && Math.abs(tunedShiftY) < 0.75;
+
+    if (barelyChanged) {
+        return;
+    }
+
+    applyCatalogCardSmartFitValues(image, {
+        shiftX: tunedShiftX,
+        shiftY: tunedShiftY,
+        scale: tunedScale,
+    });
 };
 
 const setupCatalogCardImageModes = () => {

@@ -49,13 +49,7 @@ class OrderController extends Controller
 
     public function update(Request $request, Order $order): RedirectResponse
     {
-        $user = $request->user();
-
-        abort_unless($user->canManageClients(), 403);
-
-        if (! $user->isAdmin()) {
-            abort_unless((int) $order->user?->manager_id === (int) $user->id, 403);
-        }
+        $this->ensureManagerCanManageOrder($request, $order);
 
         $validated = $request->validate([
             'status' => ['required', 'string', Rule::in(OrderStatuses::allowed())],
@@ -70,5 +64,30 @@ class OrderController extends Controller
         return redirect()
             ->route('orders.index')
             ->with('status', 'Заказ обновлен.');
+    }
+
+    public function queueOneCExport(Request $request, Order $order): RedirectResponse
+    {
+        $this->ensureManagerCanManageOrder($request, $order);
+
+        $order->forceFill([
+            'one_c_exported_at' => null,
+            'one_c_updated_at' => now(),
+        ])->save();
+
+        return redirect()
+            ->route('orders.index')
+            ->with('status', 'Заказ добавлен в очередь выгрузки 1С.');
+    }
+
+    private function ensureManagerCanManageOrder(Request $request, Order $order): void
+    {
+        $user = $request->user();
+
+        abort_unless($user->canManageClients(), 403);
+
+        if (! $user->isAdmin()) {
+            abort_unless((int) $order->user?->manager_id === (int) $user->id, 403);
+        }
     }
 }

@@ -137,6 +137,19 @@
 
                                         <button type="submit" class="action-button w-full justify-center">Сохранить статус</button>
                                     </form>
+
+                                    <form action="{{ route('orders.export-1c', $order) }}" method="POST" class="catalog-order-manager-form mt-3">
+                                        @csrf
+                                        <button type="submit" class="ghost-button w-full justify-center">Выгрузить в 1С</button>
+                                    </form>
+
+                                    <p class="catalog-order-side__hint mt-3 text-xs text-slate-500">
+                                        @if ($order->one_c_exported_at)
+                                            Последняя выгрузка: {{ $order->one_c_exported_at->format('d.m.Y H:i') }}
+                                        @else
+                                            Еще не выгружен в 1С.
+                                        @endif
+                                    </p>
                                 </aside>
                             @endif
                         </div>

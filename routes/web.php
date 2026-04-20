@@ -99,6 +99,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::patch('/orders/{order}', [OrderController::class, 'update'])->middleware('manager')->name('orders.update');
+    Route::post('/orders/{order}/export-1c', [OrderController::class, 'queueOneCExport'])->middleware('manager')->name('orders.export-1c');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
 
