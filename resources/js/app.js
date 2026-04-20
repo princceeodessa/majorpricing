@@ -1005,6 +1005,35 @@ const clearCatalogCardSmartFit = (image) => {
     image.style.removeProperty('--card-img-scale');
 };
 
+const clearCatalogCardPreserveFit = (image) => {
+    if (!(image instanceof HTMLImageElement)) {
+        return;
+    }
+
+    image.classList.remove('is-preserve-fit');
+
+    const wrap = image.closest('.catalog-product-card__image-wrap');
+    if (wrap instanceof HTMLElement) {
+        wrap.classList.remove('has-preserve-fit');
+    }
+};
+
+const applyCatalogCardPreserveFit = (image) => {
+    if (!(image instanceof HTMLImageElement)) {
+        return;
+    }
+
+    clearCatalogCardSmartFit(image);
+    clearCatalogCardFocusCover(image);
+
+    image.classList.add('is-preserve-fit');
+
+    const wrap = image.closest('.catalog-product-card__image-wrap');
+    if (wrap instanceof HTMLElement) {
+        wrap.classList.add('has-preserve-fit');
+    }
+};
+
 const clearCatalogCardFocusCover = (image) => {
     if (!(image instanceof HTMLImageElement)) {
         return;
@@ -1284,7 +1313,15 @@ const resolveCatalogCardSmartFit = (image) => {
     const centerX = analysis?.centerX ?? 0.5;
     const centerY = analysis?.centerY ?? 0.5;
 
-    const shouldUseFocusCover = coverage <= 0.58 && boxAspect >= 1.35;
+    const shouldPreserveFit = boxAspect <= 0.62 || coverage <= 0.15;
+    if (shouldPreserveFit) {
+        applyCatalogCardPreserveFit(image);
+        return;
+    }
+
+    clearCatalogCardPreserveFit(image);
+
+    const shouldUseFocusCover = coverage <= 0.68;
 
     if (shouldUseFocusCover) {
         applyCatalogCardFocusCoverValues(image, {
@@ -1295,9 +1332,9 @@ const resolveCatalogCardSmartFit = (image) => {
     }
 
     clearCatalogCardFocusCover(image);
+    clearCatalogCardSmartFit(image);
 
     if (!fit) {
-        clearCatalogCardSmartFit(image);
         return;
     }
 
