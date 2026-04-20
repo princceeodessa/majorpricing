@@ -51,7 +51,7 @@
 
             .catalog-main .catalog-grid .catalog-product-card__image-wrap,
             .catalog-main .catalog-grid--dense .catalog-product-card__image-wrap {
-                aspect-ratio: 1 / 0.56 !important;
+                aspect-ratio: 1 / 0.68 !important;
                 padding: 0.34rem !important;
             }
 
@@ -82,7 +82,14 @@
 
                 .catalog-main .catalog-grid .catalog-product-card__image-wrap,
                 .catalog-main .catalog-grid--dense .catalog-product-card__image-wrap {
-                    aspect-ratio: 1 / 0.62 !important;
+                    aspect-ratio: 1 / 0.66 !important;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .catalog-main .catalog-grid .catalog-product-card__image-wrap,
+                .catalog-main .catalog-grid--dense .catalog-product-card__image-wrap {
+                    aspect-ratio: 1 / 0.64 !important;
                 }
             }
         </style>
