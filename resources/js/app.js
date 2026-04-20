@@ -1313,7 +1313,7 @@ const resolveCatalogCardSmartFit = (image) => {
     const centerX = analysis?.centerX ?? 0.5;
     const centerY = analysis?.centerY ?? 0.5;
 
-    const shouldPreserveFit = boxAspect <= 0.62 || coverage <= 0.15;
+    const shouldPreserveFit = boxAspect <= 0.42 && coverage <= 0.07;
     if (shouldPreserveFit) {
         applyCatalogCardPreserveFit(image);
         return;

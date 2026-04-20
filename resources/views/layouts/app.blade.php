@@ -42,6 +42,50 @@
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
+
+        <style id="catalog-card-image-hotfix-2026-04-20">
+            .catalog-main .catalog-grid .catalog-product-card__image-wrap,
+            .catalog-main .catalog-grid--dense .catalog-product-card__image-wrap {
+                aspect-ratio: 1 / 0.5 !important;
+                padding: 0.08rem !important;
+            }
+
+            .catalog-main .catalog-grid .catalog-product-card__image,
+            .catalog-main .catalog-grid--dense .catalog-product-card__image {
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: cover !important;
+                object-position: center center !important;
+                transform: scale(1.2) !important;
+            }
+
+            .catalog-main .catalog-grid .catalog-product-card__image.is-preserve-fit,
+            .catalog-main .catalog-grid .catalog-product-card__image.is-focus-cover,
+            .catalog-main .catalog-grid--dense .catalog-product-card__image.is-preserve-fit,
+            .catalog-main .catalog-grid--dense .catalog-product-card__image.is-focus-cover {
+                object-fit: cover !important;
+                transform: scale(1.2) !important;
+            }
+
+            @media (max-width: 1024px) {
+                .catalog-main .catalog-grid .catalog-product-card__image-wrap,
+                .catalog-main .catalog-grid--dense .catalog-product-card__image-wrap {
+                    aspect-ratio: 1 / 0.54 !important;
+                }
+            }
+
+            @media (max-width: 767px) {
+                .catalog-main .catalog-grid .catalog-product-card__image-wrap,
+                .catalog-main .catalog-grid--dense .catalog-product-card__image-wrap {
+                    aspect-ratio: 1 / 0.58 !important;
+                }
+
+                .catalog-main .catalog-grid .catalog-product-card__image,
+                .catalog-main .catalog-grid--dense .catalog-product-card__image {
+                    transform: scale(1.14) !important;
+                }
+            }
+        </style>
     </head>
     @php($isHome = request()->routeIs('catalog.index'))
     <body class="catalog-body {{ $isHome ? 'is-home' : 'is-inner' }}">
