@@ -1306,85 +1306,10 @@ const resolveCatalogCardSmartFit = (image) => {
         return;
     }
 
-    const analysis = computeCatalogCardImageAnalysis(image);
-    const fit = analysis?.fit;
-    const coverage = analysis?.coverage ?? 1;
-    const boxAspect = analysis?.boxAspect ?? 1;
-    const centerX = analysis?.centerX ?? 0.5;
-    const centerY = analysis?.centerY ?? 0.5;
-
-    const shouldPreserveFit = boxAspect <= 0.42 && coverage <= 0.07;
-    if (shouldPreserveFit) {
-        applyCatalogCardPreserveFit(image);
-        return;
-    }
-
-    clearCatalogCardPreserveFit(image);
-
-    const shouldUseFocusCover = coverage <= 0.68;
-
-    if (shouldUseFocusCover) {
-        applyCatalogCardFocusCoverValues(image, {
-            x: centerX * 100,
-            y: centerY * 100,
-        });
-        return;
-    }
-
-    clearCatalogCardFocusCover(image);
+    // Catalog cards should always show the source image fully without auto-cropping.
     clearCatalogCardSmartFit(image);
-
-    if (!fit) {
-        return;
-    }
-
-    const viewportWidth = typeof window !== 'undefined' ? (window.innerWidth || 1200) : 1200;
-    const isCompactViewport = viewportWidth <= 1024;
-
-    if (isCompactViewport) {
-        const isNarrowViewport = viewportWidth <= 768;
-        const compactScale = (fit.scale > 1 && coverage <= (isNarrowViewport ? 0.28 : 0.34))
-            ? clamp(
-                1 + ((fit.scale - 1) * (isNarrowViewport ? 0.32 : 0.46)),
-                1,
-                isNarrowViewport ? 1.05 : 1.09,
-            )
-            : 1;
-        const compactFit = {
-            shiftX: clamp(fit.shiftX, isNarrowViewport ? -5 : -6.5, isNarrowViewport ? 5 : 6.5),
-            shiftY: clamp(fit.shiftY, isNarrowViewport ? -5 : -6, isNarrowViewport ? 5 : 6),
-            scale: compactScale,
-        };
-
-        if (
-            compactFit.scale < (isNarrowViewport ? 1.03 : 1.025)
-            && Math.abs(compactFit.shiftX) < 1
-            && Math.abs(compactFit.shiftY) < 1
-        ) {
-            clearCatalogCardSmartFit(image);
-            return;
-        }
-
-        applyCatalogCardSmartFitValues(image, compactFit);
-        return;
-    }
-
-    const adjustedFit = {
-        shiftX: clamp(fit.shiftX, -8, 8),
-        shiftY: clamp(fit.shiftY, -6.5, 6.5),
-        scale: (fit.scale > 1 && coverage <= 0.38)
-            ? clamp(fit.scale, 1, 1.12)
-            : 1,
-    };
-
-    if (adjustedFit.scale < 1.025
-        && Math.abs(adjustedFit.shiftX) < 1
-        && Math.abs(adjustedFit.shiftY) < 1) {
-        clearCatalogCardSmartFit(image);
-        return;
-    }
-
-    applyCatalogCardSmartFitValues(image, adjustedFit);
+    clearCatalogCardFocusCover(image);
+    clearCatalogCardPreserveFit(image);
 };
 
 const setupCatalogCardImageModes = () => {
