@@ -3,7 +3,9 @@
 @section('title', 'Корзина - ПОТОЛКОВЫЧ')
 
 @section('content')
-    @php($isCashPayment = $selectedPaymentMethod === 'cash')
+    @php
+        $isCashPayment = $selectedPaymentMethod === 'cash';
+    @endphp
 
     <section class="surface-card reveal-card catalog-page-hero p-6 sm:p-8">
         <div class="catalog-page-head">
@@ -54,49 +56,51 @@
         <section class="catalog-cart-layout mt-6" data-cart-payment-scope>
             <div class="space-y-4">
                 @foreach ($cartItems as $cartItem)
-                    @php($product = $cartItem->product)
-                    @php($unitLabel = $product?->publicUnitLabel())
-                    @php($fallbackImageUrl = asset('brand/product-placeholder.png'))
-                    @php($basePrice = $cartItem->getAttribute('base_price'))
-                    @php($discountPrice = $cartItem->getAttribute('discount_price'))
-                    @php($baseUnitAmount = $cartItem->getAttribute('base_unit_amount'))
-                    @php($discountUnitAmount = $cartItem->getAttribute('discount_unit_amount'))
-                    @php($baseLineAmount = $cartItem->getAttribute('base_line_amount'))
-                    @php($discountLineAmount = $cartItem->getAttribute('discount_line_amount'))
-                    @php($hasDiscount = $baseUnitAmount !== null && $discountUnitAmount !== null && $baseUnitAmount > $discountUnitAmount)
-                    @php($minCartQuantity = $product?->cartQuantityMinimum() ?? 1)
-                    @php($stepCartQuantity = $product?->cartQuantityStep() ?? 1)
-                    @php($maxCartQuantity = $product?->cartQuantityMax() ?? 999)
-                    @php($safeCartQuantity = $product ? $product->normalizeCartQuantity((int) $cartItem->quantity) : (int) $cartItem->quantity)
-                    @php($unitsInPackageSummary = $product?->unitsInPackageSummary())
-                    @php($cartImageUrl = $product?->image_path ? asset($product->image_path) : $fallbackImageUrl)
-                    @php($cartItemPayload = [
-                        'itemId' => $cartItem->id,
-                        'productId' => $product?->id,
-                        'productUrl' => $product ? route('products.show', $product) : null,
-                        'title' => $product?->publicTitle() ?? 'Товар из каталога',
-                        'categoryName' => $product?->category?->name ?? 'Каталог',
-                        'vendorCode' => $product?->vendor_code,
-                        'unitLabel' => $unitLabel,
-                        'colorName' => $product?->color_name,
-                        'unitsInPackageSummary' => $unitsInPackageSummary,
-                        'imageUrl' => $cartImageUrl,
-                        'fallbackImageUrl' => $fallbackImageUrl,
-                        'quantity' => $safeCartQuantity,
-                        'minQuantity' => $minCartQuantity,
-                        'stepQuantity' => $stepCartQuantity,
-                        'maxQuantity' => $maxCartQuantity,
-                        'updateUrl' => route('cart.items.update', $cartItem),
-                        'destroyUrl' => route('cart.items.destroy', $cartItem),
-                        'csrfToken' => csrf_token(),
-                        'paymentMethod' => $selectedPaymentMethod,
-                        'pricing' => [
-                            'baseUnitAmount' => $baseUnitAmount,
-                            'discountUnitAmount' => $discountUnitAmount,
-                            'baseLineAmount' => $baseLineAmount,
-                            'discountLineAmount' => $discountLineAmount,
-                        ],
-                    ])
+                    @php
+                        $product = $cartItem->product;
+                        $unitLabel = $product?->publicUnitLabel();
+                        $fallbackImageUrl = asset('brand/product-placeholder.png');
+                        $basePrice = $cartItem->getAttribute('base_price');
+                        $discountPrice = $cartItem->getAttribute('discount_price');
+                        $baseUnitAmount = $cartItem->getAttribute('base_unit_amount');
+                        $discountUnitAmount = $cartItem->getAttribute('discount_unit_amount');
+                        $baseLineAmount = $cartItem->getAttribute('base_line_amount');
+                        $discountLineAmount = $cartItem->getAttribute('discount_line_amount');
+                        $hasDiscount = $baseUnitAmount !== null && $discountUnitAmount !== null && $baseUnitAmount > $discountUnitAmount;
+                        $minCartQuantity = $product?->cartQuantityMinimum() ?? 1;
+                        $stepCartQuantity = $product?->cartQuantityStep() ?? 1;
+                        $maxCartQuantity = $product?->cartQuantityMax() ?? 999;
+                        $safeCartQuantity = $product ? $product->normalizeCartQuantity((int) $cartItem->quantity) : (int) $cartItem->quantity;
+                        $unitsInPackageSummary = $product?->unitsInPackageSummary();
+                        $cartImageUrl = $product?->image_path ? asset($product->image_path) : $fallbackImageUrl;
+                        $cartItemPayload = [
+                            'itemId' => $cartItem->id,
+                            'productId' => $product?->id,
+                            'productUrl' => $product ? route('products.show', $product) : null,
+                            'title' => $product?->publicTitle() ?? 'Товар из каталога',
+                            'categoryName' => $product?->category?->name ?? 'Каталог',
+                            'vendorCode' => $product?->vendor_code,
+                            'unitLabel' => $unitLabel,
+                            'colorName' => $product?->color_name,
+                            'unitsInPackageSummary' => $unitsInPackageSummary,
+                            'imageUrl' => $cartImageUrl,
+                            'fallbackImageUrl' => $fallbackImageUrl,
+                            'quantity' => $safeCartQuantity,
+                            'minQuantity' => $minCartQuantity,
+                            'stepQuantity' => $stepCartQuantity,
+                            'maxQuantity' => $maxCartQuantity,
+                            'updateUrl' => route('cart.items.update', $cartItem),
+                            'destroyUrl' => route('cart.items.destroy', $cartItem),
+                            'csrfToken' => csrf_token(),
+                            'paymentMethod' => $selectedPaymentMethod,
+                            'pricing' => [
+                                'baseUnitAmount' => $baseUnitAmount,
+                                'discountUnitAmount' => $discountUnitAmount,
+                                'baseLineAmount' => $baseLineAmount,
+                                'discountLineAmount' => $discountLineAmount,
+                            ],
+                        ];
+                    @endphp
 
                     <article class="surface-card reveal-card p-5 sm:p-6" data-cart-item data-cart-item-id="{{ $cartItem->id }}">
                         <div
