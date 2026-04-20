@@ -44,9 +44,14 @@
         @endif
 
         <style id="catalog-card-image-contain-mode-2026-04-20">
+            .catalog-main .catalog-v2-feed-section .catalog-infinite-feed .catalog-grid {
+                grid-template-columns: repeat(auto-fill, minmax(min(100%, 332px), 1fr)) !important;
+                gap: clamp(0.9rem, 1.35vw, 1.35rem) !important;
+            }
+
             .catalog-main .catalog-grid .catalog-product-card__image-wrap,
             .catalog-main .catalog-grid--dense .catalog-product-card__image-wrap {
-                aspect-ratio: 1 / 0.62 !important;
+                aspect-ratio: 1 / 0.56 !important;
                 padding: 0.34rem !important;
             }
 
@@ -71,9 +76,13 @@
             }
 
             @media (max-width: 1024px) {
+                .catalog-main .catalog-v2-feed-section .catalog-infinite-feed .catalog-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                }
+
                 .catalog-main .catalog-grid .catalog-product-card__image-wrap,
                 .catalog-main .catalog-grid--dense .catalog-product-card__image-wrap {
-                    aspect-ratio: 1 / 0.64 !important;
+                    aspect-ratio: 1 / 0.62 !important;
                 }
             }
         </style>
