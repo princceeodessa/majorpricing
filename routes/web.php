@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
     Route::patch('/account', [AccountController::class, 'update'])->name('account.update');
     Route::post('/account/support/messages', [SupportMessageController::class, 'storeForClient'])->name('account.support.messages.store');
+    Route::post('/account/support/messages/read', [SupportMessageController::class, 'markThreadReadForClient'])->name('account.support.messages.read');
     Route::post('/account/addresses', [UserAddressController::class, 'store'])->name('account.addresses.store');
     Route::patch('/account/addresses/{userAddress}/default', [UserAddressController::class, 'makeDefault'])->name('account.addresses.default');
     Route::delete('/account/addresses/{userAddress}', [UserAddressController::class, 'destroy'])->name('account.addresses.destroy');

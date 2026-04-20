@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SupportMessage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -20,7 +21,7 @@ class SupportMessageController extends Controller
 
         abort_unless($client->manager?->canManageClients(), 403);
 
-        SupportMessage::query()->create([
+        $message = SupportMessage::query()->create([
             'client_id' => $client->id,
             'manager_id' => $client->manager_id,
             'sender_id' => $client->id,
@@ -30,7 +31,8 @@ class SupportMessageController extends Controller
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'message' => 'Сообщение менеджеру отправлено.',
-                'sentAt' => now()->format('d.m.Y H:i'),
+                'sentAt' => $message->created_at?->format('d.m.Y H:i') ?? now()->format('d.m.Y H:i'),
+                'readAt' => $message->read_at?->toIso8601String(),
             ]);
         }
 
@@ -72,5 +74,26 @@ class SupportMessageController extends Controller
             ->route('account.show')
             ->with('status', 'Ответ клиенту отправлен.');
     }
-}
 
+    public function markThreadReadForClient(Request $request): JsonResponse
+    {
+        $client = $request->user();
+
+        abort_if($client->canManageClients(), 403);
+
+        $readAt = now();
+
+        $updated = SupportMessage::query()
+            ->where('client_id', $client->id)
+            ->where('sender_id', '!=', $client->id)
+            ->whereNull('read_at')
+            ->update([
+                'read_at' => $readAt,
+            ]);
+
+        return response()->json([
+            'updated' => $updated,
+            'readAt' => $readAt->toIso8601String(),
+        ]);
+    }
+}

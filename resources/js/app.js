@@ -3485,9 +3485,50 @@ const setupSupportWidget = () => {
 
     const dialog = widget.querySelector('[role="dialog"]');
     const body = widget.querySelector('[data-support-widget-body]');
+    const form = widget.querySelector('[data-support-widget-form]') ?? widget.querySelector('form');
     const textarea = widget.querySelector('textarea[name="message"]');
+    const readUrl = widget.dataset.supportWidgetReadUrl ?? '';
+    const csrfToken = form instanceof HTMLFormElement
+        ? (form.querySelector('input[name="_token"]')?.value ?? '')
+        : '';
     const openButtons = Array.from(document.querySelectorAll('[data-support-widget-open]'));
     const closeButtons = Array.from(widget.querySelectorAll('[data-support-widget-close]'));
+    const submitButton = form instanceof HTMLFormElement
+        ? form.querySelector('[data-support-widget-submit]') ?? form.querySelector('button[type="submit"]')
+        : null;
+    const feedback = form instanceof HTMLFormElement
+        ? form.querySelector('[data-support-widget-feedback]')
+        : null;
+    const baseFeedbackText = feedback instanceof HTMLElement
+        ? feedback.textContent?.trim() ?? ''
+        : '';
+    let lastOpenTrigger = null;
+    let isSubmitting = false;
+    let isMarkingRead = false;
+
+    const setWidgetOpenState = (open) => {
+        document.body.classList.toggle('catalog-support-widget-open', open);
+        document.documentElement.classList.toggle('catalog-support-widget-open', open);
+    };
+
+    const setSubmittingState = (submitting) => {
+        if (!(submitButton instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        submitButton.disabled = submitting;
+        submitButton.classList.toggle('is-loading', submitting);
+    };
+
+    const setFeedbackText = (text, isError = false) => {
+        if (!(feedback instanceof HTMLElement)) {
+            return;
+        }
+
+        feedback.textContent = `${text ?? ''}`.trim();
+        feedback.classList.toggle('catalog-support-widget__error', isError);
+        feedback.classList.toggle('catalog-support-widget__hint', !isError);
+    };
 
     const syncBodyScroll = () => {
         if (body instanceof HTMLElement) {
@@ -3495,9 +3536,39 @@ const setupSupportWidget = () => {
         }
     };
 
-    const openWidget = () => {
+    const markThreadRead = async () => {
+        if (readUrl.trim() === '' || csrfToken.trim() === '' || isMarkingRead) {
+            return;
+        }
+
+        isMarkingRead = true;
+
+        try {
+            await fetch(readUrl, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'same-origin',
+            });
+        } catch (error) {
+            // Ignore receipt transport failures.
+        } finally {
+            isMarkingRead = false;
+        }
+    };
+
+    const openWidget = (trigger = null) => {
+        if (trigger instanceof HTMLElement) {
+            lastOpenTrigger = trigger;
+        }
+
         widget.classList.remove('hidden');
+        setWidgetOpenState(true);
         syncBodyScroll();
+        void markThreadRead();
 
         window.setTimeout(() => {
             if (textarea instanceof HTMLTextAreaElement) {
@@ -3509,12 +3580,29 @@ const setupSupportWidget = () => {
     };
 
     const closeWidget = () => {
+        if (widget.classList.contains('hidden')) {
+            return;
+        }
+
         widget.classList.add('hidden');
+        setWidgetOpenState(false);
+        isSubmitting = false;
+        setSubmittingState(false);
+
+        if (baseFeedbackText !== '') {
+            setFeedbackText(baseFeedbackText, false);
+        }
+
+        window.setTimeout(() => {
+            if (lastOpenTrigger instanceof HTMLElement && document.contains(lastOpenTrigger)) {
+                lastOpenTrigger.focus({ preventScroll: true });
+            }
+        }, 30);
     };
 
     openButtons.forEach((button) => {
         button.addEventListener('click', () => {
-            openWidget();
+            openWidget(button);
         });
     });
 
@@ -3540,8 +3628,23 @@ const setupSupportWidget = () => {
         }
     });
 
-    const form = widget.querySelector('form');
-    const submitButton = form?.querySelector('button[type="submit"]');
+    if (textarea instanceof HTMLTextAreaElement && form instanceof HTMLFormElement) {
+        textarea.addEventListener('keydown', (event) => {
+            const hasSubmitHotkey = event.key === 'Enter' && (event.ctrlKey || event.metaKey);
+
+            if (!hasSubmitHotkey) {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+            } else {
+                form.dispatchEvent(new Event('submit', { cancelable: true }));
+            }
+        });
+    }
 
     if (form instanceof HTMLFormElement) {
         form.addEventListener('submit', async (event) => {
@@ -3556,9 +3659,13 @@ const setupSupportWidget = () => {
                 return;
             }
 
-            if (submitButton instanceof HTMLButtonElement) {
-                submitButton.disabled = true;
+            if (isSubmitting) {
+                return;
             }
+
+            isSubmitting = true;
+            setSubmittingState(true);
+            setFeedbackText('Отправляем сообщение...', false);
 
             const formData = new FormData(form);
 
@@ -3589,7 +3696,10 @@ const setupSupportWidget = () => {
                             <p>${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
                             <footer>
                                 <span>Вы</span>
-                                <time>${payload.sentAt || ''}</time>
+                                <span class="catalog-message-meta">
+                                    <time>${payload.sentAt || ''}</time>
+                                    <span class="catalog-message-checks" title="Отправлено" aria-label="Отправлено">✓</span>
+                                </span>
                             </footer>
                         </div>
                     `;
@@ -3601,22 +3711,23 @@ const setupSupportWidget = () => {
                 }
 
                 textarea.value = '';
+                setFeedbackText('Сообщение отправлено. Менеджер увидит его в чате.', false);
             } catch (error) {
                 pushToast('Ошибка', 'Сообщение не отправлено. Попробуйте еще раз.');
+                setFeedbackText('Ошибка отправки. Проверьте сеть и попробуйте еще раз.', true);
             } finally {
-                if (submitButton instanceof HTMLButtonElement) {
-                    submitButton.disabled = false;
-                }
+                isSubmitting = false;
+                setSubmittingState(false);
             }
         });
     }
+
     if (widget.dataset.supportWidgetDefaultOpen === '1') {
         openWidget();
     } else {
         syncBodyScroll();
     }
 };
-
 const formatRubles = (amount) => {
     const value = Number.parseFloat(`${amount ?? ''}`);
 

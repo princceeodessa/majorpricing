@@ -29,10 +29,26 @@ class ManagerChatController extends Controller
             abort(404);
         }
 
+        $messages = collect();
+
+        if ($activeClient) {
+            $activeClient->supportMessages()
+                ->where('sender_id', '!=', $manager->id)
+                ->whereNull('read_at')
+                ->update([
+                    'read_at' => now(),
+                ]);
+
+            $activeClient->unsetRelation('supportMessages');
+            $activeClient->load(['supportMessages.sender']);
+
+            $messages = $activeClient->supportMessages;
+        }
+
         return view('manager.chats.index', [
             'clients' => $clients,
             'activeClient' => $activeClient,
-            'messages' => $activeClient?->supportMessages ?? collect(),
+            'messages' => $messages,
         ]);
     }
 }

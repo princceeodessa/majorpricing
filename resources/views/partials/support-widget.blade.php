@@ -28,6 +28,7 @@
         class="catalog-support-widget hidden"
         data-support-widget
         data-support-widget-default-open="{{ $widgetShouldOpen }}"
+        data-support-widget-read-url="{{ route('account.support.messages.read') }}"
     >
         <div class="catalog-support-widget__backdrop" data-support-widget-close></div>
 
@@ -58,12 +59,24 @@
 
             <div class="catalog-support-widget__body" data-support-widget-body>
                 @forelse ($threadMessages as $threadMessage)
-                    <article class="catalog-support-widget__message {{ $threadMessage->sender_id === auth()->id() ? 'is-own' : 'is-peer' }}">
+                    @php($isOwnMessage = (int) $threadMessage->sender_id === (int) auth()->id())
+                    <article class="catalog-support-widget__message {{ $isOwnMessage ? 'is-own' : 'is-peer' }}">
                         <div class="catalog-support-widget__bubble">
                             <p>{{ $threadMessage->message }}</p>
                             <footer>
-                                <span>{{ $threadMessage->sender_id === auth()->id() ? 'Вы' : $managerName }}</span>
-                                <time datetime="{{ $threadMessage->created_at?->toIso8601String() }}">{{ $threadMessage->created_at?->format('d.m.Y H:i') }}</time>
+                                <span>{{ $isOwnMessage ? 'Вы' : $managerName }}</span>
+                                <span class="catalog-message-meta">
+                                    <time datetime="{{ $threadMessage->created_at?->toIso8601String() }}">{{ $threadMessage->created_at?->format('d.m.Y H:i') }}</time>
+                                    @if ($isOwnMessage)
+                                        <span
+                                            class="catalog-message-checks {{ $threadMessage->read_at ? 'is-read' : '' }}"
+                                            title="{{ $threadMessage->read_at ? 'Прочитано' : 'Отправлено' }}"
+                                            aria-label="{{ $threadMessage->read_at ? 'Прочитано' : 'Отправлено' }}"
+                                        >
+                                            {{ $threadMessage->read_at ? '✓✓' : '✓' }}
+                                        </span>
+                                    @endif
+                                </span>
                             </footer>
                         </div>
                     </article>
@@ -74,7 +87,12 @@
                 @endforelse
             </div>
 
-            <form action="{{ route('account.support.messages.store') }}" method="POST" class="catalog-support-widget__form">
+            <form
+                action="{{ route('account.support.messages.store') }}"
+                method="POST"
+                class="catalog-support-widget__form"
+                data-support-widget-form
+            >
                 @csrf
                 <label class="sr-only" for="support-widget-message">Сообщение менеджеру</label>
                 <textarea
@@ -86,12 +104,15 @@
 
                 <div class="catalog-support-widget__form-footer">
                     @error('message')
-                        <p class="catalog-support-widget__error">{{ $message }}</p>
+                        <p class="catalog-support-widget__error" data-support-widget-feedback>{{ $message }}</p>
                     @else
-                        <p class="catalog-support-widget__hint">Ответ придет в этот чат и будет виден менеджеру в его рабочем окне.</p>
+                        <p class="catalog-support-widget__hint" data-support-widget-feedback>Ответ придет в этот чат и будет виден менеджеру в его рабочем окне.</p>
                     @enderror
 
-                    <button type="submit" class="catalog-support-widget__submit">Отправить</button>
+                    <button type="submit" class="catalog-support-widget__submit" data-support-widget-submit>
+                        <span class="catalog-support-widget__submit-label">Отправить</span>
+                        <span class="catalog-support-widget__submit-loader" aria-hidden="true"></span>
+                    </button>
                 </div>
             </form>
         </section>

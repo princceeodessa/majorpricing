@@ -73,9 +73,20 @@
                                 <p>{{ $message->message }}</p>
                                 <footer>
                                     <span>{{ $isOwn ? 'Вы' : ($message->sender?->name ?? $activeClient->name) }}</span>
-                                    <time datetime="{{ $message->created_at?->toIso8601String() }}">
-                                        {{ $message->created_at?->format('d.m.Y H:i') }}
-                                    </time>
+                                    <span class="catalog-message-meta">
+                                        <time datetime="{{ $message->created_at?->toIso8601String() }}">
+                                            {{ $message->created_at?->format('d.m.Y H:i') }}
+                                        </time>
+                                        @if ($isOwn)
+                                            <span
+                                                class="catalog-message-checks {{ $message->read_at ? 'is-read' : '' }}"
+                                                title="{{ $message->read_at ? 'Прочитано' : 'Отправлено' }}"
+                                                aria-label="{{ $message->read_at ? 'Прочитано' : 'Отправлено' }}"
+                                            >
+                                                {{ $message->read_at ? '✓✓' : '✓' }}
+                                            </span>
+                                        @endif
+                                    </span>
                                 </footer>
                             </article>
                         @empty
