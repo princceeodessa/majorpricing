@@ -530,6 +530,28 @@
     color: rgba(255, 255, 255, 0.72);
 }
 
+.catalog-message-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+}
+
+.catalog-message-checks {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0.95rem;
+    font-size: 0.78rem;
+    line-height: 1;
+    letter-spacing: -0.06em;
+    color: #93a0b2;
+    user-select: none;
+}
+
+.catalog-message-checks.is-read {
+    color: #3b82f6;
+}
+
 .catalog-support-form {
     display: grid;
     gap: 0.9rem;
@@ -11816,17 +11838,18 @@ html {
 
 html.catalog-support-widget-open,
 body.catalog-support-widget-open {
-    overflow: hidden;
+    overflow: auto;
 }
 
 body.catalog-support-widget-open {
-    overscroll-behavior: contain;
+    overscroll-behavior: auto;
+    touch-action: auto;
 }
 
 .catalog-support-widget__backdrop {
     background: rgba(10, 20, 36, 0.44);
     backdrop-filter: blur(4px) saturate(1.02);
-    pointer-events: auto;
+    pointer-events: none;
 }
 
 .catalog-support-widget__dialog {
