@@ -1142,8 +1142,8 @@ const computeCatalogCardImageAnalysis = (image, cacheKey) => {
     const shiftX = clamp((0.5 - centerX) * 100, -14, 14);
     const shiftY = clamp((0.5 - centerY) * 100, -11, 11);
 
-    const needsShift = Math.abs(shiftX) >= 1.15 || Math.abs(shiftY) >= 1.15;
-    const needsScale = candidateScale >= 1.05 && coverage <= 0.62;
+    const needsShift = Math.abs(shiftX) >= 1.35 || Math.abs(shiftY) >= 1.35;
+    const needsScale = candidateScale >= 1.09 && coverage <= 0.4;
     const fit = (!needsShift && !needsScale)
         ? null
         : {
@@ -1236,6 +1236,7 @@ const resolveCatalogCardSmartFit = (image) => {
 
     const analysis = computeCatalogCardImageAnalysis(image);
     const fit = analysis?.fit;
+    const coverage = analysis?.coverage ?? 1;
 
     if (!fit) {
         clearCatalogCardSmartFit(image);
@@ -1247,23 +1248,23 @@ const resolveCatalogCardSmartFit = (image) => {
 
     if (isCompactViewport) {
         const isNarrowViewport = viewportWidth <= 768;
-        const compactScale = fit.scale > 1
+        const compactScale = (fit.scale > 1 && coverage <= (isNarrowViewport ? 0.28 : 0.34))
             ? clamp(
-                1 + ((fit.scale - 1) * (isNarrowViewport ? 0.45 : 0.62)),
+                1 + ((fit.scale - 1) * (isNarrowViewport ? 0.32 : 0.46)),
                 1,
-                isNarrowViewport ? 1.1 : 1.16,
+                isNarrowViewport ? 1.05 : 1.09,
             )
             : 1;
         const compactFit = {
-            shiftX: clamp(fit.shiftX, isNarrowViewport ? -7 : -9, isNarrowViewport ? 7 : 9),
-            shiftY: clamp(fit.shiftY, isNarrowViewport ? -7 : -8, isNarrowViewport ? 7 : 8),
+            shiftX: clamp(fit.shiftX, isNarrowViewport ? -5 : -6.5, isNarrowViewport ? 5 : 6.5),
+            shiftY: clamp(fit.shiftY, isNarrowViewport ? -5 : -6, isNarrowViewport ? 5 : 6),
             scale: compactScale,
         };
 
         if (
-            compactFit.scale < (isNarrowViewport ? 1.04 : 1.03)
-            && Math.abs(compactFit.shiftX) < 0.8
-            && Math.abs(compactFit.shiftY) < 0.8
+            compactFit.scale < (isNarrowViewport ? 1.03 : 1.025)
+            && Math.abs(compactFit.shiftX) < 1
+            && Math.abs(compactFit.shiftY) < 1
         ) {
             clearCatalogCardSmartFit(image);
             return;
@@ -1274,14 +1275,16 @@ const resolveCatalogCardSmartFit = (image) => {
     }
 
     const adjustedFit = {
-        shiftX: clamp(fit.shiftX, -11, 11),
-        shiftY: clamp(fit.shiftY, -8, 8),
-        scale: clamp(fit.scale, 1, 1.26),
+        shiftX: clamp(fit.shiftX, -8, 8),
+        shiftY: clamp(fit.shiftY, -6.5, 6.5),
+        scale: (fit.scale > 1 && coverage <= 0.38)
+            ? clamp(fit.scale, 1, 1.12)
+            : 1,
     };
 
-    if (adjustedFit.scale < 1.03
-        && Math.abs(adjustedFit.shiftX) < 0.85
-        && Math.abs(adjustedFit.shiftY) < 0.85) {
+    if (adjustedFit.scale < 1.025
+        && Math.abs(adjustedFit.shiftX) < 1
+        && Math.abs(adjustedFit.shiftY) < 1) {
         clearCatalogCardSmartFit(image);
         return;
     }
