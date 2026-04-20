@@ -10174,6 +10174,20 @@ html {
     max-height: 98% !important;
 }
 
+.catalog-product-card__image-wrap.has-focus-cover {
+    padding: 0.12rem !important;
+}
+
+.catalog-product-card__image-wrap > .catalog-product-card__image.is-focus-cover {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    object-position: var(--card-img-focus-x, 50%) var(--card-img-focus-y, 50%) !important;
+    transform: none !important;
+}
+
 .catalog-product-card__image-wrap > .catalog-product-card__mark {
     position: relative;
     z-index: 1;

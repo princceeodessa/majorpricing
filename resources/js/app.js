@@ -1005,11 +1005,49 @@ const clearCatalogCardSmartFit = (image) => {
     image.style.removeProperty('--card-img-scale');
 };
 
+const clearCatalogCardFocusCover = (image) => {
+    if (!(image instanceof HTMLImageElement)) {
+        return;
+    }
+
+    image.classList.remove('is-focus-cover');
+    image.style.removeProperty('--card-img-focus-x');
+    image.style.removeProperty('--card-img-focus-y');
+
+    const wrap = image.closest('.catalog-product-card__image-wrap');
+    if (wrap instanceof HTMLElement) {
+        wrap.classList.remove('has-focus-cover');
+    }
+};
+
+const applyCatalogCardFocusCoverValues = (image, focus) => {
+    if (!(image instanceof HTMLImageElement) || !focus) {
+        clearCatalogCardFocusCover(image);
+        return;
+    }
+
+    clearCatalogCardSmartFit(image);
+
+    const x = clamp(Number(focus.x ?? 50), 10, 90);
+    const y = clamp(Number(focus.y ?? 50), 12, 88);
+
+    image.classList.add('is-focus-cover');
+    image.style.setProperty('--card-img-focus-x', `${x.toFixed(2)}%`);
+    image.style.setProperty('--card-img-focus-y', `${y.toFixed(2)}%`);
+
+    const wrap = image.closest('.catalog-product-card__image-wrap');
+    if (wrap instanceof HTMLElement) {
+        wrap.classList.add('has-focus-cover');
+    }
+};
+
 const applyCatalogCardSmartFitValues = (image, fit) => {
     if (!fit) {
         clearCatalogCardSmartFit(image);
         return;
     }
+
+    clearCatalogCardFocusCover(image);
 
     image.classList.add('is-smart-fit');
     image.style.setProperty('--card-img-shift-x', `${fit.shiftX.toFixed(2)}%`);
@@ -1159,6 +1197,11 @@ const computeCatalogCardImageAnalysis = (image, cacheKey) => {
         coverage,
         density,
         score,
+        boxWidth,
+        boxHeight,
+        centerX,
+        centerY,
+        boxAspect: boxWidthPx / Math.max(1, boxHeightPx),
     };
 
     catalogCardImageAnalysisCache.set(src, analysis);
@@ -1237,6 +1280,21 @@ const resolveCatalogCardSmartFit = (image) => {
     const analysis = computeCatalogCardImageAnalysis(image);
     const fit = analysis?.fit;
     const coverage = analysis?.coverage ?? 1;
+    const boxAspect = analysis?.boxAspect ?? 1;
+    const centerX = analysis?.centerX ?? 0.5;
+    const centerY = analysis?.centerY ?? 0.5;
+
+    const shouldUseFocusCover = coverage <= 0.58 && boxAspect >= 1.35;
+
+    if (shouldUseFocusCover) {
+        applyCatalogCardFocusCoverValues(image, {
+            x: centerX * 100,
+            y: centerY * 100,
+        });
+        return;
+    }
+
+    clearCatalogCardFocusCover(image);
 
     if (!fit) {
         clearCatalogCardSmartFit(image);
