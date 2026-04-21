@@ -126,6 +126,23 @@
                 data-destroy-url="{{ route('cart.product.destroy', $product) }}"
                 data-csrf-token="{{ csrf_token() }}"
             >
+                @if ($unitsInPackageSummary || filled($product->color_name))
+                    <div class="catalog-product-card__traits">
+                        @if ($unitsInPackageSummary)
+                            <p class="catalog-product-card__trait">
+                                <span>Упаковка</span>
+                                <strong>{{ $unitsInPackageSummary }}</strong>
+                            </p>
+                        @endif
+                        @if (filled($product->color_name))
+                            <p class="catalog-product-card__trait">
+                                <span>Цвет</span>
+                                <strong>{{ $product->color_name }}</strong>
+                            </p>
+                        @endif
+                    </div>
+                @endif
+
                 <div class="{{ $cartQuantity > 0 ? 'hidden' : '' }}" data-cart-add-state>
                     <button type="button" class="catalog-product-card__cta" data-cart-add>В корзину</button>
                 </div>
@@ -147,24 +164,6 @@
                     >
                     <button type="button" class="catalog-product-card__stepper-btn" data-cart-inc aria-label="Увеличить количество">+</button>
                 </div>
-
-                @if ($unitsInPackageSummary || filled($product->color_name))
-                    <div class="catalog-product-card__traits">
-                        @if ($unitsInPackageSummary)
-                            <p class="catalog-product-card__trait">
-                                <span>Упаковка</span>
-                                <strong>{{ $unitsInPackageSummary }}</strong>
-                            </p>
-                        @endif
-
-                        @if (filled($product->color_name))
-                            <p class="catalog-product-card__trait">
-                                <span>Цвет</span>
-                                <strong>{{ $product->color_name }}</strong>
-                            </p>
-                        @endif
-                    </div>
-                @endif
             </div>
         </div>
     </div>
