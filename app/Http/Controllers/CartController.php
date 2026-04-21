@@ -122,7 +122,7 @@ class CartController extends Controller
             'quantity' => $normalizedQuantity,
         ]);
 
-        if ($request->expectsJson() || $request->ajax()) {
+        if ($this->shouldReturnJson($request)) {
             $paymentMethod = $this->normalizePaymentMethod($request->input('payment_method'));
             [$cartItems, $summary] = $this->resolveCartState($request->user(), $paymentMethod);
 
@@ -153,7 +153,7 @@ class CartController extends Controller
         $deletedItemId = $cartItem->id;
         $cartItem->delete();
 
-        if ($request->expectsJson() || $request->ajax()) {
+        if ($this->shouldReturnJson($request)) {
             $paymentMethod = $this->normalizePaymentMethod($request->input('payment_method'));
             [$cartItems, $summary] = $this->resolveCartState($request->user(), $paymentMethod);
             $cartCount = (int) $cartItems->sum('quantity');
@@ -359,7 +359,7 @@ class CartController extends Controller
             ->where('user_id', $request->user()->id)
             ->sum('quantity');
 
-        if ($request->expectsJson() || $request->ajax()) {
+        if ($this->shouldReturnJson($request)) {
             return response()->json([
                 'productId' => $product->id,
                 'quantity' => $quantity,
@@ -369,6 +369,17 @@ class CartController extends Controller
         }
 
         return back()->with('status', $message);
+    }
+
+    private function shouldReturnJson(Request $request): bool
+    {
+        if ($request->expectsJson() || $request->ajax()) {
+            return true;
+        }
+
+        $responseFormat = $request->input('_response_format', $request->query('_response_format'));
+
+        return is_string($responseFormat) && mb_strtolower(trim($responseFormat)) === 'json';
     }
 }
 

@@ -572,6 +572,38 @@ const normalizeCartQuantity = (value, fallback = 1, constraints = resolveQuantit
     return normalizeQuantityByConstraints(value, fallback, constraints);
 };
 
+const submitFallbackPost = (url, entries = []) => {
+    if (
+        typeof document === 'undefined'
+        || typeof url !== 'string'
+        || url.trim() === ''
+    ) {
+        return false;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    form.style.display = 'none';
+
+    entries.forEach(([name, value]) => {
+        if (typeof name !== 'string' || name === '' || typeof value !== 'string') {
+            return;
+        }
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.append(input);
+    });
+
+    document.body.append(form);
+    form.submit();
+
+    return true;
+};
+
 const syncSingleCartControl = (control, quantity) => {
     if (!(control instanceof HTMLElement)) {
         return;
@@ -654,6 +686,8 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
         body.append('_token', token);
     }
 
+    body.append('_response_format', 'json');
+
     let url = '';
 
     if (resolvedNextQuantity <= 0) {
@@ -671,6 +705,13 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
     if (!url) {
         return;
     }
+
+    const fallbackEntries = [];
+    body.forEach((entryValue, entryName) => {
+        if (typeof entryValue === 'string') {
+            fallbackEntries.push([entryName, entryValue]);
+        }
+    });
 
     control.dataset.loading = '1';
     control.classList.add('is-loading');
@@ -701,6 +742,16 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
         }
 
         if (!response.ok) {
+            if (
+                response.status >= 500
+                || response.status === 404
+                || response.status === 405
+            ) {
+                if (submitFallbackPost(url, fallbackEntries)) {
+                    return;
+                }
+            }
+
             throw new Error('Cart control failed');
         }
 
@@ -713,7 +764,9 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
                 return;
             }
 
-            throw new Error('Cart control response is not JSON');
+            window.location.reload();
+
+            return;
         }
 
         const payload = await response.json();
@@ -731,11 +784,16 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
 
         syncCartControls(payloadProductId, payloadQuantity, payloadCartCount);
     } catch (error) {
-        syncSingleCartControl(control, currentQuantity);
-
         const isTimeoutAbort = typeof DOMException !== 'undefined'
             && error instanceof DOMException
             && error.name === 'AbortError';
+        const isNetworkFailure = error instanceof TypeError;
+
+        if ((isTimeoutAbort || isNetworkFailure) && submitFallbackPost(url, fallbackEntries)) {
+            return;
+        }
+
+        syncSingleCartControl(control, currentQuantity);
         pushToast(
             'Ошибка',
             isTimeoutAbort
@@ -1747,6 +1805,8 @@ const mountVueCatalogCartControls = (scope = document) => {
                         body.append('_token', this.csrfToken);
                     }
 
+                    body.append('_response_format', 'json');
+
                     let url = '';
 
                     if (resolvedNextQuantity <= 0) {
@@ -1764,6 +1824,13 @@ const mountVueCatalogCartControls = (scope = document) => {
                     if (!url) {
                         return;
                     }
+
+                    const fallbackEntries = [];
+                    body.forEach((entryValue, entryName) => {
+                        if (typeof entryValue === 'string') {
+                            fallbackEntries.push([entryName, entryValue]);
+                        }
+                    });
 
                     this.isLoading = true;
                     this.pendingQuantity = null;
@@ -1797,6 +1864,16 @@ const mountVueCatalogCartControls = (scope = document) => {
                         }
 
                         if (!response.ok) {
+                            if (
+                                response.status >= 500
+                                || response.status === 404
+                                || response.status === 405
+                            ) {
+                                if (submitFallbackPost(url, fallbackEntries)) {
+                                    return;
+                                }
+                            }
+
                             throw new Error('Vue cart control failed');
                         }
 
@@ -1808,7 +1885,8 @@ const mountVueCatalogCartControls = (scope = document) => {
                                 return;
                             }
 
-                            throw new Error('Vue cart response is not JSON');
+                            window.location.reload();
+                            return;
                         }
 
                         const payload = await response.json();
@@ -1826,11 +1904,17 @@ const mountVueCatalogCartControls = (scope = document) => {
 
                         syncCartControls(payloadProductId, payloadQuantity, payloadCartCount);
                     } catch (error) {
-                        this.syncLocalQuantity(currentQuantity);
-
                         const isTimeoutAbort = typeof DOMException !== 'undefined'
                             && error instanceof DOMException
                             && error.name === 'AbortError';
+                        const isNetworkFailure = error instanceof TypeError;
+
+                        if ((isTimeoutAbort || isNetworkFailure) && submitFallbackPost(url, fallbackEntries)) {
+                            return;
+                        }
+
+                        this.syncLocalQuantity(currentQuantity);
+
                         pushToast(
                             'Ошибка',
                             isTimeoutAbort
