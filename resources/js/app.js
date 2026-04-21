@@ -742,14 +742,8 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
         }
 
         if (!response.ok) {
-            if (
-                response.status >= 500
-                || response.status === 404
-                || response.status === 405
-            ) {
-                if (submitFallbackPost(url, fallbackEntries)) {
-                    return;
-                }
+            if (submitFallbackPost(url, fallbackEntries)) {
+                return;
             }
 
             throw new Error('Cart control failed');
@@ -761,6 +755,10 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
             if (response.redirected && response.url) {
                 window.location.assign(response.url);
 
+                return;
+            }
+
+            if (submitFallbackPost(url, fallbackEntries)) {
                 return;
             }
 
@@ -787,9 +785,7 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
         const isTimeoutAbort = typeof DOMException !== 'undefined'
             && error instanceof DOMException
             && error.name === 'AbortError';
-        const isNetworkFailure = error instanceof TypeError;
-
-        if ((isTimeoutAbort || isNetworkFailure) && submitFallbackPost(url, fallbackEntries)) {
+        if (submitFallbackPost(url, fallbackEntries)) {
             return;
         }
 
@@ -1864,14 +1860,8 @@ const mountVueCatalogCartControls = (scope = document) => {
                         }
 
                         if (!response.ok) {
-                            if (
-                                response.status >= 500
-                                || response.status === 404
-                                || response.status === 405
-                            ) {
-                                if (submitFallbackPost(url, fallbackEntries)) {
-                                    return;
-                                }
+                            if (submitFallbackPost(url, fallbackEntries)) {
+                                return;
                             }
 
                             throw new Error('Vue cart control failed');
@@ -1882,6 +1872,10 @@ const mountVueCatalogCartControls = (scope = document) => {
                         if (!responseContentType.includes('application/json')) {
                             if (response.redirected && response.url) {
                                 window.location.assign(response.url);
+                                return;
+                            }
+
+                            if (submitFallbackPost(url, fallbackEntries)) {
                                 return;
                             }
 
@@ -1907,9 +1901,7 @@ const mountVueCatalogCartControls = (scope = document) => {
                         const isTimeoutAbort = typeof DOMException !== 'undefined'
                             && error instanceof DOMException
                             && error.name === 'AbortError';
-                        const isNetworkFailure = error instanceof TypeError;
-
-                        if ((isTimeoutAbort || isNetworkFailure) && submitFallbackPost(url, fallbackEntries)) {
+                        if (submitFallbackPost(url, fallbackEntries)) {
                             return;
                         }
 
