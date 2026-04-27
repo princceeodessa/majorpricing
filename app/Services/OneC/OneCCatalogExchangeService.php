@@ -216,6 +216,7 @@ class OneCCatalogExchangeService
             $colorName = $this->resolveProductColor($xpath, $productNode, $propertyValues);
             $minimumSaleQuantity = $this->resolveProductMinimumSaleQuantity($xpath, $productNode, $propertyValues);
             $unitsInPackage = $this->resolveProductUnitsInPackage($xpath, $productNode, $propertyValues);
+            $description = $this->resolveProductDescription($xpath, $productNode, $propertyValues);
 
             $product = $this->resolveProductForSync(
                 oneCId: $oneCId,
@@ -255,7 +256,7 @@ class OneCCatalogExchangeService
                 'measurement_value' => $unitLabel ?: $product->measurement_value,
                 'minimum_sale_quantity' => $minimumSaleQuantity ?? $product->minimum_sale_quantity,
                 'units_in_package' => $unitsInPackage ?? $product->units_in_package,
-                'description' => $this->firstChildValue($xpath, $productNode, ['Описание', 'Р С›Р С—Р С‘РЎРѓР В°Р Р…Р С‘Р Вµ']),
+                'description' => $description,
                 'source_sheet' => $isNewProduct ? '1C' : $product->source_sheet,
                 'source_row' => $isNewProduct ? null : $product->source_row,
                 'sort_order' => $index,
@@ -611,6 +612,23 @@ class OneCCatalogExchangeService
         ]);
 
         return $this->normalizePositiveDecimal($value);
+    }
+
+    /**
+     * @param  array<string, string>  $propertyValues
+     */
+    private function resolveProductDescription(DOMXPath $xpath, DOMElement $productNode, array $propertyValues = []): ?string
+    {
+        return $this->firstFilled([
+            $this->propertyValue($propertyValues, ['Описание']),
+            $this->requisiteValue($xpath, $productNode, ['Описание']),
+            $this->propertyValueByNameFragments($propertyValues, [
+                ['Описание'],
+            ]),
+            $this->requisiteValueByNameFragments($xpath, $productNode, [
+                ['Описание'],
+            ]),
+        ]);
     }
 
     private function resolveCategoryForSync(string $name, string $oneCId, ?Category $parent): Category

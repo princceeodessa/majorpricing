@@ -92,6 +92,9 @@
             <p class="catalog-product-card__meta catalog-product-card__meta--{{ $availabilityTone }}">
                 {{ $availabilityLabel }}
             </p>
+            @if (filled($product->description))
+                <p class="catalog-product-card__description">{{ \Illuminate\Support\Str::limit($product->description, 132) }}</p>
+            @endif
         </div>
 
         <div class="catalog-product-card__footer">

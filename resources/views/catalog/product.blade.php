@@ -111,6 +111,10 @@
                     <p class="catalog-product-copy__subtitle">{{ $category->name }}</p>
                 @endif
 
+                @if (filled($product->description))
+                    <p class="catalog-product-copy__description">{{ $product->description }}</p>
+                @endif
+
                 <div class="catalog-product-price-block">
                     @if ($comparePrice?->min_amount !== null)
                         <p class="catalog-product-price-block__compare">

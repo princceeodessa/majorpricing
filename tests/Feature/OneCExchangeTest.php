@@ -73,6 +73,7 @@ class OneCExchangeTest extends TestCase
         $this->assertSame('Профиль M печать', $product->title);
         $this->assertSame('product-code-1', $product->one_c_code);
         $this->assertSame('TOREC', $product->brand_name);
+        $this->assertSame('Актуальное описание из дополнительного реквизита', $product->description);
         $this->assertSame(530.0, (float) $product->price_from);
         $this->assertDatabaseHas('product_prices', [
             'product_id' => $product->id,
@@ -397,6 +398,14 @@ class OneCExchangeTest extends TestCase
   <Классификатор>
     <Ид>classifier-1</Ид>
     <Наименование>Основной каталог</Наименование>
+    <Свойства>
+      <Свойство>
+        <Ид>description-property-id</Ид>
+        <Наименование>Описание</Наименование>
+        <ТипЗначений>Строка</ТипЗначений>
+        <ДляТоваров>true</ДляТоваров>
+      </Свойство>
+    </Свойства>
     <Группы>
       <Группа>
         <Ид>group-root</Ид>
@@ -419,8 +428,14 @@ class OneCExchangeTest extends TestCase
         <Код>product-code-1</Код>
         <Артикул>PF-001</Артикул>
         <Наименование>Профиль M</Наименование>
-        <Описание>Тестовый товар из 1С</Описание>
+        <Описание>Старое неверное основное описание из 1С</Описание>
         <БазоваяЕдиница НаименованиеКраткое="шт">шт</БазоваяЕдиница>
+        <ЗначенияСвойств>
+          <ЗначенияСвойства>
+            <Ид>description-property-id</Ид>
+            <Значение>Актуальное описание из дополнительного реквизита</Значение>
+          </ЗначенияСвойства>
+        </ЗначенияСвойств>
         <ЗначенияРеквизитов>
           <ЗначениеРеквизита>
             <Наименование>НаименованиеДляПечати</Наименование>

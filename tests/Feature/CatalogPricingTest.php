@@ -35,6 +35,7 @@ class CatalogPricingTest extends TestCase
             'slug' => 'profil-test',
             'measurement_label' => 'Длина м.',
             'measurement_value' => '2,0',
+            'description' => 'Актуальное описание профиля из 1С',
             'price_from' => 530,
             'sort_order' => 0,
         ]);
@@ -59,6 +60,7 @@ class CatalogPricingTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeText('Профиль тестовый');
+        $response->assertSeeText('Актуальное описание профиля из 1С');
         $response->assertSeeText('530,00');
         $response->assertSeeText('Со скидкой');
         $response->assertDontSeeText('Цена 1');
@@ -143,6 +145,7 @@ class CatalogPricingTest extends TestCase
             'title' => 'Карниз накладной ПВХ 2-х рядный с поворотом Белый 160',
             'name' => '160 карниз НК КЛАССИК 2 БЕЛЫЙ в инд. уп. Ультракомплект',
             'slug' => 'karniz-nakladnoy-belyy-160',
+            'description' => 'Описание для карточки товара',
             'price_from' => 508,
             'sort_order' => 0,
         ]);
@@ -151,6 +154,7 @@ class CatalogPricingTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeText('Карниз накладной ПВХ 2-х рядный с поворотом Белый 160');
+        $response->assertSeeText('Описание для карточки товара');
         $response->assertDontSeeText('160 карниз НК КЛАССИК 2 БЕЛЫЙ в инд. уп. Ультракомплект');
     }
 }
