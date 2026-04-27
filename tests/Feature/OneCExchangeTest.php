@@ -157,6 +157,29 @@ class OneCExchangeTest extends TestCase
         }
     }
 
+    public function test_one_c_catalog_import_does_not_use_file_description_requisite_as_product_description(): void
+    {
+        $sessionKey = 'catalog-file-description';
+        $storage = app(OneCExchangeStorage::class);
+        $service = app(OneCCatalogExchangeService::class);
+
+        $storage->clearType($sessionKey, 'catalog');
+
+        try {
+            $storage->resetUploadState($sessionKey, 'catalog');
+            $storage->appendFile($sessionKey, 'catalog', 'import.xml', $this->catalogImportXmlWithFileDescriptionOnly());
+
+            $service->import($sessionKey);
+
+            $product = Product::query()->where('one_c_id', 'product-file-description')->firstOrFail();
+
+            $this->assertNull($product->description);
+            $this->assertSame('PF-FILE', $product->vendor_code);
+        } finally {
+            $storage->clearType($sessionKey, 'catalog');
+        }
+    }
+
     public function test_one_c_import_merges_existing_excel_catalog_records_instead_of_creating_duplicates(): void
     {
         config()->set('integrations.one_c.username', 'site-exchange');
@@ -493,6 +516,69 @@ XML;
             json_decode('"\u041f\u043e\u043b\u043d\u043e\u0435 \u043d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435"', true),
             $this->catalogImportXml(),
         );
+    }
+
+    private function catalogImportXmlWithFileDescriptionOnly(): string
+    {
+        $commerce = json_decode('"\u041a\u043e\u043c\u043c\u0435\u0440\u0447\u0435\u0441\u043a\u0430\u044f\u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f"', true);
+        $classifier = json_decode('"\u041a\u043b\u0430\u0441\u0441\u0438\u0444\u0438\u043a\u0430\u0442\u043e\u0440"', true);
+        $catalog = json_decode('"\u041a\u0430\u0442\u0430\u043b\u043e\u0433"', true);
+        $id = json_decode('"\u0418\u0434"', true);
+        $name = json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435"', true);
+        $groups = json_decode('"\u0413\u0440\u0443\u043f\u043f\u044b"', true);
+        $group = json_decode('"\u0413\u0440\u0443\u043f\u043f\u0430"', true);
+        $products = json_decode('"\u0422\u043e\u0432\u0430\u0440\u044b"', true);
+        $product = json_decode('"\u0422\u043e\u0432\u0430\u0440"', true);
+        $code = json_decode('"\u041a\u043e\u0434"', true);
+        $vendorCode = json_decode('"\u0410\u0440\u0442\u0438\u043a\u0443\u043b"', true);
+        $description = json_decode('"\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435"', true);
+        $requisiteValues = json_decode('"\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u044f\u0420\u0435\u043a\u0432\u0438\u0437\u0438\u0442\u043e\u0432"', true);
+        $requisiteValue = json_decode('"\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435\u0420\u0435\u043a\u0432\u0438\u0437\u0438\u0442\u0430"', true);
+        $value = json_decode('"\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435"', true);
+        $printName = json_decode('"\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435\u0414\u043b\u044f\u041f\u0435\u0447\u0430\u0442\u0438"', true);
+        $fileDescription = json_decode('"\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435\u0424\u0430\u0439\u043b\u0430"', true);
+
+        return <<<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<{$commerce}>
+  <{$classifier}>
+    <{$id}>classifier-file-description</{$id}>
+    <{$name}>Catalog</{$name}>
+    <{$groups}>
+      <{$group}>
+        <{$id}>group-file-description</{$id}>
+        <{$name}>Profiles</{$name}>
+      </{$group}>
+    </{$groups}>
+  </{$classifier}>
+  <{$catalog}>
+    <{$id}>catalog-file-description</{$id}>
+    <{$name}>Catalog</{$name}>
+    <{$products}>
+      <{$product}>
+        <{$id}>product-file-description</{$id}>
+        <{$code}>product-file-code</{$code}>
+        <{$vendorCode}>PF-FILE</{$vendorCode}>
+        <{$name}>Profile file description</{$name}>
+        <{$description}>Stale main description must stay ignored</{$description}>
+        <{$requisiteValues}>
+          <{$requisiteValue}>
+            <{$name}>{$printName}</{$name}>
+            <{$value}>Profile file description print title</{$value}>
+          </{$requisiteValue}>
+          <{$requisiteValue}>
+            <{$name}>{$fileDescription}</{$name}>
+            <{$value}>import_files/c5/image.png#Gardina P 70 file caption</{$value}>
+          </{$requisiteValue}>
+        </{$requisiteValues}>
+        <{$groups}>
+          <{$id}>group-file-description</{$id}>
+        </{$groups}>
+      </{$product}>
+    </{$products}>
+  </{$catalog}>
+</{$commerce}>
+XML;
     }
 
     private function mergingCatalogImportXml(): string

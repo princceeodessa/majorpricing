@@ -619,15 +619,11 @@ class OneCCatalogExchangeService
      */
     private function resolveProductDescription(DOMXPath $xpath, DOMElement $productNode, array $propertyValues = []): ?string
     {
+        $descriptionName = json_decode('"\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435"', true);
+
         return $this->firstFilled([
-            $this->propertyValue($propertyValues, ['Описание']),
-            $this->requisiteValue($xpath, $productNode, ['Описание']),
-            $this->propertyValueByNameFragments($propertyValues, [
-                ['Описание'],
-            ]),
-            $this->requisiteValueByNameFragments($xpath, $productNode, [
-                ['Описание'],
-            ]),
+            $this->propertyValue($propertyValues, [$descriptionName]),
+            $this->requisiteValue($xpath, $productNode, [$descriptionName]),
         ]);
     }
 
