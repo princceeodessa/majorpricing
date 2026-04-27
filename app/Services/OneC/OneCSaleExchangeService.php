@@ -139,11 +139,14 @@ class OneCSaleExchangeService
             $xml->writeElement('Валюта', 'RUB');
             $xml->writeElement('Курс', '1');
             $xml->writeElement('Сумма', $this->formatDecimal($order->total_amount));
+            $this->writeOptionalElement($xml, 'Комментарий', $order->comment);
 
             $xml->startElement('Контрагенты');
             $xml->startElement('Контрагент');
             $xml->writeElement('Ид', 'customer-'.$order->user_id);
-            $xml->writeElement('Наименование', $order->customer_company ?: ($order->customer_name ?: $order->user?->name ?: 'Клиент сайта'));
+            $customerName = $order->customer_company ?: ($order->customer_name ?: $order->user?->name ?: 'Клиент сайта');
+            $xml->writeElement('Наименование', $customerName);
+            $xml->writeElement('ПолноеНаименование', $customerName);
             $xml->writeElement('Роль', 'Покупатель');
 
             $xml->startElement('Контакты');
@@ -182,18 +185,73 @@ class OneCSaleExchangeService
     private function writeOrderItem(XMLWriter $xml, OrderItem $item): void
     {
         $xml->startElement('Товар');
-        $xml->writeElement('Ид', $item->product?->one_c_id ?: ('product-'.$item->product_id));
+        $xml->writeElement('Ид', $this->orderItemProductId($item));
 
         if (filled($item->product?->vendor_code)) {
             $xml->writeElement('Артикул', $item->product->vendor_code);
         }
 
         $xml->writeElement('Наименование', $item->product_title);
+        $this->writeBaseUnit($xml, $item->measurement_value);
         $xml->writeElement('ЦенаЗаЕдиницу', $this->formatDecimal($item->unit_price));
         $xml->writeElement('Количество', $this->formatDecimal($item->quantity, 3));
         $xml->writeElement('Сумма', $this->formatDecimal($item->line_total));
-        $xml->writeElement('Единица', $item->measurement_value ?: 'шт');
+
+        $xml->startElement('ЗначенияРеквизитов');
+        $this->writeRequisite($xml, 'ВидНоменклатуры', 'Товар');
+        $this->writeRequisite($xml, 'ТипНоменклатуры', 'Товар');
         $xml->endElement();
+
+        $xml->endElement();
+    }
+
+    private function orderItemProductId(OrderItem $item): string
+    {
+        if (filled($item->product?->one_c_id)) {
+            return (string) $item->product->one_c_id;
+        }
+
+        if (filled($item->product_id)) {
+            return 'site-product-'.$item->product_id;
+        }
+
+        if (filled($item->product_slug)) {
+            return 'site-product-'.$item->product_slug;
+        }
+
+        $title = trim((string) $item->product_title);
+
+        if ($title !== '') {
+            return 'site-product-'.substr(sha1(Str::lower($title)), 0, 16);
+        }
+
+        return 'site-order-item-'.$item->id;
+    }
+
+    private function writeBaseUnit(XMLWriter $xml, ?string $unit): void
+    {
+        [$code, $fullName, $internationalCode, $label] = $this->commerceMlUnit($unit);
+
+        $xml->startElement('БазоваяЕдиница');
+        $xml->writeAttribute('Код', $code);
+        $xml->writeAttribute('НаименованиеПолное', $fullName);
+        $xml->writeAttribute('МеждународноеСокращение', $internationalCode);
+        $xml->text($label);
+        $xml->endElement();
+    }
+
+    /**
+     * @return array{string,string,string,string}
+     */
+    private function commerceMlUnit(?string $unit): array
+    {
+        $normalized = Str::lower(trim((string) $unit));
+
+        if ($normalized !== '' && str_contains($normalized, 'м') && ! str_contains($normalized, 'шт')) {
+            return ['006', 'Метр', 'MTR', 'м'];
+        }
+
+        return ['796', 'Штука', 'PCE', $normalized !== '' ? $normalized : 'шт'];
     }
 
     private function writeContact(XMLWriter $xml, string $type, ?string $value): void
@@ -206,6 +264,15 @@ class OneCSaleExchangeService
         $xml->writeElement('Тип', $type);
         $xml->writeElement('Значение', $value);
         $xml->endElement();
+    }
+
+    private function writeOptionalElement(XMLWriter $xml, string $name, ?string $value): void
+    {
+        if (blank($value)) {
+            return;
+        }
+
+        $xml->writeElement($name, $value);
     }
 
     private function writeRequisite(XMLWriter $xml, string $name, ?string $value): void

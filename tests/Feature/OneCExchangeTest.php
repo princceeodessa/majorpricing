@@ -319,9 +319,9 @@ class OneCExchangeTest extends TestCase
             'customer_email' => 'client@example.com',
             'customer_phone' => '+79991112233',
             'customer_delivery_address' => 'Саратов, Тестовая 1',
-            'items_count' => 1,
-            'subtotal_amount' => 1060,
-            'total_amount' => 1060,
+            'items_count' => 2,
+            'subtotal_amount' => 1070,
+            'total_amount' => 1070,
             'price_profile_name' => 'Цена 1',
             'placed_at' => now(),
         ]);
@@ -338,6 +338,16 @@ class OneCExchangeTest extends TestCase
             'measurement_value' => 'шт',
         ]);
 
+        OrderItem::query()->create([
+            'order_id' => $order->id,
+            'product_title' => 'Fallback item',
+            'quantity' => 1,
+            'price_label' => 'Цена 1',
+            'unit_price' => 10,
+            'line_total' => 10,
+            'measurement_value' => 'шт',
+        ]);
+
         $cookie = $this->authenticateOneC();
 
         $queryResponse = $this
@@ -350,6 +360,9 @@ class OneCExchangeTest extends TestCase
         $this->assertStringContainsString('<КоммерческаяИнформация', $queryResponse->getContent());
         $this->assertStringContainsString('ORD-20260407-00001', $queryResponse->getContent());
         $this->assertStringContainsString('product-guid-1', $queryResponse->getContent());
+        $this->assertStringContainsString('site-product-'.substr(sha1('fallback item'), 0, 16), $queryResponse->getContent());
+        $this->assertStringContainsString('<БазоваяЕдиница Код="796"', $queryResponse->getContent());
+        $this->assertStringNotContainsString('<Ид>product-</Ид>', $queryResponse->getContent());
 
         $this->withServerVariables($this->oneCServer())
             ->withCookie($cookie->getName(), $cookie->getValue())
