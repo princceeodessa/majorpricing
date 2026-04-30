@@ -604,6 +604,31 @@ const submitFallbackPost = (url, entries = []) => {
     return true;
 };
 
+const syncCartLineSummary = (control, quantity) => {
+    if (!(control instanceof HTMLElement)) {
+        return;
+    }
+
+    const summary = control.querySelector('[data-cart-line-summary]');
+
+    if (!(summary instanceof HTMLElement)) {
+        return;
+    }
+
+    const amountNode = summary.querySelector('[data-cart-line-amount]');
+    const unitAmount = Number.parseFloat(`${control.dataset.cartUnitAmount ?? ''}`.replace(',', '.'));
+    const safeQuantity = Math.max(0, Math.trunc(Number(quantity) || 0));
+    const shouldShow = Number.isFinite(unitAmount) && unitAmount >= 0 && safeQuantity > 0;
+
+    summary.classList.toggle('hidden', !shouldShow);
+
+    if (amountNode instanceof HTMLElement) {
+        amountNode.textContent = shouldShow
+            ? formatRubles(unitAmount * safeQuantity)
+            : '';
+    }
+};
+
 const syncSingleCartControl = (control, quantity) => {
     if (!(control instanceof HTMLElement)) {
         return;
@@ -622,6 +647,7 @@ const syncSingleCartControl = (control, quantity) => {
 
     addState?.classList.toggle('hidden', safeQuantity > 0);
     qtyState?.classList.toggle('hidden', safeQuantity <= 0);
+    syncCartLineSummary(control, safeQuantity);
 
     if (qtyValue instanceof HTMLInputElement) {
         qtyValue.value = `${safeQuantity > 0 ? safeQuantity : constraints.min}`;
@@ -807,6 +833,12 @@ const submitProductCardQuantity = async (control, nextQuantity) => {
 };
 
 const setupProductCardCartControls = () => {
+    document.querySelectorAll('[data-cart-control]').forEach((control) => {
+        if (control instanceof HTMLElement) {
+            syncSingleCartControl(control, readIntWithFallback(control.dataset.quantity, 0));
+        }
+    });
+
     document.addEventListener('click', (event) => {
         const target = event.target instanceof Element
             ? event.target.closest('[data-cart-add], [data-cart-inc], [data-cart-dec]')
@@ -4463,8 +4495,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupToasts();
     setupNotificationsPoller();
 });
-
-
 
 
 

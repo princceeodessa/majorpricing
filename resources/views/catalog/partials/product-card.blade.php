@@ -122,6 +122,7 @@
                 data-cart-control
                 data-product-id="{{ $product->id }}"
                 data-quantity="{{ $cartQuantity > 0 ? $safeCartQuantity : 0 }}"
+                data-cart-unit-amount="{{ $price?->min_amount !== null ? (float) $price->min_amount : '' }}"
                 data-min-quantity="{{ $minCartQuantity }}"
                 data-step-quantity="{{ $stepCartQuantity }}"
                 data-store-url="{{ route('cart.store', $product) }}"
@@ -166,6 +167,18 @@
                         title="Enter quantity manually"
                     >
                     <button type="button" class="catalog-product-card__stepper-btn" data-cart-inc aria-label="Увеличить количество">+</button>
+                </div>
+
+                <div
+                    class="catalog-product-card__cart-total {{ $cartQuantity > 0 && $price?->min_amount !== null ? '' : 'hidden' }}"
+                    data-cart-line-summary
+                >
+                    <span>В корзине на</span>
+                    <strong data-cart-line-amount>
+                        @if ($price?->min_amount !== null)
+                            {{ \Illuminate\Support\Number::format(round((float) $price->min_amount * $safeCartQuantity, 2), 2, locale: 'ru') }} ₽
+                        @endif
+                    </strong>
                 </div>
             </div>
         </div>
