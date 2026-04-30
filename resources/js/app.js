@@ -2972,7 +2972,22 @@ const mountVueCartCheckout = (scope = document) => {
                         this.paymentMethod = nextPaymentMethod;
                     }
                 },
+                summaryPayload() {
+                    return {
+                        items_count: this.summary.itemsCount,
+                        total_quantity: this.summary.totalQuantity,
+                        priced_items_count: this.summary.pricedItemsCount,
+                        unpriced_items_count: this.summary.unpricedItemsCount,
+                        base_total_amount: this.summary.baseTotal,
+                        discount_total_amount: this.summary.discountTotal,
+                        payment_method: this.paymentMethod,
+                    };
+                },
+                publishSummary() {
+                    syncCartSummaryNodes(this.summaryPayload());
+                },
                 emitPaymentSync() {
+                    this.publishSummary();
                     document.dispatchEvent(new CustomEvent('catalog:cart-payment-sync', {
                         detail: {
                             paymentMethod: this.paymentMethod,
@@ -2990,7 +3005,12 @@ const mountVueCartCheckout = (scope = document) => {
                         : '';
 
                     if (this.paymentOptions.some((option) => option.value === paymentMethod)) {
+                        if (this.paymentMethod === paymentMethod) {
+                            return;
+                        }
+
                         this.paymentMethod = paymentMethod;
+                        this.publishSummary();
                     }
                 },
                 onPaymentChange() {
@@ -3951,9 +3971,13 @@ const syncCartSummaryNodes = (summary) => {
 
     const baseTotal = readAmount(summary.base_total_amount ?? summary.baseTotal, null);
     const discountTotal = readAmount(summary.discount_total_amount ?? summary.discountTotal, null);
-    const paymentMethod = typeof (summary.payment_method ?? summary.paymentMethod) === 'string'
-        ? (summary.payment_method ?? summary.paymentMethod)
-        : 'bank_transfer';
+    const explicitPaymentMethod = summary.payment_method ?? summary.paymentMethod;
+    const selectedPaymentInput = document.querySelector('[data-cart-payment-method]:checked');
+    const paymentMethod = typeof explicitPaymentMethod === 'string'
+        ? explicitPaymentMethod
+        : selectedPaymentInput instanceof HTMLInputElement
+            ? selectedPaymentInput.value
+            : 'bank_transfer';
     const nextAmount = paymentMethod === 'cash' ? discountTotal : baseTotal;
 
     document.querySelectorAll('[data-cart-hero-total], [data-cart-summary-total]').forEach((node) => {
@@ -4439,9 +4463,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupToasts();
     setupNotificationsPoller();
 });
-
-
-
 
 
 

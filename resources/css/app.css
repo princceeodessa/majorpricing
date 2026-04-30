@@ -11824,6 +11824,28 @@ html {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
 }
 
+.catalog-checkout-v2 .catalog-summary-row.is-total {
+    border-color: rgba(104, 143, 188, 0.74) !important;
+    background:
+        linear-gradient(180deg, rgba(232, 241, 253, 0.98), rgba(216, 231, 249, 0.96)) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        0 14px 24px -22px rgba(15, 45, 78, 0.5);
+}
+
+.catalog-checkout-v2 .catalog-summary-row.is-total span {
+    color: #5f7188 !important;
+}
+
+.catalog-checkout-v2 .catalog-summary-row.is-total strong {
+    color: #102843 !important;
+}
+
+.catalog-cart-item__line-total {
+    color: #61738a !important;
+    font-weight: 650;
+}
+
 .catalog-order-item {
     border-color: rgba(186, 206, 229, 0.78) !important;
     background:
