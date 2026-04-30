@@ -52,6 +52,7 @@
 
                     @if ($isAdmin)
                         <a href="{{ route('admin.onec.show') }}" class="ghost-button">Диагностика 1С</a>
+                        <a href="{{ route('admin.catalog.visibility.index') }}" class="ghost-button">Видимость каталога</a>
                         <a href="{{ route('admin.products.images.index') }}" class="ghost-button">Фото товаров</a>
                     @endif
 

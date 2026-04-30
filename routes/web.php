@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AdminCategoryVisibilityController;
 use App\Http\Controllers\AdminProductImageController;
 use App\Http\Controllers\ManagerUserController;
 use App\Http\Controllers\OneCDiagnosticsController;
@@ -69,6 +70,12 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/admin/1c/catalog/import', [OneCDiagnosticsController::class, 'importCatalog'])
         ->middleware('admin')
         ->name('admin.onec.catalog.import');
+    Route::get('/admin/catalog/visibility', [AdminCategoryVisibilityController::class, 'index'])
+        ->middleware('admin')
+        ->name('admin.catalog.visibility.index');
+    Route::patch('/admin/catalog/visibility', [AdminCategoryVisibilityController::class, 'update'])
+        ->middleware('admin')
+        ->name('admin.catalog.visibility.update');
     Route::get('/admin/products/images', [AdminProductImageController::class, 'index'])
         ->middleware('admin')
         ->name('admin.products.images.index');
@@ -102,4 +109,3 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/orders/{order}/export-1c', [OrderController::class, 'queueOneCExport'])->middleware('manager')->name('orders.export-1c');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
-

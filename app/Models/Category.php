@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 
 class Category extends Model
 {
@@ -25,6 +26,11 @@ class Category extends Model
         'source_sheet',
         'sort_order',
         'accent_color',
+        'is_hidden_from_clients',
+    ];
+
+    protected $casts = [
+        'is_hidden_from_clients' => 'boolean',
     ];
 
     public function parent(): BelongsTo
@@ -68,19 +74,24 @@ class Category extends Model
      */
     public static function hiddenFromCatalogIds(): array
     {
-        $categories = self::query()->get(['id', 'parent_id', 'name']);
+        $visibilityColumnExists = Schema::hasColumn('categories', 'is_hidden_from_clients');
+        $columns = $visibilityColumnExists
+            ? ['id', 'parent_id', 'name', 'is_hidden_from_clients']
+            : ['id', 'parent_id', 'name'];
+        $categories = self::query()->get($columns);
         $hiddenNames = collect(self::HIDDEN_CATALOG_NAMES)
             ->map(fn (string $name): string => self::normalizeCatalogName($name))
             ->filter()
             ->values()
             ->all();
 
-        if ($categories->isEmpty() || $hiddenNames === []) {
+        if ($categories->isEmpty()) {
             return [];
         }
 
         $hiddenIds = $categories
-            ->filter(fn (Category $category): bool => in_array(self::normalizeCatalogName($category->name), $hiddenNames, true))
+            ->filter(fn (Category $category): bool => (bool) ($category->is_hidden_from_clients ?? false)
+                || in_array(self::normalizeCatalogName($category->name), $hiddenNames, true))
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->values()
