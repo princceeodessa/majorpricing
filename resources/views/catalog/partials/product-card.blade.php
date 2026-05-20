@@ -120,8 +120,7 @@
                         <p class="catalog-product-card__price catalog-product-card__price--empty">Цена по запросу</p>
                     @endif
                 @else
-                    <p class="catalog-product-card__price-label">Партнерский доступ</p>
-                    <p class="catalog-product-card__price catalog-product-card__price--empty">Цены доступны партнерам</p>
+                    <p class="catalog-product-card__price catalog-product-card__price--empty">Цены по запросу</p>
                 @endif
             </div>
 

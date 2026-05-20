@@ -137,8 +137,7 @@
 
                         <p class="catalog-product-price-block__profile">{{ $price?->min_amount !== null ? 'Со скидкой' : 'Цена' }}</p>
                     @else
-                        <p class="catalog-product-price-block__value catalog-product-price-block__value--empty">Цены доступны партнерам</p>
-                        <p class="catalog-product-price-block__profile">Оставьте заявку, чтобы получить партнерский доступ.</p>
+                        <p class="catalog-product-price-block__value catalog-product-price-block__value--empty">Цены по запросу</p>
                     @endif
                 </div>
 
