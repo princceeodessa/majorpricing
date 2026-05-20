@@ -199,6 +199,47 @@ class AccountPageTest extends TestCase
             ->assertSee('Создать менеджера')
             ->assertSee('Заявки на подтверждение')
             ->assertSee('Новый партнер')
+            ->assertSee('Отказать')
             ->assertSee('Менеджеры');
+    }
+
+    public function test_manager_can_reject_pending_registration_request(): void
+    {
+        $manager = User::factory()->create([
+            'name' => 'Менеджер',
+            'login' => 'manager-reject',
+            'email' => 'manager-reject@example.com',
+            'is_manager' => true,
+        ]);
+
+        $registrationRequest = RegistrationRequest::query()->create([
+            'name' => 'Отклоняемый партнер',
+            'company' => 'ООО Отказ',
+            'login' => 'rejected-partner',
+            'email' => 'rejected-partner@example.com',
+            'password' => 'StrongPass123',
+            'status' => RegistrationRequest::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($manager)
+            ->post(route('manager.registration-requests.reject', $registrationRequest))
+            ->assertRedirect(route('account.show'))
+            ->assertSessionHas('status', 'Заявка отклонена. Пользователь не создан.');
+
+        $this->assertDatabaseHas('registration_requests', [
+            'id' => $registrationRequest->id,
+            'status' => RegistrationRequest::STATUS_REJECTED,
+            'approved_by' => $manager->id,
+            'approved_user_id' => null,
+        ]);
+
+        $this->assertDatabaseMissing('users', [
+            'login' => 'rejected-partner',
+        ]);
+
+        $this->actingAs($manager)
+            ->get('/account')
+            ->assertOk()
+            ->assertDontSee('Отклоняемый партнер');
     }
 }

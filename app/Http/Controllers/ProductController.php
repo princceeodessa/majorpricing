@@ -13,7 +13,9 @@ class ProductController extends Controller
 {
     public function show(Request $request, Product $product): View
     {
-        abort_unless($product->isVisibleInCatalog(), 404);
+        $isAuthenticated = $request->user() !== null;
+
+        abort_unless($product->isVisibleToCatalogVisitor($isAuthenticated), 404);
 
         $product->loadMissing(['category.children', 'category.parent.children', 'category.parent', 'prices', 'productImages']);
 
@@ -22,7 +24,7 @@ class ProductController extends Controller
             ? (int) $user->cartItems()->where('product_id', $product->id)->value('quantity')
             : 0;
 
-        $relatedProducts = $this->resolveRelatedProducts($product);
+        $relatedProducts = $this->resolveRelatedProducts($product, $isAuthenticated);
 
         return view('catalog.product', [
             'product' => $product,
@@ -31,7 +33,7 @@ class ProductController extends Controller
         ]);
     }
 
-    private function resolveRelatedProducts(Product $product): Collection
+    private function resolveRelatedProducts(Product $product, bool $isAuthenticated): Collection
     {
         $category = $product->category;
         $rootCategory = $category?->parent ?? $category;
@@ -41,7 +43,7 @@ class ProductController extends Controller
         $tokens = $this->extractSearchTokens($product);
 
         $candidates = Product::query()
-            ->visibleInCatalog()
+            ->visibleToCatalogVisitor($isAuthenticated)
             ->with(['category.parent', 'prices', 'productImages'])
             ->whereKeyNot($product->id)
             ->where(function (Builder $query) use ($product, $rootCategoryIds, $tokens): void {

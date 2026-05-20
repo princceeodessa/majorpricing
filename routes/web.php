@@ -1,18 +1,18 @@
 <?php
 
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminCategoryVisibilityController;
 use App\Http\Controllers\AdminProductImageController;
-use App\Http\Controllers\ManagerUserController;
-use App\Http\Controllers\OneCDiagnosticsController;
-use App\Http\Controllers\CatalogController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ManagerChatController;
+use App\Http\Controllers\ManagerUserController;
 use App\Http\Controllers\NotificationsController;
+use App\Http\Controllers\OneCDiagnosticsController;
 use App\Http\Controllers\OneCExchangeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
@@ -51,6 +51,9 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/account/registration-requests/{registrationRequest}/approve', [RegistrationRequestController::class, 'approve'])
         ->middleware('manager')
         ->name('manager.registration-requests.approve');
+    Route::post('/account/registration-requests/{registrationRequest}/reject', [RegistrationRequestController::class, 'reject'])
+        ->middleware('manager')
+        ->name('manager.registration-requests.reject');
     Route::get('/manager/chats/{client?}', [ManagerChatController::class, 'index'])
         ->middleware('manager')
         ->name('manager.chats.index');

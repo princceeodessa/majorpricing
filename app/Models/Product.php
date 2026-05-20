@@ -159,6 +159,27 @@ class Product extends Model
         });
     }
 
+    public function scopeVisibleToCatalogVisitor(Builder $query, bool $isAuthenticated): Builder
+    {
+        $query->visibleInCatalog();
+
+        if ($isAuthenticated) {
+            return $query;
+        }
+
+        $hiddenCategoryIds = Category::guestHiddenFromCatalogIds();
+
+        if ($hiddenCategoryIds === []) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $builder) use ($hiddenCategoryIds, $query): void {
+            $builder
+                ->whereNull($query->qualifyColumn('category_id'))
+                ->orWhereNotIn($query->qualifyColumn('category_id'), $hiddenCategoryIds);
+        });
+    }
+
     public function scopeCatalogPriorityOrder(Builder $query): Builder
     {
         return $query
@@ -182,6 +203,17 @@ class Product extends Model
 
         return $this->category_id === null
             || ! in_array((int) $this->category_id, Category::hiddenFromCatalogIds(), true);
+    }
+
+    public function isVisibleToCatalogVisitor(bool $isAuthenticated): bool
+    {
+        if (! $this->isVisibleInCatalog()) {
+            return false;
+        }
+
+        return $isAuthenticated
+            || $this->category_id === null
+            || ! in_array((int) $this->category_id, Category::guestHiddenFromCatalogIds(), true);
     }
 
     public function priceForProfile(): ?ProductPrice

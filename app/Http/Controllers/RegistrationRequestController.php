@@ -158,6 +158,24 @@ class RegistrationRequestController extends Controller
             ->with('status', 'Заявка подтверждена. Клиент создан и доступ активирован.');
     }
 
+    public function reject(Request $request, RegistrationRequest $registrationRequest): RedirectResponse
+    {
+        abort_unless($request->user()?->canManageClients(), 403);
+
+        abort_if($registrationRequest->status !== RegistrationRequest::STATUS_PENDING, 404);
+
+        $registrationRequest->update([
+            'status' => RegistrationRequest::STATUS_REJECTED,
+            'approved_by' => $request->user()->id,
+            'approved_user_id' => null,
+            'approved_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('account.show')
+            ->with('status', 'Заявка отклонена. Пользователь не создан.');
+    }
+
     /**
      * @param  array<int, mixed>  $items
      * @return array<int, string>

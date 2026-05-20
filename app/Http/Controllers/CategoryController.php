@@ -13,11 +13,13 @@ class CategoryController extends Controller
 {
     public function show(Request $request, Category $category): View|JsonResponse
     {
-        abort_if($category->isHiddenFromCatalog(), 404);
+        $isAuthenticated = $request->user() !== null;
 
-        $category->loadMissing(['parent', 'children' => fn ($query) => $query->visibleInCatalog()]);
+        abort_unless($category->isVisibleToCatalogVisitor($isAuthenticated), 404);
 
-        $showPrices = $request->user() !== null;
+        $category->loadMissing(['parent', 'children' => fn ($query) => $query->visibleToCatalogVisitor($isAuthenticated)]);
+
+        $showPrices = $isAuthenticated;
         $selectedSection = null;
         $categoryIds = [$category->id];
 
@@ -37,7 +39,7 @@ class CategoryController extends Controller
         }
 
         $catalogQuery = Product::query()
-            ->visibleInCatalog()
+            ->visibleToCatalogVisitor($isAuthenticated)
             ->whereIn('category_id', $categoryIds)
             ->search($request->string('q')->toString());
 
@@ -84,7 +86,7 @@ class CategoryController extends Controller
             && ($request->filled('price_min') || $request->filled('price_max'));
 
         $products = Product::query()
-            ->visibleInCatalog()
+            ->visibleToCatalogVisitor($isAuthenticated)
             ->with(['category.parent', 'prices', 'productImages'])
             ->whereIn('category_id', $categoryIds)
             ->search($request->string('q')->toString())
@@ -116,7 +118,7 @@ class CategoryController extends Controller
         }
 
         $sectionCounts = Product::query()
-            ->visibleInCatalog()
+            ->visibleToCatalogVisitor($isAuthenticated)
             ->selectRaw('category_id, COUNT(*) as aggregate')
             ->whereIn('category_id', $category->children->pluck('id')->all())
             ->groupBy('category_id')

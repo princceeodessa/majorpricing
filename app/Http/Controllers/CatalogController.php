@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -19,20 +19,21 @@ class CatalogController extends Controller
         $hasSearch = filled($searchQuery);
         $feed = $request->string('feed')->toString();
         $feed = in_array($feed, ['new', 'hit', 'in_stock'], true) ? $feed : 'new';
+        $isAuthenticated = $request->user() !== null;
 
         if ($request->filled('category')) {
             $selectedCategory = Category::query()
-                ->visibleInCatalog()
+                ->visibleToCatalogVisitor($isAuthenticated)
                 ->where('slug', $request->string('category')->toString())
                 ->firstOrFail();
         }
 
         $productsQuery = Product::query()
-            ->visibleInCatalog()
+            ->visibleToCatalogVisitor($isAuthenticated)
             ->with(['category.parent', 'prices', 'productImages'])
             ->when(
                 $selectedCategory,
-                fn ($query) => $query->whereIn('category_id', $this->categoryTreeIds($selectedCategory)),
+                fn ($query) => $query->whereIn('category_id', $this->categoryTreeIds($selectedCategory, $isAuthenticated)),
             )
             ->search($searchQuery);
 
@@ -67,9 +68,9 @@ class CatalogController extends Controller
         $rootCategories = collect();
         if (! $hasSearch) {
             $rootCategories = Category::query()
-                ->visibleInCatalog()
+                ->visibleToCatalogVisitor($isAuthenticated)
                 ->roots()
-                ->with(['children' => fn ($query) => $query->visibleInCatalog()])
+                ->with(['children' => fn ($query) => $query->visibleToCatalogVisitor($isAuthenticated)])
                 ->get();
 
             $catalogCategoryIds = $rootCategories
@@ -78,14 +79,14 @@ class CatalogController extends Controller
                 ->values();
 
             $productCounts = Product::query()
-                ->visibleInCatalog()
+                ->visibleToCatalogVisitor($isAuthenticated)
                 ->selectRaw('category_id, COUNT(*) as aggregate')
                 ->whereIn('category_id', $catalogCategoryIds)
                 ->groupBy('category_id')
                 ->pluck('aggregate', 'category_id');
 
             $categoryPreviewProducts = Product::query()
-                ->visibleInCatalog()
+                ->visibleToCatalogVisitor($isAuthenticated)
                 ->select(['category_id', 'title', 'image_path', 'sort_order'])
                 ->whereIn('category_id', $catalogCategoryIds)
                 ->orderByRaw('image_path is null')
@@ -121,17 +122,17 @@ class CatalogController extends Controller
             'rootCategories' => $rootCategories,
             'searchQuery' => $searchQuery,
             'selectedCategory' => $selectedCategory,
-            'totalProducts' => Product::query()->visibleInCatalog()->count(),
-            'totalSections' => Category::query()->visibleInCatalog()->count(),
+            'totalProducts' => Product::query()->visibleToCatalogVisitor($isAuthenticated)->count(),
+            'totalSections' => Category::query()->visibleToCatalogVisitor($isAuthenticated)->count(),
         ]);
     }
 
     /**
      * @return array<int, int>
      */
-    private function categoryTreeIds(Category $category): array
+    private function categoryTreeIds(Category $category, bool $isAuthenticated): array
     {
-        $category->loadMissing(['children' => fn ($query) => $query->visibleInCatalog()]);
+        $category->loadMissing(['children' => fn ($query) => $query->visibleToCatalogVisitor($isAuthenticated)]);
 
         return $category->children
             ->pluck('id')

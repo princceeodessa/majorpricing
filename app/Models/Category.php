@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Schema;
@@ -15,6 +15,11 @@ class Category extends Model
 
     private const HIDDEN_CATALOG_NAMES = [
         'для продажи',
+    ];
+
+    private const GUEST_HIDDEN_CATALOG_NAMES = [
+        'профиля алюм.',
+        'профиля алюм',
     ];
 
     protected $fillable = [
@@ -64,9 +69,36 @@ class Category extends Model
         return $query->whereNotIn($query->qualifyColumn('id'), $hiddenIds);
     }
 
+    public function scopeVisibleToCatalogVisitor(Builder $query, bool $isAuthenticated): Builder
+    {
+        $query->visibleInCatalog();
+
+        if ($isAuthenticated) {
+            return $query;
+        }
+
+        $hiddenIds = self::guestHiddenFromCatalogIds();
+
+        if ($hiddenIds === []) {
+            return $query;
+        }
+
+        return $query->whereNotIn($query->qualifyColumn('id'), $hiddenIds);
+    }
+
     public function isHiddenFromCatalog(): bool
     {
         return in_array((int) $this->id, self::hiddenFromCatalogIds(), true);
+    }
+
+    public function isVisibleToCatalogVisitor(bool $isAuthenticated): bool
+    {
+        if ($this->isHiddenFromCatalog()) {
+            return false;
+        }
+
+        return $isAuthenticated
+            || ! in_array((int) $this->id, self::guestHiddenFromCatalogIds(), true);
     }
 
     /**
@@ -92,6 +124,52 @@ class Category extends Model
         $hiddenIds = $categories
             ->filter(fn (Category $category): bool => (bool) ($category->is_hidden_from_clients ?? false)
                 || in_array(self::normalizeCatalogName($category->name), $hiddenNames, true))
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+
+        $queue = $hiddenIds;
+
+        while ($queue !== []) {
+            $childIds = $categories
+                ->filter(fn (Category $category): bool => in_array((int) $category->parent_id, $queue, true))
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->values()
+                ->all();
+
+            $newIds = array_values(array_diff($childIds, $hiddenIds));
+
+            if ($newIds === []) {
+                break;
+            }
+
+            $hiddenIds = array_merge($hiddenIds, $newIds);
+            $queue = $newIds;
+        }
+
+        return array_values(array_unique($hiddenIds));
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function guestHiddenFromCatalogIds(): array
+    {
+        $categories = self::query()->get(['id', 'parent_id', 'name']);
+        $hiddenNames = collect(self::GUEST_HIDDEN_CATALOG_NAMES)
+            ->map(fn (string $name): string => self::normalizeCatalogName($name))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($categories->isEmpty() || $hiddenNames === []) {
+            return [];
+        }
+
+        $hiddenIds = $categories
+            ->filter(fn (Category $category): bool => in_array(self::normalizeCatalogName($category->name), $hiddenNames, true))
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->values()

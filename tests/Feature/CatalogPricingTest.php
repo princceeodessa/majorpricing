@@ -66,6 +66,61 @@ class CatalogPricingTest extends TestCase
             ->assertDontSeeText('В корзину');
     }
 
+    public function test_guest_cannot_see_aluminum_profiles_catalog_section(): void
+    {
+        $category = Category::query()->create([
+            'name' => 'Профиля алюм.',
+            'slug' => 'profilya-alyum',
+            'sort_order' => 0,
+            'accent_color' => '#f97316',
+        ]);
+
+        $product = Product::query()->create([
+            'category_id' => $category->id,
+            'title' => 'Скрытый алюминиевый профиль',
+            'name' => 'Скрытый алюминиевый профиль',
+            'slug' => 'skrytyy-alyuminievyy-profil',
+            'price_from' => 610,
+            'sort_order' => 0,
+        ]);
+
+        $this->get(route('catalog.index'))
+            ->assertOk()
+            ->assertDontSeeText('Профиля алюм.')
+            ->assertDontSeeText('Скрытый алюминиевый профиль');
+
+        $this->get(route('catalog.index', ['q' => 'алюминиевый']))
+            ->assertOk()
+            ->assertDontSeeText('Скрытый алюминиевый профиль');
+
+        $this->get(route('categories.show', $category))
+            ->assertNotFound();
+
+        $this->get(route('products.show', $product))
+            ->assertNotFound();
+
+        $user = User::factory()->create([
+            'login' => 'aluminum-viewer',
+            'email' => 'aluminum-viewer@example.com',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('catalog.index'))
+            ->assertOk()
+            ->assertSeeText('Профиля алюм.')
+            ->assertSeeText('Скрытый алюминиевый профиль');
+
+        $this->actingAs($user)
+            ->get(route('categories.show', $category))
+            ->assertOk()
+            ->assertSeeText('Скрытый алюминиевый профиль');
+
+        $this->actingAs($user)
+            ->get(route('products.show', $product))
+            ->assertOk()
+            ->assertSeeText('Скрытый алюминиевый профиль');
+    }
+
     public function test_guest_category_does_not_show_or_apply_price_filter(): void
     {
         $category = Category::query()->create([

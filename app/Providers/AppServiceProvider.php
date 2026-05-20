@@ -38,10 +38,12 @@ class AppServiceProvider extends ServiceProvider
                 $supportWidgetMessages = collect();
 
                 if (Schema::hasTable('categories')) {
+                    $isAuthenticated = auth()->check();
+
                     $navCategories = Category::query()
-                        ->visibleInCatalog()
+                        ->visibleToCatalogVisitor($isAuthenticated)
                         ->whereNull('parent_id')
-                        ->with(['children' => fn ($query) => $query->visibleInCatalog()])
+                        ->with(['children' => fn ($query) => $query->visibleToCatalogVisitor($isAuthenticated)])
                         ->orderBy('sort_order')
                         ->get();
                 }

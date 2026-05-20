@@ -382,25 +382,32 @@
                                     @endif
                                 </div>
 
-                                <form action="{{ route('manager.registration-requests.approve', $registrationRequest) }}" method="POST" class="w-full max-w-sm space-y-3">
-                                    @csrf
+                                <div class="w-full max-w-sm space-y-3">
+                                    <form action="{{ route('manager.registration-requests.approve', $registrationRequest) }}" method="POST" class="space-y-3">
+                                        @csrf
 
-                                    @if ($isAdmin)
-                                        <label class="access-field">
-                                            <span>Менеджер</span>
-                                            <select name="manager_id">
-                                                <option value="">Выберите менеджера</option>
-                                                @foreach ($availableManagers as $managerOption)
-                                                    <option value="{{ $managerOption->id }}" @selected((string) old('manager_id') === (string) $managerOption->id)>
-                                                        {{ $managerOption->name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </label>
-                                    @endif
+                                        @if ($isAdmin)
+                                            <label class="access-field">
+                                                <span>Менеджер</span>
+                                                <select name="manager_id">
+                                                    <option value="">Выберите менеджера</option>
+                                                    @foreach ($availableManagers as $managerOption)
+                                                        <option value="{{ $managerOption->id }}" @selected((string) old('manager_id') === (string) $managerOption->id)>
+                                                            {{ $managerOption->name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </label>
+                                        @endif
 
-                                    <button type="submit" class="action-button w-full justify-center">Подтвердить регистрацию</button>
-                                </form>
+                                        <button type="submit" class="action-button w-full justify-center">Подтвердить регистрацию</button>
+                                    </form>
+
+                                    <form action="{{ route('manager.registration-requests.reject', $registrationRequest) }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="ghost-button w-full justify-center" onclick="return confirm('Отказать в регистрации?')">Отказать</button>
+                                    </form>
+                                </div>
                             </div>
                         </article>
                     @empty
