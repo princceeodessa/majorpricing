@@ -1,0 +1,365 @@
+@extends('layouts.app')
+
+@section('title', 'Корзина - МАЖОР')
+
+@section('content')
+    @php
+        $isCashPayment = $selectedPaymentMethod === 'cash';
+    @endphp
+
+    <section class="surface-card reveal-card catalog-page-hero p-6 sm:p-8">
+        <div class="catalog-page-head">
+            <div>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Корзина</p>
+                <h1 class="mt-2 font-['IBM_Plex_Sans'] text-4xl font-semibold tracking-tight text-slate-950">Оформление заказа</h1>
+                <p class="mt-4 max-w-3xl text-base leading-7 text-slate-600">
+                    Проверьте позиции, выберите адрес доставки и тип оплаты. При оплате наличными действует цена со скидкой.
+                </p>
+            </div>
+
+            <div class="catalog-list-header__stats">
+                <div class="catalog-stat-box">
+                    <span>Позиций</span>
+                    <strong data-cart-items-count>{{ $summary['items_count'] }}</strong>
+                </div>
+                <div class="catalog-stat-box">
+                    <span>Штук</span>
+                    <strong data-cart-total-quantity>{{ $summary['total_quantity'] }}</strong>
+                </div>
+                <div class="catalog-stat-box">
+                    <span>Сумма</span>
+                    <strong
+                        data-cart-hero-total
+                        data-base-total="{{ $summary['base_total_amount'] }}"
+                        data-discount-total="{{ $summary['discount_total_amount'] }}"
+                    >
+                        @if ($summary['total_amount'] > 0)
+                            {{ \Illuminate\Support\Number::format($summary['total_amount'], 2, locale: 'ru') }} ₽
+                        @else
+                            По запросу
+                        @endif
+                    </strong>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @if ($cartItems->isEmpty())
+        <div class="surface-card mt-6 p-12 text-center">
+            <h2 class="font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Корзина пока пуста</h2>
+            <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
+                Добавьте товары из каталога, и здесь появится подборка для отправки менеджеру.
+            </p>
+            <a href="{{ route('catalog.index') }}" class="catalog-buy-button mx-auto mt-6 w-fit">Вернуться в каталог</a>
+        </div>
+    @else
+        <section class="catalog-cart-layout mt-6" data-cart-payment-scope>
+            <div class="space-y-4">
+                @foreach ($cartItems as $cartItem)
+                    @php
+                        $product = $cartItem->product;
+                        $unitLabel = $product?->publicUnitLabel();
+                        $fallbackImageUrl = asset('brand/product-placeholder.png');
+                        $basePrice = $cartItem->getAttribute('base_price');
+                        $discountPrice = $cartItem->getAttribute('discount_price');
+                        $baseUnitAmount = $cartItem->getAttribute('base_unit_amount');
+                        $discountUnitAmount = $cartItem->getAttribute('discount_unit_amount');
+                        $baseLineAmount = $cartItem->getAttribute('base_line_amount');
+                        $discountLineAmount = $cartItem->getAttribute('discount_line_amount');
+                        $hasDiscount = $baseUnitAmount !== null && $discountUnitAmount !== null && $baseUnitAmount > $discountUnitAmount;
+                        $minCartQuantity = $product?->cartQuantityMinimum() ?? 1;
+                        $stepCartQuantity = $product?->cartQuantityStep() ?? 1;
+                        $maxCartQuantity = $product?->cartQuantityMax() ?? 999;
+                        $safeCartQuantity = $product ? $product->normalizeCartQuantity((int) $cartItem->quantity) : (int) $cartItem->quantity;
+                        $unitsInPackageSummary = $product?->unitsInPackageSummary();
+                        $cartImageUrl = $product?->image_path ? asset($product->image_path) : $fallbackImageUrl;
+                        $cartItemPayload = [
+                            'itemId' => $cartItem->id,
+                            'productId' => $product?->id,
+                            'productUrl' => $product ? route('products.show', $product) : null,
+                            'title' => $product?->publicTitle() ?? 'Товар из каталога',
+                            'categoryName' => $product?->category?->name ?? 'Каталог',
+                            'vendorCode' => $product?->vendor_code,
+                            'unitLabel' => $unitLabel,
+                            'colorName' => $product?->color_name,
+                            'unitsInPackageSummary' => $unitsInPackageSummary,
+                            'imageUrl' => $cartImageUrl,
+                            'fallbackImageUrl' => $fallbackImageUrl,
+                            'quantity' => $safeCartQuantity,
+                            'minQuantity' => $minCartQuantity,
+                            'stepQuantity' => $stepCartQuantity,
+                            'maxQuantity' => $maxCartQuantity,
+                            'updateUrl' => route('cart.items.update', $cartItem),
+                            'destroyUrl' => route('cart.items.destroy', $cartItem),
+                            'csrfToken' => csrf_token(),
+                            'paymentMethod' => $selectedPaymentMethod,
+                            'pricing' => [
+                                'baseUnitAmount' => $baseUnitAmount,
+                                'discountUnitAmount' => $discountUnitAmount,
+                                'baseLineAmount' => $baseLineAmount,
+                                'discountLineAmount' => $discountLineAmount,
+                            ],
+                        ];
+                    @endphp
+
+                    <article class="surface-card reveal-card p-5 sm:p-6" data-cart-item data-cart-item-id="{{ $cartItem->id }}">
+                        <div
+                            data-vue-cart-line
+                            data-vue-cart-line-props='@json($cartItemPayload, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)'
+                        >
+                        <div class="catalog-cart-item">
+                            <div class="catalog-cart-item__visual">
+                                <img
+                                    src="{{ $cartImageUrl }}"
+                                    alt="{{ $product?->publicTitle() ?? 'Товар из каталога' }}"
+                                    class="catalog-cart-item__image"
+                                    data-fallback-src="{{ $fallbackImageUrl }}"
+                                    onerror="this.onerror=null; this.src=this.dataset.fallbackSrc;"
+                                >
+                            </div>
+
+                            <div class="catalog-cart-item__content">
+                                <div>
+                                    <p class="catalog-cart-item__eyebrow">{{ $product?->category?->name ?? 'Каталог' }}</p>
+                                    @if ($product)
+                                        <a href="{{ route('products.show', $product) }}" class="catalog-cart-item__title">{{ $product->publicTitle() }}</a>
+                                    @else
+                                        <p class="catalog-cart-item__title">Товар из каталога</p>
+                                    @endif
+
+                                    <p class="catalog-cart-item__meta">
+                                        @if ($product?->vendor_code)
+                                            Артикул {{ $product->vendor_code }}
+                                        @else
+                                            Каталог
+                                        @endif
+                                        @if ($unitLabel)
+                                            · {{ $unitLabel }}
+                                        @endif
+                                        @if ($product?->color_name)
+                                            · Цвет: {{ $product->color_name }}
+                                        @endif
+                                        @if ($unitsInPackageSummary)
+                                            · Упаковка: {{ $unitsInPackageSummary }}
+                                        @endif
+                                    </p>
+                                </div>
+
+                                <div class="catalog-cart-item__controls">
+                                    <form
+                                        action="{{ route('cart.items.update', $cartItem) }}"
+                                        method="POST"
+                                        class="catalog-cart-qty-form catalog-qty-control"
+                                        data-cart-qty-form
+                                        data-qty
+                                        data-min-quantity="{{ $minCartQuantity }}"
+                                        data-step-quantity="{{ $stepCartQuantity }}"
+                                        data-max-quantity="{{ $maxCartQuantity }}"
+                                    >
+                                        @csrf
+                                        @method('PATCH')
+
+                                        <button type="button" class="catalog-qty-control__button" data-qty-dec>-</button>
+                                        <input
+                                            type="number"
+                                            min="{{ $minCartQuantity }}"
+                                            max="{{ $maxCartQuantity }}"
+                                            step="{{ $stepCartQuantity }}"
+                                            name="quantity"
+                                            value="{{ $safeCartQuantity }}"
+                                            class="catalog-clean-input"
+                                            data-qty-input
+                                        >
+                                        <button type="button" class="catalog-qty-control__button" data-qty-inc>+</button>
+                                    </form>
+
+                                    <form action="{{ route('cart.items.destroy', $cartItem) }}" method="POST">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="catalog-inline-action">Удалить</button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="catalog-cart-item__price">
+                                <p class="catalog-cart-item__price-label" data-cart-price-label>
+                                    {{ $isCashPayment ? 'Со скидкой' : 'Без скидки' }}
+                                </p>
+
+                                @if ($hasDiscount)
+                                    <p class="catalog-cart-item__compare-price {{ $isCashPayment ? '' : 'hidden' }}" data-cart-compare-price>
+                                        {{ \Illuminate\Support\Number::format((float) $baseUnitAmount, 2, locale: 'ru') }} ₽
+                                    </p>
+                                @endif
+
+                                @if ($baseUnitAmount !== null || $discountUnitAmount !== null)
+                                    <p
+                                        class="catalog-cart-item__price-value {{ $isCashPayment && $hasDiscount ? 'catalog-cart-item__price-value--accent' : '' }}"
+                                        data-cart-unit-price
+                                        data-base-price="{{ $baseUnitAmount }}"
+                                        data-discount-price="{{ $discountUnitAmount }}"
+                                    >
+                                        {{ \Illuminate\Support\Number::format((float) ($isCashPayment ? ($discountUnitAmount ?? $baseUnitAmount) : ($baseUnitAmount ?? $discountUnitAmount)), 2, locale: 'ru') }} ₽
+                                    </p>
+                                    <p
+                                        class="catalog-cart-item__line-total"
+                                        data-cart-line-total
+                                        data-base-total="{{ $baseLineAmount }}"
+                                        data-discount-total="{{ $discountLineAmount }}"
+                                    >
+                                        Итого: {{ \Illuminate\Support\Number::format((float) ($isCashPayment ? ($discountLineAmount ?? $baseLineAmount) : ($baseLineAmount ?? $discountLineAmount)), 2, locale: 'ru') }} ₽
+                                    </p>
+                                @else
+                                    <p class="catalog-cart-item__price-value catalog-cart-item__price-value--empty">Цена по запросу</p>
+                                @endif
+
+                                <p class="catalog-cart-item__payment-note">
+                                    {{ $isCashPayment ? 'Наличный расчет' : 'Безналичный расчет' }}
+                                </p>
+                            </div>
+                        </div>
+                        </div>
+                    </article>
+                @endforeach
+            </div>
+
+            @php
+                $checkoutPaymentOptions = collect($paymentMethods)
+                    ->map(fn (string $label, string $value): array => [
+                        'value' => $value,
+                        'label' => $label,
+                        'note' => $value === 'cash' ? 'Цена со скидкой.' : 'Цена без скидки.',
+                    ])
+                    ->values()
+                    ->all();
+                $checkoutPanelPayload = [
+                    'summary' => [
+                        'itemsCount' => (int) ($summary['items_count'] ?? 0),
+                        'totalQuantity' => (int) ($summary['total_quantity'] ?? 0),
+                        'pricedItemsCount' => (int) ($summary['priced_items_count'] ?? 0),
+                        'unpricedItemsCount' => (int) ($summary['unpriced_items_count'] ?? 0),
+                        'baseTotal' => $summary['base_total_amount'] ?? null,
+                        'discountTotal' => $summary['discount_total_amount'] ?? null,
+                    ],
+                    'paymentOptions' => $checkoutPaymentOptions,
+                    'selectedPaymentMethod' => $selectedPaymentMethod,
+                ];
+            @endphp
+
+            <aside class="surface-card reveal-card p-6 sm:p-7 lg:sticky lg:top-6 catalog-checkout-v2">
+                <form action="{{ route('cart.checkout') }}" method="POST" class="space-y-6">
+                    @csrf
+
+                    <div
+                        data-vue-cart-checkout
+                        data-vue-cart-checkout-props='@json($checkoutPanelPayload, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)'
+                    >
+                        <div>
+                            <h2 class="font-['IBM_Plex_Sans'] text-3xl font-semibold tracking-tight text-slate-950">Подтверждение заявки</h2>
+                        </div>
+
+                        <div class="space-y-3 mt-4">
+                        <div class="catalog-summary-row">
+                            <span>Позиций</span>
+                            <strong data-cart-items-count>{{ $summary['items_count'] }}</strong>
+                        </div>
+                        <div class="catalog-summary-row">
+                            <span>Количество</span>
+                            <strong data-cart-total-quantity>{{ $summary['total_quantity'] }}</strong>
+                        </div>
+                        <div class="catalog-summary-row">
+                            <span>С ценой</span>
+                            <strong data-cart-priced-count>{{ $summary['priced_items_count'] }}</strong>
+                        </div>
+                        @if ($summary['unpriced_items_count'] > 0)
+                            <div class="catalog-summary-row">
+                                <span>По запросу</span>
+                                <strong data-cart-unpriced-count>{{ $summary['unpriced_items_count'] }}</strong>
+                            </div>
+                        @endif
+                        <div class="catalog-summary-row is-total">
+                            <span>Итого</span>
+                            <strong
+                                data-cart-summary-total
+                                data-base-total="{{ $summary['base_total_amount'] }}"
+                                data-discount-total="{{ $summary['discount_total_amount'] }}"
+                            >
+                                @if ($summary['total_amount'] > 0)
+                                    {{ \Illuminate\Support\Number::format($summary['total_amount'], 2, locale: 'ru') }} ₽
+                                @else
+                                    По запросу
+                                @endif
+                            </strong>
+                        </div>
+                    </div>
+
+                        <div class="space-y-3 mt-5">
+                        <label class="catalog-filter-title">Тип оплаты</label>
+
+                        <div class="catalog-payment-options">
+                            @foreach ($paymentMethods as $paymentMethod => $paymentMethodLabel)
+                                <label class="catalog-payment-option">
+                                    <input
+                                        type="radio"
+                                        name="payment_method"
+                                        value="{{ $paymentMethod }}"
+                                        data-cart-payment-method
+                                        @checked($selectedPaymentMethod === $paymentMethod)
+                                    >
+                                    <span class="catalog-payment-option__content">
+                                        <strong>{{ $paymentMethodLabel }}</strong>
+                                        <small>{{ $paymentMethod === 'cash' ? 'Цена со скидкой.' : 'Цена без скидки.' }}</small>
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    </div>
+                    <div class="space-y-3">
+                        <label class="catalog-filter-title">Выберите адрес доставки</label>
+
+                        @if ($userAddresses->isEmpty())
+                            <div class="catalog-order-note">
+                                Сначала добавьте хотя бы один адрес в личном кабинете, после этого он появится здесь для выбора.
+                            </div>
+                        @else
+                            <div class="catalog-checkout-addresses">
+                                @foreach ($userAddresses as $address)
+                                    <label class="catalog-checkout-address">
+                                        <input
+                                            type="radio"
+                                            name="user_address_id"
+                                            value="{{ $address->id }}"
+                                            @checked((string) old('user_address_id', $selectedAddressId) === (string) $address->id)
+                                        >
+                                        <span class="catalog-checkout-address__content">
+                                            <strong>{{ $address->title }}</strong>
+                                            <small>{{ $address->address }}</small>
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('user_address_id')
+                                <p class="text-sm font-medium text-red-600">{{ $message }}</p>
+                            @enderror
+                        @endif
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="comment" class="catalog-filter-title">Комментарий к заказу</label>
+                        <textarea
+                            id="comment"
+                            name="comment"
+                            rows="4"
+                            placeholder="Например: удобное время звонка, резерв, комментарий по объекту"
+                            class="catalog-clean-input min-h-[120px] resize-y"
+                        >{{ old('comment') }}</textarea>
+                    </div>
+
+                    <button type="submit" class="catalog-buy-button w-full justify-center" @disabled($userAddresses->isEmpty())>Подтверждаю заявку</button>
+                </form>
+            </aside>
+        </section>
+    @endif
+@endsection

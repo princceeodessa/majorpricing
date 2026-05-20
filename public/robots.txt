@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /account
+Disallow: /cart
+Disallow: /orders
+Disallow: /favorites
+Disallow: /manager
+Disallow: /admin
+Disallow: /notifications/poll
+Disallow: /1c/exchange
+Disallow: /1c_exchange.php
+
+Sitemap: https://xn--b1apclaccz4czb.xn--p1ai/sitemap.xml

@@ -1,0 +1,16 @@
+{
+  "name": "МАЖОР",
+  "short_name": "МАЖОР",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#163459",
+  "icons": [
+    {
+      "src": "/brand/major-favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
