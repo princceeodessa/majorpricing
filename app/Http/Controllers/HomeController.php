@@ -2,48 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
-use App\Models\Product;
-use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Schema;
 
 class HomeController extends Controller
 {
-    public function show(): View|RedirectResponse
+    public function show(): RedirectResponse
     {
-        if (auth()->check()) {
-            return redirect()->route('catalog.index');
-        }
-
-        $featuredCategories = collect();
-        $categoryCount = 0;
-        $productCount = 0;
-
-        if (Schema::hasTable('categories')) {
-            $featuredCategories = Category::query()
-                ->visibleInCatalog()
-                ->roots()
-                ->limit(8)
-                ->get(['id', 'name', 'slug']);
-
-            $categoryCount = Category::query()
-                ->visibleInCatalog()
-                ->count();
-        }
-
-        if (Schema::hasTable('products')) {
-            $productCount = Product::query()
-                ->visibleInCatalog()
-                ->count();
-        }
-
-        return view('home.index', [
-            'featuredCategories' => $featuredCategories,
-            'categoryCount' => $categoryCount,
-            'productCount' => $productCount,
-        ]);
+        return redirect()->route('catalog.index');
     }
 
     public function sitemap(): Response

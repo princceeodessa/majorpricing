@@ -3,8 +3,9 @@
 @section('title', $category->name.' - ПОТОЛКОВЫЧ')
 
 @section('content')
+    @php($showPrices = $showPrices ?? auth()->check())
     @php($sectionTotal = $category->children->isNotEmpty() ? (int) $sectionCounts->sum() : $products->total())
-    @php($activeFilters = collect([request('q'), $selectedSection?->id, $selectedSheet, $hasActivePriceFilter ? 'price' : null])->filter()->count())
+    @php($activeFilters = collect([request('q'), $selectedSection?->id, $selectedSheet, $showPrices && $hasActivePriceFilter ? 'price' : null])->filter()->count())
     @php($rangeMin = $priceBounds['min'] !== null ? (float) floor($priceBounds['min']) : 0)
     @php($rangeMax = $priceBounds['max'] !== null ? (float) ceil($priceBounds['max']) : 0)
     @php($formPriceMin = $selectedPriceMin !== null ? number_format((float) $selectedPriceMin, 2, '.', '') : '')
@@ -25,7 +26,11 @@
 
                 <h1 class="mt-4 font-['IBM_Plex_Sans'] text-4xl font-semibold tracking-tight text-slate-950 sm:text-[3.2rem]">{{ $category->name }}</h1>
                 <p class="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-                    Белая каталоговая раскладка с боковой фильтрацией по секциям, единой цене и серии. Все значения на странице показываются в общем режиме без профилей цен.
+                    @if ($showPrices)
+                        Белая каталоговая раскладка с боковой фильтрацией по секциям, единой цене и серии. Все значения на странице показываются в общем режиме без профилей цен.
+                    @else
+                        Каталог открыт для просмотра. Цены и оформление заказа доступны после подтверждения партнерского доступа.
+                    @endif
                 </p>
             </div>
 

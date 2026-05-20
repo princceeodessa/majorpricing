@@ -180,21 +180,23 @@
                 ];
             @endphp
 
-            <div
-                class="catalog-feed-filters"
-                data-vue-feed-switcher
-                data-vue-feed-props='@json($feedSwitcherProps, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)'
-                aria-label="Сортировка каталога"
-            >
-                @foreach ($feedLinks as $feedKey => $feedLabel)
-                    <a
-                        href="{{ route('catalog.index', array_merge(request()->except('page', 'feed'), ['feed' => $feedKey])) }}"
-                        class="catalog-feed-filter {{ ($feed ?? 'new') === $feedKey ? 'is-active' : '' }}"
-                    >
-                        {{ $feedLabel }}
-                    </a>
-                @endforeach
-            </div>
+            @unless ($hasSearch ?? false)
+                <div
+                    class="catalog-feed-filters"
+                    data-vue-feed-switcher
+                    data-vue-feed-props='@json($feedSwitcherProps, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)'
+                    aria-label="Сортировка каталога"
+                >
+                    @foreach ($feedLinks as $feedKey => $feedLabel)
+                        <a
+                            href="{{ route('catalog.index', array_merge(request()->except('page', 'feed'), ['feed' => $feedKey])) }}"
+                            class="catalog-feed-filter {{ ($feed ?? 'new') === $feedKey ? 'is-active' : '' }}"
+                        >
+                            {{ $feedLabel }}
+                        </a>
+                    @endforeach
+                </div>
+            @endunless
         </div>
 
         @if ($products->isEmpty())

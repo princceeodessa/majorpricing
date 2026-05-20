@@ -33,7 +33,7 @@ class CatalogAuthenticationTest extends TestCase
             'password' => 'secret12345',
         ]);
 
-        $response->assertRedirect('/');
+        $response->assertRedirect('/catalog');
         $this->assertAuthenticatedAs($user);
     }
 }

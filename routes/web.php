@@ -23,6 +23,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'show'])->name('home');
 Route::get('/sitemap.xml', [HomeController::class, 'sitemap'])->name('sitemap');
+Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
+Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
+Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
 
 Route::middleware(['guest', 'noindex'])->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
@@ -35,7 +38,6 @@ Route::match(['GET', 'POST'], '/1c/exchange', OneCExchangeController::class)->na
 Route::match(['GET', 'POST'], '/1c_exchange.php', OneCExchangeController::class);
 
 Route::middleware('auth')->group(function (): void {
-    Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
     Route::patch('/account', [AccountController::class, 'update'])->name('account.update');
     Route::post('/account/support/messages', [SupportMessageController::class, 'storeForClient'])->name('account.support.messages.store');
@@ -91,8 +93,6 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('/admin/products/{product}/images/{productImage}', [AdminProductImageController::class, 'destroy'])
         ->middleware('admin')
         ->name('admin.products.images.destroy');
-    Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
-    Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
     Route::post('/products/{product:slug}/cart', [CartController::class, 'store'])->name('cart.store');
     Route::patch('/products/{product:slug}/cart', [CartController::class, 'updateProduct'])->name('cart.product.update');
     Route::delete('/products/{product:slug}/cart', [CartController::class, 'destroyProduct'])->name('cart.product.destroy');

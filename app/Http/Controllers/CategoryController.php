@@ -17,6 +17,7 @@ class CategoryController extends Controller
 
         $category->loadMissing(['parent', 'children' => fn ($query) => $query->visibleInCatalog()]);
 
+        $showPrices = $request->user() !== null;
         $selectedSection = null;
         $categoryIds = [$category->id];
 
@@ -40,10 +41,12 @@ class CategoryController extends Controller
             ->whereIn('category_id', $categoryIds)
             ->search($request->string('q')->toString());
 
-        $priceStats = (clone $catalogQuery)
-            ->whereNotNull('price_from')
-            ->selectRaw('MIN(price_from) as min_amount, MAX(price_from) as max_amount')
-            ->first();
+        $priceStats = $showPrices
+            ? (clone $catalogQuery)
+                ->whereNotNull('price_from')
+                ->selectRaw('MIN(price_from) as min_amount, MAX(price_from) as max_amount')
+                ->first()
+            : null;
 
         $availableSheets = (clone $catalogQuery)
             ->whereNotNull('source_sheet')
@@ -76,7 +79,9 @@ class CategoryController extends Controller
             }
         }
 
-        $hasActivePriceFilter = $hasPriceBounds && ($request->filled('price_min') || $request->filled('price_max'));
+        $hasActivePriceFilter = $showPrices
+            && $hasPriceBounds
+            && ($request->filled('price_min') || $request->filled('price_max'));
 
         $products = Product::query()
             ->visibleInCatalog()
@@ -88,7 +93,7 @@ class CategoryController extends Controller
                 fn (Builder $query) => $query->where('source_sheet', $selectedSheet),
             )
             ->when(
-                $hasActivePriceFilter,
+                $showPrices && $hasActivePriceFilter,
                 fn (Builder $query) => $query
                     ->whereNotNull('price_from')
                     ->where('price_from', '>=', $selectedPriceMin)
@@ -128,6 +133,7 @@ class CategoryController extends Controller
             'selectedPriceMin' => $selectedPriceMin,
             'selectedPriceMax' => $selectedPriceMax,
             'hasActivePriceFilter' => $hasActivePriceFilter,
+            'showPrices' => $showPrices,
         ]);
     }
 }

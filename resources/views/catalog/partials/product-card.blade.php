@@ -1,6 +1,7 @@
 @php
-    $price = $product->publicPrice();
-    $comparePrice = $product->comparePrice();
+    $isAuthenticatedCatalogUser = auth()->check();
+    $price = $isAuthenticatedCatalogUser ? $product->publicPrice() : null;
+    $comparePrice = $isAuthenticatedCatalogUser ? $product->comparePrice() : null;
     $publicTitle = $product->publicTitle();
     $rootCategory = $product->category?->parent ?? $product->category;
     $fallbackImageUrl = asset('brand/product-placeholder.png');
@@ -19,7 +20,7 @@
     $availabilityTone = $product->availabilityTone();
     $productAccents = ['#163459', '#1f4f7a', '#255f91', '#2f6f9f', '#3c7fae', '#0f2947'];
     $productAccent = $productAccents[($rootCategory?->id ?? $product->id ?? 0) % count($productAccents)];
-    $cartQuantity = (int) (($cartProductQuantities[$product->id] ?? 0));
+    $cartQuantity = $isAuthenticatedCatalogUser ? (int) (($cartProductQuantities[$product->id] ?? 0)) : 0;
     $minCartQuantity = $product->cartQuantityMinimum();
     $stepCartQuantity = $product->cartQuantityStep();
     $maxCartQuantity = $product->cartQuantityMax();
@@ -39,9 +40,11 @@
     data-product-card
     data-product-id="{{ $product->id }}"
 >
-    <div class="catalog-product-card__favorite">
-        @include('partials.favorite-toggle', ['product' => $product])
-    </div>
+    @auth
+        <div class="catalog-product-card__favorite">
+            @include('partials.favorite-toggle', ['product' => $product])
+        </div>
+    @endauth
 
     <div
         class="catalog-product-card__visual"
@@ -99,88 +102,118 @@
 
         <div class="catalog-product-card__footer">
             <div>
-                <p class="catalog-product-card__price-label">{{ $price?->min_amount !== null ? 'Со скидкой' : 'Цена' }}</p>
-                @if ($comparePrice?->min_amount !== null)
-                    <p class="catalog-product-card__compare-price">
-                        {{ \Illuminate\Support\Number::format((float) $comparePrice->min_amount, 2, locale: 'ru') }} ₽
-                    </p>
-                @endif
-                @if ($price?->min_amount !== null)
-                    <p class="catalog-product-card__price {{ $comparePrice?->min_amount !== null ? 'catalog-product-card__price--accent' : '' }}">
-                        {{ \Illuminate\Support\Number::format((float) $price->min_amount, 2, locale: 'ru') }} ₽
-                        @if ($unitLabel)
-                            <span class="catalog-product-card__price-unit">/ за 1 {{ mb_strtolower($unitLabel) }}</span>
-                        @endif
-                    </p>
+                @if ($isAuthenticatedCatalogUser)
+                    <p class="catalog-product-card__price-label">{{ $price?->min_amount !== null ? 'Со скидкой' : 'Цена' }}</p>
+                    @if ($comparePrice?->min_amount !== null)
+                        <p class="catalog-product-card__compare-price">
+                            {{ \Illuminate\Support\Number::format((float) $comparePrice->min_amount, 2, locale: 'ru') }} ₽
+                        </p>
+                    @endif
+                    @if ($price?->min_amount !== null)
+                        <p class="catalog-product-card__price {{ $comparePrice?->min_amount !== null ? 'catalog-product-card__price--accent' : '' }}">
+                            {{ \Illuminate\Support\Number::format((float) $price->min_amount, 2, locale: 'ru') }} ₽
+                            @if ($unitLabel)
+                                <span class="catalog-product-card__price-unit">/ за 1 {{ mb_strtolower($unitLabel) }}</span>
+                            @endif
+                        </p>
+                    @else
+                        <p class="catalog-product-card__price catalog-product-card__price--empty">Цена по запросу</p>
+                    @endif
                 @else
-                    <p class="catalog-product-card__price catalog-product-card__price--empty">Цена по запросу</p>
+                    <p class="catalog-product-card__price-label">Партнерский доступ</p>
+                    <p class="catalog-product-card__price catalog-product-card__price--empty">Цены доступны партнерам</p>
                 @endif
             </div>
 
-            <div
-                class="catalog-product-card__cart-control"
-                data-cart-control
-                data-product-id="{{ $product->id }}"
-                data-quantity="{{ $cartQuantity > 0 ? $safeCartQuantity : 0 }}"
-                data-cart-unit-amount="{{ $price?->min_amount !== null ? (float) $price->min_amount : '' }}"
-                data-min-quantity="{{ $minCartQuantity }}"
-                data-step-quantity="{{ $stepCartQuantity }}"
-                data-store-url="{{ route('cart.store', $product) }}"
-                data-update-url="{{ route('cart.product.update', $product) }}"
-                data-destroy-url="{{ route('cart.product.destroy', $product) }}"
-                data-csrf-token="{{ csrf_token() }}"
-            >
-                @if ($unitsInPackageSummary || filled($product->color_name))
-                    <div class="catalog-product-card__traits">
-                        @if ($unitsInPackageSummary)
-                            <p class="catalog-product-card__trait">
-                                <span>Упаковка</span>
-                                <strong>{{ $unitsInPackageSummary }}</strong>
-                            </p>
-                        @endif
-                        @if (filled($product->color_name))
-                            <p class="catalog-product-card__trait">
-                                <span>Цвет</span>
-                                <strong>{{ $product->color_name }}</strong>
-                            </p>
-                        @endif
-                    </div>
-                @endif
-
-                <div class="{{ $cartQuantity > 0 ? 'hidden' : '' }}" data-cart-add-state>
-                    <button type="button" class="catalog-product-card__cta" data-cart-add>В корзину</button>
-                </div>
-
-                <div class="catalog-product-card__stepper {{ $cartQuantity > 0 ? '' : 'hidden' }}" data-cart-qty-state>
-                    <button type="button" class="catalog-product-card__stepper-btn" data-cart-dec aria-label="Уменьшить количество">−</button>
-                    <input
-                        type="number"
-                        min="{{ $minCartQuantity }}"
-                        max="{{ $maxCartQuantity }}"
-                        step="{{ $stepCartQuantity }}"
-                        inputmode="numeric"
-                        class="catalog-product-card__stepper-value"
-                        data-cart-quantity
-                        data-cart-quantity-input
-                        value="{{ $safeCartQuantity }}"
-                        aria-label="Quantity"
-                        title="Enter quantity manually"
-                    >
-                    <button type="button" class="catalog-product-card__stepper-btn" data-cart-inc aria-label="Увеличить количество">+</button>
-                </div>
-
+            @auth
                 <div
-                    class="catalog-product-card__cart-total {{ $cartQuantity > 0 && $price?->min_amount !== null ? '' : 'hidden' }}"
-                    data-cart-line-summary
+                    class="catalog-product-card__cart-control"
+                    data-cart-control
+                    data-product-id="{{ $product->id }}"
+                    data-quantity="{{ $cartQuantity > 0 ? $safeCartQuantity : 0 }}"
+                    data-cart-unit-amount="{{ $price?->min_amount !== null ? (float) $price->min_amount : '' }}"
+                    data-min-quantity="{{ $minCartQuantity }}"
+                    data-step-quantity="{{ $stepCartQuantity }}"
+                    data-store-url="{{ route('cart.store', $product) }}"
+                    data-update-url="{{ route('cart.product.update', $product) }}"
+                    data-destroy-url="{{ route('cart.product.destroy', $product) }}"
+                    data-csrf-token="{{ csrf_token() }}"
                 >
-                    <span>В корзине на</span>
-                    <strong data-cart-line-amount>
-                        @if ($price?->min_amount !== null)
-                            {{ \Illuminate\Support\Number::format(round((float) $price->min_amount * $safeCartQuantity, 2), 2, locale: 'ru') }} ₽
-                        @endif
-                    </strong>
+                    @if ($unitsInPackageSummary || filled($product->color_name))
+                        <div class="catalog-product-card__traits">
+                            @if ($unitsInPackageSummary)
+                                <p class="catalog-product-card__trait">
+                                    <span>Упаковка</span>
+                                    <strong>{{ $unitsInPackageSummary }}</strong>
+                                </p>
+                            @endif
+                            @if (filled($product->color_name))
+                                <p class="catalog-product-card__trait">
+                                    <span>Цвет</span>
+                                    <strong>{{ $product->color_name }}</strong>
+                                </p>
+                            @endif
+                        </div>
+                    @endif
+
+                    <div class="{{ $cartQuantity > 0 ? 'hidden' : '' }}" data-cart-add-state>
+                        <button type="button" class="catalog-product-card__cta" data-cart-add>В корзину</button>
+                    </div>
+
+                    <div class="catalog-product-card__stepper {{ $cartQuantity > 0 ? '' : 'hidden' }}" data-cart-qty-state>
+                        <button type="button" class="catalog-product-card__stepper-btn" data-cart-dec aria-label="Уменьшить количество">−</button>
+                        <input
+                            type="number"
+                            min="{{ $minCartQuantity }}"
+                            max="{{ $maxCartQuantity }}"
+                            step="{{ $stepCartQuantity }}"
+                            inputmode="numeric"
+                            class="catalog-product-card__stepper-value"
+                            data-cart-quantity
+                            data-cart-quantity-input
+                            value="{{ $safeCartQuantity }}"
+                            aria-label="Quantity"
+                            title="Enter quantity manually"
+                        >
+                        <button type="button" class="catalog-product-card__stepper-btn" data-cart-inc aria-label="Увеличить количество">+</button>
+                    </div>
+
+                    <div
+                        class="catalog-product-card__cart-total {{ $cartQuantity > 0 && $price?->min_amount !== null ? '' : 'hidden' }}"
+                        data-cart-line-summary
+                    >
+                        <span>В корзине на</span>
+                        <strong data-cart-line-amount>
+                            @if ($price?->min_amount !== null)
+                                {{ \Illuminate\Support\Number::format(round((float) $price->min_amount * $safeCartQuantity, 2), 2, locale: 'ru') }} ₽
+                            @endif
+                        </strong>
+                    </div>
                 </div>
-            </div>
+            @else
+                <div class="catalog-product-card__cart-control">
+                    @if ($unitsInPackageSummary || filled($product->color_name))
+                        <div class="catalog-product-card__traits">
+                            @if ($unitsInPackageSummary)
+                                <p class="catalog-product-card__trait">
+                                    <span>Упаковка</span>
+                                    <strong>{{ $unitsInPackageSummary }}</strong>
+                                </p>
+                            @endif
+                            @if (filled($product->color_name))
+                                <p class="catalog-product-card__trait">
+                                    <span>Цвет</span>
+                                    <strong>{{ $product->color_name }}</strong>
+                                </p>
+                            @endif
+                        </div>
+                    @endif
+
+                    <a href="{{ route('registration-requests.create') }}" class="catalog-product-card__cta">
+                        Стать партнером
+                    </a>
+                </div>
+            @endauth
         </div>
     </div>
 </article>

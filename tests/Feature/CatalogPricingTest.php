@@ -13,6 +13,118 @@ class CatalogPricingTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_guest_catalog_hides_prices_and_links_to_partner_request(): void
+    {
+        $category = Category::query()->create([
+            'name' => 'Профиля',
+            'slug' => 'profilya',
+            'sort_order' => 0,
+            'accent_color' => '#f97316',
+        ]);
+
+        $product = Product::query()->create([
+            'category_id' => $category->id,
+            'title' => 'Профиль открытого каталога',
+            'name' => 'Профиль открытого каталога',
+            'slug' => 'profil-public-catalog',
+            'price_from' => 530,
+            'sort_order' => 0,
+        ]);
+
+        ProductPrice::query()->create([
+            'product_id' => $product->id,
+            'column_index' => 1,
+            'label' => Product::primaryPublicPriceLabel(),
+            'display_value' => '530,00',
+            'min_amount' => 530,
+        ]);
+
+        $partnerRequestUrl = route('registration-requests.create');
+
+        $this->get(route('catalog.index'))
+            ->assertOk()
+            ->assertSeeText('Профиль открытого каталога')
+            ->assertSeeText('Стать партнером')
+            ->assertSee($partnerRequestUrl, false)
+            ->assertSeeText('Цены доступны партнерам')
+            ->assertDontSeeText('530,00')
+            ->assertDontSeeText('Со скидкой')
+            ->assertDontSeeText('В корзину');
+
+        $this->get(route('products.show', $product))
+            ->assertOk()
+            ->assertSeeText('Профиль открытого каталога')
+            ->assertSeeText('Стать партнером')
+            ->assertSee($partnerRequestUrl, false)
+            ->assertSeeText('Цены доступны партнерам')
+            ->assertDontSeeText('530,00')
+            ->assertDontSeeText('Со скидкой')
+            ->assertDontSeeText('В корзину');
+    }
+
+    public function test_guest_category_does_not_show_or_apply_price_filter(): void
+    {
+        $category = Category::query()->create([
+            'name' => 'Светотехника',
+            'slug' => 'svetotekhnika',
+            'sort_order' => 0,
+            'accent_color' => '#f97316',
+        ]);
+
+        $cheapProduct = Product::query()->create([
+            'category_id' => $category->id,
+            'title' => 'Бюджетный светильник',
+            'name' => 'Бюджетный светильник',
+            'slug' => 'byudzhetnyy-svetilnik',
+            'price_from' => 100,
+            'sort_order' => 0,
+        ]);
+
+        $expensiveProduct = Product::query()->create([
+            'category_id' => $category->id,
+            'title' => 'Премиальный светильник',
+            'name' => 'Премиальный светильник',
+            'slug' => 'premialnyy-svetilnik',
+            'price_from' => 900,
+            'sort_order' => 1,
+        ]);
+
+        ProductPrice::query()->insert([
+            [
+                'product_id' => $cheapProduct->id,
+                'column_index' => 1,
+                'label' => Product::primaryPublicPriceLabel(),
+                'display_value' => '100,00',
+                'min_amount' => 100,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'product_id' => $expensiveProduct->id,
+                'column_index' => 1,
+                'label' => Product::primaryPublicPriceLabel(),
+                'display_value' => '900,00',
+                'min_amount' => 900,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $this->get(route('categories.show', [
+            'category' => $category,
+            'price_min' => 800,
+            'price_max' => 1000,
+        ]))
+            ->assertOk()
+            ->assertSeeText('Бюджетный светильник')
+            ->assertSeeText('Премиальный светильник')
+            ->assertSeeText('Цены доступны партнерам')
+            ->assertDontSee('name="price_min"', false)
+            ->assertDontSee('name="price_max"', false)
+            ->assertDontSeeText('100,00')
+            ->assertDontSeeText('900,00');
+    }
+
     public function test_category_uses_single_catalog_price(): void
     {
         $user = User::factory()->create([

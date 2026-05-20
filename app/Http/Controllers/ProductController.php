@@ -16,7 +16,11 @@ class ProductController extends Controller
         abort_unless($product->isVisibleInCatalog(), 404);
 
         $product->loadMissing(['category.children', 'category.parent.children', 'category.parent', 'prices', 'productImages']);
-        $cartQuantity = (int) $request->user()->cartItems()->where('product_id', $product->id)->value('quantity');
+
+        $user = $request->user();
+        $cartQuantity = $user
+            ? (int) $user->cartItems()->where('product_id', $product->id)->value('quantity')
+            : 0;
 
         $relatedProducts = $this->resolveRelatedProducts($product);
 

@@ -4,8 +4,9 @@
 
 @section('content')
     @php
-        $price = $product->publicPrice();
-        $comparePrice = $product->comparePrice();
+        $showPrices = auth()->check();
+        $price = $showPrices ? $product->publicPrice() : null;
+        $comparePrice = $showPrices ? $product->comparePrice() : null;
         $category = $product->category;
         $unitLabel = $product->publicUnitLabel();
         $minimumSaleSummary = $product->minimumSaleQuantitySummary();
@@ -116,82 +117,95 @@
                 @endif
 
                 <div class="catalog-product-price-block">
-                    @if ($comparePrice?->min_amount !== null)
-                        <p class="catalog-product-price-block__compare">
-                            {{ \Illuminate\Support\Number::format((float) $comparePrice->min_amount, 2, locale: 'ru') }} ₽
-                        </p>
-                    @endif
+                    @if ($showPrices)
+                        @if ($comparePrice?->min_amount !== null)
+                            <p class="catalog-product-price-block__compare">
+                                {{ \Illuminate\Support\Number::format((float) $comparePrice->min_amount, 2, locale: 'ru') }} ₽
+                            </p>
+                        @endif
 
-                    @if ($price?->min_amount !== null)
-                        <p class="catalog-product-price-block__value {{ $comparePrice?->min_amount !== null ? 'catalog-product-price-block__value--accent' : '' }}">
-                            {{ \Illuminate\Support\Number::format((float) $price->min_amount, 2, locale: 'ru') }} ₽
-                            @if ($unitLabel)
-                                <span>/ 1 {{ $unitLabel }}</span>
-                            @endif
-                        </p>
+                        @if ($price?->min_amount !== null)
+                            <p class="catalog-product-price-block__value {{ $comparePrice?->min_amount !== null ? 'catalog-product-price-block__value--accent' : '' }}">
+                                {{ \Illuminate\Support\Number::format((float) $price->min_amount, 2, locale: 'ru') }} ₽
+                                @if ($unitLabel)
+                                    <span>/ 1 {{ $unitLabel }}</span>
+                                @endif
+                            </p>
+                        @else
+                            <p class="catalog-product-price-block__value catalog-product-price-block__value--empty">Цена по запросу</p>
+                        @endif
+
+                        <p class="catalog-product-price-block__profile">{{ $price?->min_amount !== null ? 'Со скидкой' : 'Цена' }}</p>
                     @else
-                        <p class="catalog-product-price-block__value catalog-product-price-block__value--empty">Цена по запросу</p>
+                        <p class="catalog-product-price-block__value catalog-product-price-block__value--empty">Цены доступны партнерам</p>
+                        <p class="catalog-product-price-block__profile">Оставьте заявку, чтобы получить партнерский доступ.</p>
                     @endif
-
-                    <p class="catalog-product-price-block__profile">{{ $price?->min_amount !== null ? 'Со скидкой' : 'Цена' }}</p>
                 </div>
 
                 <p class="catalog-product-price-block__availability catalog-product-price-block__availability--{{ $availabilityTone }}">
                     {{ $availabilityLabel }}
                 </p>
 
-                <div class="catalog-product-secondary-actions">
-                    @include('partials.favorite-toggle', ['product' => $product, 'showLabel' => true, 'sizeClass' => 'catalog-favorite-form--wide'])
-                </div>
+                @auth
+                    <div class="catalog-product-secondary-actions">
+                        @include('partials.favorite-toggle', ['product' => $product, 'showLabel' => true, 'sizeClass' => 'catalog-favorite-form--wide'])
+                    </div>
+                @endauth
 
                 <div class="catalog-product-actions">
-                    <div
-                        class="catalog-product-card__cart-control"
-                        data-cart-control
-                        data-product-id="{{ $product->id }}"
-                        data-quantity="{{ $cartQuantity > 0 ? $safeCartQuantity : 0 }}"
-                        data-cart-unit-amount="{{ $price?->min_amount !== null ? (float) $price->min_amount : '' }}"
-                        data-min-quantity="{{ $minCartQuantity }}"
-                        data-step-quantity="{{ $stepCartQuantity }}"
-                        data-store-url="{{ route('cart.store', $product) }}"
-                        data-update-url="{{ route('cart.product.update', $product) }}"
-                        data-destroy-url="{{ route('cart.product.destroy', $product) }}"
-                        data-csrf-token="{{ csrf_token() }}"
-                    >
-                        <div class="{{ $cartQuantity > 0 ? 'hidden' : '' }}" data-cart-add-state>
-                            <button type="button" class="catalog-buy-button" data-cart-add>В корзину</button>
-                        </div>
-
-                        <div class="catalog-product-card__stepper {{ $cartQuantity > 0 ? '' : 'hidden' }}" data-cart-qty-state>
-                            <button type="button" class="catalog-product-card__stepper-btn" data-cart-dec aria-label="Уменьшить количество">−</button>
-                            <input
-                                type="number"
-                                min="{{ $minCartQuantity }}"
-                                max="{{ $maxCartQuantity }}"
-                                step="{{ $stepCartQuantity }}"
-                                inputmode="numeric"
-                                class="catalog-product-card__stepper-value"
-                                data-cart-quantity
-                                data-cart-quantity-input
-                                value="{{ $safeCartQuantity }}"
-                                aria-label="Quantity"
-                                title="Enter quantity manually"
-                            >
-                            <button type="button" class="catalog-product-card__stepper-btn" data-cart-inc aria-label="Увеличить количество">+</button>
-                        </div>
-
+                    @auth
                         <div
-                            class="catalog-product-card__cart-total {{ $cartQuantity > 0 && $price?->min_amount !== null ? '' : 'hidden' }}"
-                            data-cart-line-summary
+                            class="catalog-product-card__cart-control"
+                            data-cart-control
+                            data-product-id="{{ $product->id }}"
+                            data-quantity="{{ $cartQuantity > 0 ? $safeCartQuantity : 0 }}"
+                            data-cart-unit-amount="{{ $price?->min_amount !== null ? (float) $price->min_amount : '' }}"
+                            data-min-quantity="{{ $minCartQuantity }}"
+                            data-step-quantity="{{ $stepCartQuantity }}"
+                            data-store-url="{{ route('cart.store', $product) }}"
+                            data-update-url="{{ route('cart.product.update', $product) }}"
+                            data-destroy-url="{{ route('cart.product.destroy', $product) }}"
+                            data-csrf-token="{{ csrf_token() }}"
                         >
-                            <span>В корзине на</span>
-                            <strong data-cart-line-amount>
-                                @if ($price?->min_amount !== null)
-                                    {{ \Illuminate\Support\Number::format(round((float) $price->min_amount * $safeCartQuantity, 2), 2, locale: 'ru') }} ₽
-                                @endif
-                            </strong>
+                            <div class="{{ $cartQuantity > 0 ? 'hidden' : '' }}" data-cart-add-state>
+                                <button type="button" class="catalog-buy-button" data-cart-add>В корзину</button>
+                            </div>
+
+                            <div class="catalog-product-card__stepper {{ $cartQuantity > 0 ? '' : 'hidden' }}" data-cart-qty-state>
+                                <button type="button" class="catalog-product-card__stepper-btn" data-cart-dec aria-label="Уменьшить количество">−</button>
+                                <input
+                                    type="number"
+                                    min="{{ $minCartQuantity }}"
+                                    max="{{ $maxCartQuantity }}"
+                                    step="{{ $stepCartQuantity }}"
+                                    inputmode="numeric"
+                                    class="catalog-product-card__stepper-value"
+                                    data-cart-quantity
+                                    data-cart-quantity-input
+                                    value="{{ $safeCartQuantity }}"
+                                    aria-label="Quantity"
+                                    title="Enter quantity manually"
+                                >
+                                <button type="button" class="catalog-product-card__stepper-btn" data-cart-inc aria-label="Увеличить количество">+</button>
+                            </div>
+
+                            <div
+                                class="catalog-product-card__cart-total {{ $cartQuantity > 0 && $price?->min_amount !== null ? '' : 'hidden' }}"
+                                data-cart-line-summary
+                            >
+                                <span>В корзине на</span>
+                                <strong data-cart-line-amount>
+                                    @if ($price?->min_amount !== null)
+                                        {{ \Illuminate\Support\Number::format(round((float) $price->min_amount * $safeCartQuantity, 2), 2, locale: 'ru') }} ₽
+                                    @endif
+                                </strong>
+                            </div>
                         </div>
-                    </div>
+                    @else
+                        <a href="{{ route('registration-requests.create') }}" class="catalog-buy-button">
+                            Стать партнером
+                        </a>
+                    @endauth
                 </div>
 
                 @if ($productFacts->isNotEmpty())

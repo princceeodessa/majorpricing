@@ -13,7 +13,9 @@
         <title>{{ $metaTitle }}</title>
         <meta name="description" content="{{ $metaDescription }}">
         <meta name="theme-color" content="#163459">
-        <meta name="notifications-poll" content="{{ route('notifications.poll') }}">
+        @auth
+            <meta name="notifications-poll" content="{{ route('notifications.poll') }}">
+        @endauth
 
         <link rel="canonical" href="{{ $metaUrl }}">
         <link rel="icon" type="image/png" sizes="500x506" href="{{ asset('brand/potolkovych-emblem.png') }}">
@@ -45,11 +47,13 @@
 
     </head>
     @php($isHome = request()->routeIs('catalog.index'))
+    @php($isCatalogSurface = request()->routeIs('catalog.*', 'categories.*', 'products.*'))
+    @php($showCatalogHeader = auth()->check() || $isCatalogSurface)
     <body class="catalog-body {{ $isHome ? 'is-home' : 'is-inner' }}">
         <div class="catalog-backdrop"></div>
 
         <div class="catalog-shell">
-            @if (auth()->check())
+            @if ($showCatalogHeader)
                 @php($routeCategory = request()->route('category'))
 
                 <header class="catalog-container catalog-site-header py-4">
@@ -113,75 +117,98 @@
                             </form>
 
                             <div class="catalog-header-actions catalog-header-actions--figma">
-                                <a href="{{ route('account.show') }}" class="catalog-header-icon-link {{ request()->routeIs('account.*') ? 'is-active' : '' }}">
-                                    <span class="catalog-header-icon-link__icon">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                                            <circle cx="12" cy="8" r="3.5" />
-                                            <path d="M5.5 19.5c1.9-3.3 4.2-4.9 6.5-4.9s4.6 1.6 6.5 4.9" />
-                                        </svg>
-                                    </span>
-                                    <span class="catalog-header-icon-link__label">Кабинет</span>
-                                </a>
-
-                                @if (auth()->user()?->canManageClients())
-                                    <a href="{{ route('manager.chats.index') }}" class="catalog-header-icon-link {{ request()->routeIs('manager.chats.*') ? 'is-active' : '' }}">
+                                @auth
+                                    <a href="{{ route('account.show') }}" class="catalog-header-icon-link {{ request()->routeIs('account.*') ? 'is-active' : '' }}">
                                         <span class="catalog-header-icon-link__icon">
                                             <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                <path d="M5 6.5A3.5 3.5 0 0 1 8.5 3h7A3.5 3.5 0 0 1 19 6.5v5A3.5 3.5 0 0 1 15.5 15H11l-4.8 4v-4.4A3.5 3.5 0 0 1 5 11.9Z" />
+                                                <circle cx="12" cy="8" r="3.5" />
+                                                <path d="M5.5 19.5c1.9-3.3 4.2-4.9 6.5-4.9s4.6 1.6 6.5 4.9" />
                                             </svg>
                                         </span>
-                                        <span class="catalog-header-icon-link__label">Чаты</span>
+                                        <span class="catalog-header-icon-link__label">Кабинет</span>
                                     </a>
-                                @endif
 
-                                @if (auth()->user()?->isAdmin())
-                                    <a href="{{ route('admin.onec.show') }}" class="catalog-header-icon-link {{ request()->routeIs('admin.onec.*') ? 'is-active' : '' }}">
+                                    @if (auth()->user()?->canManageClients())
+                                        <a href="{{ route('manager.chats.index') }}" class="catalog-header-icon-link {{ request()->routeIs('manager.chats.*') ? 'is-active' : '' }}">
+                                            <span class="catalog-header-icon-link__icon">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path d="M5 6.5A3.5 3.5 0 0 1 8.5 3h7A3.5 3.5 0 0 1 19 6.5v5A3.5 3.5 0 0 1 15.5 15H11l-4.8 4v-4.4A3.5 3.5 0 0 1 5 11.9Z" />
+                                                </svg>
+                                            </span>
+                                            <span class="catalog-header-icon-link__label">Чаты</span>
+                                        </a>
+                                    @endif
+
+                                    @if (auth()->user()?->isAdmin())
+                                        <a href="{{ route('admin.onec.show') }}" class="catalog-header-icon-link {{ request()->routeIs('admin.onec.*') ? 'is-active' : '' }}">
+                                            <span class="catalog-header-icon-link__icon">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path d="M4.5 7.5h15M7.5 4.5v15M16.5 4.5v15M5.5 18.5h13" />
+                                                </svg>
+                                            </span>
+                                            <span class="catalog-header-icon-link__label">1С</span>
+                                        </a>
+                                    @endif
+
+                                    <a href="{{ route('favorites.index') }}" class="catalog-header-icon-link catalog-header-icon-link--mobile-hidden {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}">
                                         <span class="catalog-header-icon-link__icon">
                                             <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                <path d="M4.5 7.5h15M7.5 4.5v15M16.5 4.5v15M5.5 18.5h13" />
+                                                <path d="M12 20.2 4.9 13.4a4.5 4.5 0 0 1 6.4-6.3L12 7.8l.7-.7a4.5 4.5 0 1 1 6.4 6.3Z" />
+                                            </svg>
+                                            <strong class="catalog-header-icon-link__badge" data-favorites-count>{{ $headerFavoritesCount ?? 0 }}</strong>
+                                        </span>
+                                        <span class="catalog-header-icon-link__label">Избранное</span>
+                                    </a>
+
+                                    <a href="{{ route('orders.index') }}" class="catalog-header-icon-link catalog-header-icon-link--mobile-hidden {{ request()->routeIs('orders.*') ? 'is-active' : '' }}">
+                                        <span class="catalog-header-icon-link__icon">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                <rect x="5" y="4.5" width="14" height="15" rx="2.3" />
+                                                <path d="M8 9.5h8M8 13h8M8 16.5h5" />
+                                            </svg>
+                                            <strong class="catalog-header-icon-link__badge">{{ $headerOrdersCount ?? 0 }}</strong>
+                                        </span>
+                                        <span class="catalog-header-icon-link__label">Заказы</span>
+                                    </a>
+
+                                    <a href="{{ route('cart.index') }}" class="catalog-header-icon-link catalog-header-icon-link--mobile-hidden {{ request()->routeIs('cart.*') ? 'is-active' : '' }}">
+                                        <span class="catalog-header-icon-link__icon">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M4 7h15l-1.3 8.2a2 2 0 0 1-2 1.7H8.4a2 2 0 0 1-2-1.6L4.8 5.5H2.5" />
+                                                <circle cx="9.2" cy="20" r="1.3" />
+                                                <circle cx="16.4" cy="20" r="1.3" />
+                                            </svg>
+                                            <strong class="catalog-header-icon-link__badge" data-cart-count>{{ $headerCartCount ?? 0 }}</strong>
+                                        </span>
+                                        <span class="catalog-header-icon-link__label">Корзина</span>
+                                    </a>
+
+                                    <form action="{{ route('logout') }}" method="POST" class="catalog-header-actions__logout">
+                                        @csrf
+                                        <button type="submit" class="catalog-header-exit">Выйти</button>
+                                    </form>
+                                @else
+                                    <a href="{{ route('login') }}" class="catalog-header-icon-link {{ request()->routeIs('login') ? 'is-active' : '' }}">
+                                        <span class="catalog-header-icon-link__icon">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                <circle cx="12" cy="8" r="3.5" />
+                                                <path d="M5.5 19.5c1.9-3.3 4.2-4.9 6.5-4.9s4.6 1.6 6.5 4.9" />
                                             </svg>
                                         </span>
-                                        <span class="catalog-header-icon-link__label">1С</span>
+                                        <span class="catalog-header-icon-link__label">Войти</span>
                                     </a>
-                                @endif
 
-                                <a href="{{ route('favorites.index') }}" class="catalog-header-icon-link catalog-header-icon-link--mobile-hidden {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}">
-                                    <span class="catalog-header-icon-link__icon">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M12 20.2 4.9 13.4a4.5 4.5 0 0 1 6.4-6.3L12 7.8l.7-.7a4.5 4.5 0 1 1 6.4 6.3Z" />
-                                        </svg>
-                                        <strong class="catalog-header-icon-link__badge" data-favorites-count>{{ $headerFavoritesCount ?? 0 }}</strong>
-                                    </span>
-                                    <span class="catalog-header-icon-link__label">Избранное</span>
-                                </a>
-
-                                <a href="{{ route('orders.index') }}" class="catalog-header-icon-link catalog-header-icon-link--mobile-hidden {{ request()->routeIs('orders.*') ? 'is-active' : '' }}">
-                                    <span class="catalog-header-icon-link__icon">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                                            <rect x="5" y="4.5" width="14" height="15" rx="2.3" />
-                                            <path d="M8 9.5h8M8 13h8M8 16.5h5" />
-                                        </svg>
-                                        <strong class="catalog-header-icon-link__badge">{{ $headerOrdersCount ?? 0 }}</strong>
-                                    </span>
-                                    <span class="catalog-header-icon-link__label">Заказы</span>
-                                </a>
-
-                                <a href="{{ route('cart.index') }}" class="catalog-header-icon-link catalog-header-icon-link--mobile-hidden {{ request()->routeIs('cart.*') ? 'is-active' : '' }}">
-                                    <span class="catalog-header-icon-link__icon">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M4 7h15l-1.3 8.2a2 2 0 0 1-2 1.7H8.4a2 2 0 0 1-2-1.6L4.8 5.5H2.5" />
-                                            <circle cx="9.2" cy="20" r="1.3" />
-                                            <circle cx="16.4" cy="20" r="1.3" />
-                                        </svg>
-                                        <strong class="catalog-header-icon-link__badge" data-cart-count>{{ $headerCartCount ?? 0 }}</strong>
-                                    </span>
-                                    <span class="catalog-header-icon-link__label">Корзина</span>
-                                </a>
-
-                                <form action="{{ route('logout') }}" method="POST" class="catalog-header-actions__logout">
-                                    @csrf
-                                    <button type="submit" class="catalog-header-exit">Выйти</button>
-                                </form>
+                                    <a href="{{ route('registration-requests.create') }}" class="catalog-header-icon-link">
+                                        <span class="catalog-header-icon-link__icon">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                <circle cx="9" cy="8" r="3.2" />
+                                                <path d="M3.8 19c1.6-3.1 3.4-4.6 5.2-4.6 1.4 0 2.7.8 3.9 2.4" />
+                                                <path d="M17.5 10.5v6M14.5 13.5h6" />
+                                            </svg>
+                                        </span>
+                                        <span class="catalog-header-icon-link__label">Стать партнером</span>
+                                    </a>
+                                @endauth
                             </div>
                         </div>
                     </div>
@@ -263,6 +290,38 @@
                             </svg>
                         </span>
                         <span class="catalog-mobile-nav__label">Кабинет</span>
+                    </a>
+                </nav>
+            @elseif ($isCatalogSurface)
+                <nav class="catalog-mobile-nav" aria-label="Основная навигация">
+                    <a href="{{ route('catalog.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('catalog.index', 'categories.*', 'products.*') ? 'is-active' : '' }}">
+                        <span class="catalog-mobile-nav__icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 10.5 12 4l8 6.5v8.2a1.3 1.3 0 0 1-1.3 1.3h-3.9v-6.1H9.2V20H5.3A1.3 1.3 0 0 1 4 18.7Z" />
+                            </svg>
+                        </span>
+                        <span class="catalog-mobile-nav__label">Каталог</span>
+                    </a>
+
+                    <a href="{{ route('registration-requests.create') }}" class="catalog-mobile-nav__link">
+                        <span class="catalog-mobile-nav__icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="9" cy="8" r="3.2" />
+                                <path d="M3.8 19c1.6-3.1 3.4-4.6 5.2-4.6 1.4 0 2.7.8 3.9 2.4" />
+                                <path d="M17.5 10.5v6M14.5 13.5h6" />
+                            </svg>
+                        </span>
+                        <span class="catalog-mobile-nav__label">Партнер</span>
+                    </a>
+
+                    <a href="{{ route('login') }}" class="catalog-mobile-nav__link">
+                        <span class="catalog-mobile-nav__icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="8" r="3.5" />
+                                <path d="M5.5 19.5c1.9-3.3 4.2-4.9 6.5-4.9s4.6 1.6 6.5 4.9" />
+                            </svg>
+                        </span>
+                        <span class="catalog-mobile-nav__label">Войти</span>
                     </a>
                 </nav>
             @endif
