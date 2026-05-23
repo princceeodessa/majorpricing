@@ -8,6 +8,117 @@
 @theme {
     --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
     --font-display: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+
+    /* Mobile-first responsive breakpoints (Tailwind 4 standard).
+       Use `sm:`, `md:`, `lg:`, `xl:`, `2xl:` utility prefixes. */
+    --breakpoint-sm: 640px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 1024px;
+    --breakpoint-xl: 1280px;
+    --breakpoint-2xl: 1536px;
+
+    /* Touch & accessibility tokens */
+    --tap-target: 2.75rem;       /* 44px minimum touch target (Apple HIG) */
+    --tap-target-md: 3rem;       /* 48px (Material Design) */
+    --focus-ring: 0 0 0 3px rgba(223, 0, 0, 0.35);
+
+    /* Unified shadow scale — five steps from subtle to lifted */
+    --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+    --shadow-sm: 0 2px 6px -1px rgba(15, 23, 42, 0.07), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+    --shadow-md: 0 8px 16px -6px rgba(15, 23, 42, 0.10), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+    --shadow-lg: 0 16px 28px -10px rgba(15, 23, 42, 0.14), 0 4px 10px -4px rgba(15, 23, 42, 0.06);
+    --shadow-xl: 0 28px 50px -16px rgba(15, 23, 42, 0.20), 0 8px 16px -8px rgba(15, 23, 42, 0.08);
+    --shadow-brand: 0 12px 30px -10px rgba(223, 0, 0, 0.35), 0 4px 8px -4px rgba(223, 0, 0, 0.20);
+
+    /* Motion tokens — 150-300ms with ease-out is the sweet spot per Material Design */
+    --duration-fast: 120ms;      /* taps, focus rings */
+    --duration-base: 200ms;      /* hovers, content shifts */
+    --duration-slow: 320ms;      /* layout changes, accordions */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);    /* expo-ease-out, feels snappy + premium */
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+    /* Unified neutral palette — replace 6+ ad-hoc gray hexes with 3 levels */
+    --ink-strong: #0f172a;       /* primary text */
+    --ink-base: #475569;         /* body text */
+    --ink-soft: #64748b;         /* secondary, meta */
+    --ink-muted: #94a3b8;        /* placeholder, disabled */
+    --line-soft: #eef1f6;        /* faint dividers */
+    --line-base: #e2e8f0;        /* default borders */
+    --line-strong: #cbd5e1;      /* hover borders */
+    --surface: #ffffff;
+    --surface-soft: #f7f9fc;
+    --surface-muted: #f1f5f9;
+
+    /* Type scale (1.125 minor third) — use these tokens for new components */
+    --text-xs:    0.75rem;       /* 12px – fine print, meta */
+    --text-sm:    0.875rem;      /* 14px – secondary body */
+    --text-base:  1rem;          /* 16px – body */
+    --text-md:    1.125rem;      /* 18px – emphasized body */
+    --text-lg:    1.25rem;       /* 20px – sub-headings */
+    --text-xl:    1.5rem;        /* 24px – section headings */
+    --text-2xl:   1.875rem;      /* 30px – h2 */
+    --text-3xl:   2.25rem;       /* 36px – h1 */
+    --text-display: clamp(2rem, 5.5vw, 3rem);
+
+    /* Tracking */
+    --tracking-tight:   -0.02em;
+    --tracking-base:    0;
+    --tracking-wide:    0.04em;
+    --tracking-eyebrow: 0.18em;
+}
+
+/* Global safety nets — prevent horizontal scroll, smooth scrolling, better font rendering */
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+}
+
+body {
+    overflow-x: hidden;          /* belt-and-braces: ensure no horizontal scroll on mobile */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* Universal touch helpers */
+button, [role="button"], a {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+/* Visible focus ring for keyboard users only (mouse clicks stay clean) */
+:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: 0.5rem;
+}
+
+/* Min touch target on mobile for all standalone buttons / form controls */
+@media (max-width: 768px) {
+    button,
+    .btn,
+    input[type="submit"],
+    input[type="button"],
+    select {
+        min-height: var(--tap-target);
+    }
+}
+
+/* Replace `min-height: 100vh` semantics — dvh accounts for mobile browser chrome.
+   Doesn't break anything: falls back to vh on older browsers via the property below it. */
+.h-screen-safe {
+    min-height: 100vh;
+    min-height: 100dvh;
 }
 
 .catalog-spotlight {
@@ -1970,6 +2081,7 @@ html {
 
     body {
         min-height: 100vh;
+        min-height: 100dvh;
         font-family: var(--font-sans);
     }
 }
@@ -3509,6 +3621,17 @@ html {
         color: var(--catalog-clean-text);
     }
 
+    .catalog-inline-action--danger {
+        border-color: #fecaca;
+        background: #fff5f5;
+        color: #b91c1c;
+    }
+
+    .catalog-inline-action--danger:hover {
+        background: #fee2e2;
+        border-color: #fca5a5;
+    }
+
     .catalog-cart-item__price {
         min-width: 180px;
         text-align: right;
@@ -3891,7 +4014,7 @@ html {
         }
 
         .catalog-grid--dense {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .product-card {
@@ -7373,20 +7496,20 @@ html {
 
 /* Real final Major overrides. */
 .catalog-body {
-    --brand-primary: #163459;
-    --brand-primary-dark: #0f2947;
-    --brand-primary-mid: #1f4f7a;
-    --brand-primary-light: #2f6f9f;
-    --brand-primary-soft: #e7eef6;
+    --brand-primary: #d11117;
+    --brand-primary-dark: #7d0f13;
+    --brand-primary-mid: #c41419;
+    --brand-primary-light: #ff5757;
+    --brand-primary-soft: #fef2f2;
     --catalog-clean-red: var(--brand-primary);
     --catalog-clean-red-dark: var(--brand-primary-dark);
     --catalog-clean-blue: var(--brand-primary-light);
     --catalog-clean-blue-soft: var(--brand-primary-soft);
     overflow-x: hidden;
     background:
-        radial-gradient(circle at 0% 0%, rgba(22, 52, 89, 0.13), transparent 30%),
-        radial-gradient(circle at 100% 2%, rgba(47, 111, 159, 0.12), transparent 28%),
-        linear-gradient(180deg, #f7f9fc 0%, #eef3f8 54%, #f7f9fc 100%) !important;
+        radial-gradient(circle at 0% 0%, rgba(209, 17, 23, 0.06), transparent 30%),
+        radial-gradient(circle at 100% 2%, rgba(209, 17, 23, 0.04), transparent 28%),
+        linear-gradient(180deg, #fafafa 0%, #f5f5f5 54%, #fafafa 100%) !important;
 }
 
 .catalog-header-search-submit,
@@ -7399,7 +7522,7 @@ html {
 .catalog-infinite-button {
     background: linear-gradient(180deg, var(--brand-primary-mid) 0%, var(--brand-primary) 100%) !important;
     color: #ffffff !important;
-    box-shadow: 0 20px 34px -24px rgba(22, 52, 89, 0.46) !important;
+    box-shadow: 0 20px 34px -24px rgba(180, 13, 18, 0.46) !important;
 }
 
 .catalog-header-search-submit:hover,
@@ -7411,7 +7534,7 @@ html {
 .catalog-apply-button:hover,
 .catalog-infinite-button:hover {
     background: linear-gradient(180deg, var(--brand-primary-light) 0%, var(--brand-primary-dark) 100%) !important;
-    box-shadow: 0 24px 42px -26px rgba(22, 52, 89, 0.52) !important;
+    box-shadow: 0 24px 42px -26px rgba(180, 13, 18, 0.52) !important;
 }
 
 .catalog-header-catalog-menu[open] .catalog-header-catalog-trigger,
@@ -7420,8 +7543,8 @@ html {
 .category-pill.is-active {
     background: var(--brand-primary) !important;
     color: #ffffff !important;
-    border-color: rgba(22, 52, 89, 0.18) !important;
-    box-shadow: 0 20px 34px -26px rgba(22, 52, 89, 0.42) !important;
+    border-color: rgba(180, 13, 18, 0.18) !important;
+    box-shadow: 0 20px 34px -26px rgba(180, 13, 18, 0.42) !important;
 }
 
 .catalog-header-icon-link__badge,
@@ -7450,9 +7573,9 @@ html {
 .catalog-favorite-button.is-active,
 .catalog-simple-header__link.is-active,
 .catalog-header-catalog-dropdown__link.is-active {
-    border-color: rgba(22, 52, 89, 0.16) !important;
+    border-color: rgba(180, 13, 18, 0.16) !important;
     background: rgba(231, 238, 246, 0.92) !important;
-    box-shadow: 0 20px 34px -28px rgba(22, 52, 89, 0.24) !important;
+    box-shadow: 0 20px 34px -28px rgba(180, 13, 18, 0.24) !important;
 }
 
 .catalog-clean-input:focus,
@@ -7461,18 +7584,18 @@ html {
 .access-field select:focus,
 .catalog-header-searchbar:focus-within,
 .catalog-header-searchbar--figma:focus-within {
-    border-color: rgba(47, 111, 159, 0.42) !important;
-    box-shadow: 0 0 0 4px rgba(47, 111, 159, 0.12) !important;
+    border-color: rgba(180, 13, 18, 0.42) !important;
+    box-shadow: 0 0 0 4px rgba(180, 13, 18, 0.12) !important;
 }
 
 .catalog-product-card:hover,
 .catalog-category-card:hover {
-    border-color: rgba(22, 52, 89, 0.16) !important;
-    box-shadow: 0 30px 56px -40px rgba(22, 52, 89, 0.3) !important;
+    border-color: rgba(180, 13, 18, 0.16) !important;
+    box-shadow: 0 30px 56px -40px rgba(180, 13, 18, 0.3) !important;
 }
 
 .catalog-category-card::after {
-    background: linear-gradient(90deg, rgba(22, 52, 89, 0.22), rgba(22, 52, 89, 0)) !important;
+    background: linear-gradient(90deg, rgba(180, 13, 18, 0.22), rgba(180, 13, 18, 0)) !important;
 }
 
 .catalog-product-card__image-wrap,
@@ -7794,7 +7917,8 @@ html {
 @media (max-width: 380px) {
     .catalog-grid,
     .catalog-grid--dense {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.55rem !important;
     }
 
     .catalog-header-actions,
@@ -7810,7 +7934,7 @@ html {
 .catalog-filter-card::after,
 .catalog-option-card input:checked + .catalog-option-card__mark {
     background: linear-gradient(135deg, var(--brand-primary-dark) 0%, var(--brand-primary) 54%, var(--brand-primary-light) 100%) !important;
-    box-shadow: 0 20px 34px -24px rgba(22, 52, 89, 0.42) !important;
+    box-shadow: 0 20px 34px -24px rgba(180, 13, 18, 0.42) !important;
 }
 
 .hero-panel,
@@ -7820,17 +7944,17 @@ html {
 .catalog-results-panel,
 .catalog-auth-form {
     background:
-        radial-gradient(circle at 100% 0%, rgba(22, 52, 89, 0.09), transparent 28%),
-        radial-gradient(circle at 0% 100%, rgba(47, 111, 159, 0.07), transparent 30%),
+        radial-gradient(circle at 100% 0%, rgba(180, 13, 18, 0.09), transparent 28%),
+        radial-gradient(circle at 0% 100%, rgba(180, 13, 18, 0.07), transparent 30%),
         linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92)) !important;
 }
 
 .catalog-header-panel::after {
-    background: linear-gradient(90deg, rgba(22, 52, 89, 0.05), rgba(47, 111, 159, 0.2), rgba(148, 163, 184, 0.12)) !important;
+    background: linear-gradient(90deg, rgba(180, 13, 18, 0.05), rgba(180, 13, 18, 0.2), rgba(148, 163, 184, 0.12)) !important;
 }
 
 .catalog-category-hero::after {
-    background: radial-gradient(circle, rgba(47, 111, 159, 0.12), transparent 68%) !important;
+    background: radial-gradient(circle, rgba(180, 13, 18, 0.12), transparent 68%) !important;
 }
 
 .catalog-search-input:focus,
@@ -7839,8 +7963,8 @@ html {
 .catalog-auth-form input:focus,
 .catalog-auth-form textarea:focus,
 .catalog-auth-form select:focus {
-    border-color: rgba(47, 111, 159, 0.42) !important;
-    box-shadow: 0 0 0 4px rgba(47, 111, 159, 0.12) !important;
+    border-color: rgba(180, 13, 18, 0.42) !important;
+    box-shadow: 0 0 0 4px rgba(180, 13, 18, 0.12) !important;
 }
 
 .catalog-auth-form input[type='checkbox'],
@@ -7858,7 +7982,7 @@ html {
 
 .category-tile,
 .category-tile:hover {
-    box-shadow: 0 30px 56px -32px rgba(22, 52, 89, 0.32) !important;
+    box-shadow: 0 30px 56px -32px rgba(180, 13, 18, 0.32) !important;
 }
 
 .catalog-home-topic:hover,
@@ -7867,8 +7991,8 @@ html {
 .catalog-price-filter__range::-webkit-slider-thumb,
 .catalog-price-filter__range::-moz-range-thumb,
 .header-link-chip.is-active {
-    border-color: rgba(22, 52, 89, 0.18) !important;
-    box-shadow: 0 18px 30px -24px rgba(22, 52, 89, 0.22) !important;
+    border-color: rgba(180, 13, 18, 0.18) !important;
+    box-shadow: 0 18px 30px -24px rgba(180, 13, 18, 0.22) !important;
 }
 
 .catalog-chat-page {
@@ -7912,7 +8036,7 @@ html {
     min-width: 2rem;
     height: 2rem;
     border-radius: 999px;
-    background: rgba(22, 52, 89, 0.1);
+    background: rgba(180, 13, 18, 0.1);
     color: var(--brand-primary);
     letter-spacing: 0;
 }
@@ -7937,7 +8061,7 @@ html {
 
 .catalog-chat-list__item:hover,
 .catalog-chat-list__item.is-active {
-    background: rgba(22, 52, 89, 0.08);
+    background: rgba(180, 13, 18, 0.08);
 }
 
 .catalog-chat-list__avatar {
@@ -7984,7 +8108,7 @@ html {
     grid-template-rows: auto minmax(0, 1fr) auto;
     min-width: 0;
     background:
-        radial-gradient(circle at 100% 0%, rgba(22, 52, 89, 0.08), transparent 28%),
+        radial-gradient(circle at 100% 0%, rgba(180, 13, 18, 0.08), transparent 28%),
         #fff;
 }
 
@@ -8156,8 +8280,8 @@ html {
     height: 4.2rem;
     border: 0;
     border-radius: 999px;
-    background: linear-gradient(135deg, #163459 0%, #24508c 100%);
-    box-shadow: 0 24px 55px rgba(22, 52, 89, 0.34);
+    background: linear-gradient(135deg, #d11117 0%, #a30000 100%);
+    box-shadow: 0 24px 55px rgba(209, 17, 23, 0.32);
     color: #fff;
     cursor: pointer;
     transition: transform 180ms ease, box-shadow 180ms ease;
@@ -8165,7 +8289,7 @@ html {
 
 .catalog-support-widget-trigger:hover {
     transform: translateY(-2px);
-    box-shadow: 0 28px 65px rgba(22, 52, 89, 0.42);
+    box-shadow: 0 28px 65px rgba(180, 13, 18, 0.42);
 }
 
 .catalog-support-widget-trigger svg {
@@ -8198,7 +8322,7 @@ html {
     right: 1.4rem;
     bottom: 6.5rem;
     width: min(28rem, calc(100vw - 1.6rem));
-    max-height: min(46rem, calc(100vh - 8rem));
+    max-height: min(46rem, calc(100dvh - 8rem));
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
     overflow: hidden;
@@ -8236,8 +8360,8 @@ html {
     place-items: center;
     flex: 0 0 auto;
     border-radius: 999px;
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-    color: #163459;
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #7d0f13;
     font-family: 'IBM Plex Sans', sans-serif;
     font-size: 1rem;
     font-weight: 700;
@@ -8409,7 +8533,7 @@ html {
     padding: 0.85rem 1.1rem;
     border: 0;
     border-radius: 999px;
-    background: linear-gradient(135deg, #163459 0%, #24508c 100%);
+    background: linear-gradient(135deg, #d11117 0%, #a30000 100%);
     color: #fff;
     font-weight: 700;
     cursor: pointer;
@@ -8428,7 +8552,7 @@ html {
         left: 0.8rem;
         bottom: 5.6rem;
         width: auto;
-        max-height: calc(100vh - 7rem);
+        max-height: calc(100dvh - 7rem);
         border-radius: 1.4rem;
     }
 
@@ -8841,8 +8965,8 @@ html {
     }
 
     .catalog-mobile-nav__link.is-active {
-        background: rgba(22, 52, 89, 0.08);
-        color: #163459;
+        background: rgba(209, 17, 23, 0.07);
+        color: #d11117;
     }
 
     .catalog-mobile-nav__icon {
@@ -8883,7 +9007,7 @@ html {
         justify-content: center;
         padding: 0 0.16rem;
         border-radius: 999px;
-        background: #163459;
+        background: #d11117;
         color: #ffffff;
         font-size: 0.58rem;
         font-weight: 800;
@@ -9438,7 +9562,8 @@ html {
 @media (max-width: 420px) {
     .catalog-grid:not(.catalog-grid--home-rail),
     .catalog-grid--dense {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.6rem !important;
     }
 
     .catalog-cart-item {
@@ -9532,8 +9657,8 @@ html {
 }
 
 .catalog-payment-option:has(input:checked) {
-    border-color: rgba(47, 111, 159, 0.42);
-    box-shadow: 0 0 0 4px rgba(47, 111, 159, 0.12);
+    border-color: rgba(180, 13, 18, 0.42);
+    box-shadow: 0 0 0 4px rgba(180, 13, 18, 0.12);
     background: rgba(239, 246, 255, 0.82);
 }
 
@@ -9570,14 +9695,14 @@ html {
 
 .catalog-account-role-switch__button:hover {
     transform: translateY(-1px);
-    border-color: rgba(47, 111, 159, 0.32);
+    border-color: rgba(180, 13, 18, 0.32);
     box-shadow: 0 20px 34px -30px rgba(15, 23, 42, 0.18);
 }
 
 .catalog-account-role-switch__button.is-active {
-    border-color: rgba(22, 52, 89, 0.42);
+    border-color: rgba(180, 13, 18, 0.42);
     background: rgba(239, 246, 255, 0.88);
-    box-shadow: 0 0 0 4px rgba(22, 52, 89, 0.08);
+    box-shadow: 0 0 0 4px rgba(180, 13, 18, 0.08);
 }
 
 .catalog-account-role-switch__eyebrow {
@@ -9845,7 +9970,7 @@ html {
 @media (max-width: 480px) {
     .catalog-grid:not(.catalog-grid--home-rail),
     .catalog-grid--dense {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
 }
 
@@ -9973,10 +10098,10 @@ html {
 }
 
 .catalog-feed-filter.is-active {
-    border-color: rgba(22, 52, 89, 0.18);
+    border-color: rgba(180, 13, 18, 0.18);
     background: linear-gradient(180deg, var(--brand-primary-mid) 0%, var(--brand-primary) 100%);
     color: #ffffff;
-    box-shadow: 0 20px 34px -26px rgba(22, 52, 89, 0.42);
+    box-shadow: 0 20px 34px -26px rgba(180, 13, 18, 0.42);
 }
 
 @media (max-width: 767px) {
@@ -10032,8 +10157,8 @@ html {
 .catalog-header-catalog-dropdown__close:hover {
     transform: translateY(-1px);
     border-color: rgba(148, 163, 184, 0.95);
-    color: #163459;
-    box-shadow: 0 18px 30px -28px rgba(22, 52, 89, 0.3);
+    color: #d11117;
+    box-shadow: 0 18px 30px -28px rgba(180, 13, 18, 0.3);
 }
 
 .catalog-header-catalog-dropdown__close svg {
@@ -10392,7 +10517,7 @@ html {
     border: 1px solid rgba(15, 23, 42, 0.14);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.95);
-    color: #163459;
+    color: #d11117;
     font-size: 1.15rem;
     font-weight: 700;
     line-height: 1;
@@ -10430,7 +10555,7 @@ html {
 
 .catalog-product-card__gallery-dot.is-active {
     width: 14px;
-    background: #163459;
+    background: #d11117;
 }
 
 .catalog-product-stage {
@@ -10479,8 +10604,8 @@ html {
 }
 
 .catalog-product-gallery__thumb.is-active {
-    border-color: #163459;
-    box-shadow: 0 12px 24px -18px rgba(22, 52, 89, 0.95);
+    border-color: #d11117;
+    box-shadow: 0 12px 24px -18px rgba(180, 13, 18, 0.95);
 }
 
 @media (max-width: 720px) {
@@ -10937,8 +11062,8 @@ html {
     }
 
     .catalog-v2-feed-section .catalog-infinite-feed .catalog-grid {
-        grid-template-columns: 1fr !important;
-        gap: 0.86rem !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.7rem !important;
     }
 
     .catalog-v2-feed-section .catalog-product-card__image-wrap,
@@ -11315,7 +11440,7 @@ html {
     inset: 0;
     border-radius: inherit;
     background:
-        linear-gradient(155deg, color-mix(in srgb, var(--category-accent, #163459) 14%, transparent) 0%, transparent 52%),
+        linear-gradient(155deg, color-mix(in srgb, var(--category-accent, #d11117) 14%, transparent) 0%, transparent 52%),
         linear-gradient(0deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2));
     opacity: 0.75;
     pointer-events: none;
@@ -11329,7 +11454,7 @@ html {
     border-color: rgba(117, 149, 189, 0.92);
     box-shadow:
         0 25px 36px -28px rgba(19, 38, 67, 0.34),
-        inset 0 0 0 1px var(--category-accent, #163459);
+        inset 0 0 0 1px var(--category-accent, #d11117);
 }
 
 .catalog-category-v3 .catalog-category-card__copy {
@@ -12369,11 +12494,2229 @@ body.catalog-support-widget-open {
 @media (max-width: 767px) {
     .catalog-main .catalog-v2-feed-section .catalog-infinite-feed .catalog-grid,
     .catalog-main [data-favorites-grid].catalog-grid--dense {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.7rem !important;
     }
 
     .catalog-main .catalog-v2-feed-section .catalog-product-card__image-wrap,
     .catalog-main [data-favorites-grid].catalog-grid--dense .catalog-product-card__image-wrap {
-        aspect-ratio: 1 / 0.74 !important;
+        aspect-ratio: 1 / 0.78 !important;
     }
 }
+
+/* ==========================================================================
+   Адаптив v3 (2026) — финальный слой
+   Цели:
+   - всегда 2 товара в линию на мобиле (включая узкие 320px)
+   - 3 колонки на планшете, 4+ на десктопе через auto-fill
+   - тач-цели ≥ 44px, никаких горизонтальных скроллов
+   - аккуратные шрифты/паддинги на 360-480px
+   - страница товара, корзина, ЛК — стек без перекосов
+   Все правила в media-query'ях, чтобы не задеть десктоп.
+   ========================================================================== */
+
+/* --- Каталог: единый закон сетки --------------------------------------- */
+@media (max-width: 767px) {
+    .catalog-grid:not(.catalog-grid--home-rail),
+    .catalog-grid--dense,
+    .catalog-v2-feed-section .catalog-infinite-feed .catalog-grid,
+    .catalog-main .catalog-v2-feed-section .catalog-infinite-feed .catalog-grid,
+    .catalog-main [data-favorites-grid].catalog-grid--dense {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: clamp(0.5rem, 2.4vw, 0.85rem) !important;
+    }
+}
+
+/* Планшет 768-1023: ровно 3 в линию */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .catalog-grid:not(.catalog-grid--home-rail),
+    .catalog-grid--dense,
+    .catalog-v2-feed-section .catalog-infinite-feed .catalog-grid,
+    .catalog-main .catalog-v2-feed-section .catalog-infinite-feed .catalog-grid,
+    .catalog-main [data-favorites-grid].catalog-grid--dense {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 1rem !important;
+    }
+}
+
+/* Малый десктоп 1024-1279: 3-4 колонки по ширине карточки */
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .catalog-grid:not(.catalog-grid--home-rail),
+    .catalog-grid--dense {
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+    }
+}
+
+/* --- Узкие телефоны 320-360 (старые Android, iPhone SE 1) -------------- */
+@media (max-width: 360px) {
+    .catalog-product-card__body {
+        padding: 0.55rem 0.58rem 0.65rem !important;
+        gap: 0.45rem !important;
+    }
+
+    .catalog-product-card__title {
+        font-size: 0.8rem !important;
+        line-height: 1.22 !important;
+        -webkit-line-clamp: 3 !important;
+    }
+
+    .catalog-product-card__description {
+        display: none !important;
+    }
+
+    .catalog-product-card__eyebrow,
+    .catalog-product-card__price-label {
+        font-size: 0.54rem !important;
+        letter-spacing: 0.1em !important;
+    }
+
+    .catalog-product-card__price {
+        font-size: 0.96rem !important;
+    }
+
+    .catalog-product-card__cta {
+        font-size: 0.72rem !important;
+        padding: 0 0.6rem !important;
+    }
+
+    .catalog-product-card__traits {
+        display: none !important;
+    }
+
+    .catalog-header-logo {
+        width: min(46vw, 132px) !important;
+    }
+}
+
+/* --- Карточка товара (страница): аккуратный стек на мобиле ------------- */
+@media (max-width: 767px) {
+    .catalog-product-gallery {
+        order: -1;
+    }
+
+    .catalog-product-gallery--with-thumbs {
+        display: grid !important;
+        grid-template-rows: auto auto;
+        gap: 0.65rem !important;
+    }
+
+    .catalog-product-gallery__thumbs {
+        flex-direction: row !important;
+        gap: 0.45rem !important;
+        overflow-x: auto;
+        padding-bottom: 0.2rem;
+        scrollbar-width: none;
+        order: 2;
+    }
+
+    .catalog-product-gallery__thumbs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .catalog-product-gallery__thumb {
+        flex: 0 0 auto;
+        width: 64px !important;
+        height: 64px !important;
+        border-radius: 0.85rem !important;
+    }
+
+    .catalog-product-stage__arrow {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 1.4rem !important;
+    }
+
+    .catalog-product-copy h1 {
+        font-size: clamp(1.55rem, 6.8vw, 2rem) !important;
+        line-height: 1.1 !important;
+        margin-top: 0.85rem !important;
+    }
+
+    .catalog-product-copy__subtitle {
+        font-size: 0.88rem !important;
+    }
+
+    .catalog-product-copy__description {
+        font-size: 0.9rem !important;
+        line-height: 1.55 !important;
+    }
+
+    .catalog-product-price-block {
+        padding: 0.85rem !important;
+        border-radius: 1.1rem !important;
+    }
+}
+
+/* --- Корзина: позиция в одну колонку, аккуратные кнопки --------------- */
+@media (max-width: 640px) {
+    .catalog-cart-item,
+    .catalog-order-item {
+        gap: 0.7rem !important;
+        padding: 0.85rem !important;
+        border-radius: 1.1rem !important;
+    }
+
+    .catalog-cart-item__visual {
+        width: 100% !important;
+        max-width: 160px !important;
+        height: 132px !important;
+    }
+
+    .catalog-cart-item__title {
+        font-size: 0.96rem !important;
+        line-height: 1.3 !important;
+    }
+
+    .catalog-cart-item__price strong,
+    .catalog-order-item__price strong {
+        font-size: 1.05rem !important;
+    }
+
+    .catalog-cart-summary,
+    .catalog-checkout-v2 {
+        padding: 1rem !important;
+        border-radius: 1.2rem !important;
+    }
+}
+
+/* --- ЛК / Account: стек на мобиле, статистика 2 в ряд ----------------- */
+@media (max-width: 767px) {
+    .catalog-account-grid,
+    .catalog-account-columns {
+        grid-template-columns: 1fr !important;
+        gap: 0.85rem !important;
+    }
+
+    .catalog-account-hero,
+    .catalog-account-card,
+    .access-dashboard-hero {
+        padding: 1.1rem !important;
+        border-radius: 1.25rem !important;
+    }
+
+    .access-dashboard-stats,
+    .catalog-account-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.6rem !important;
+    }
+
+    .catalog-account-product {
+        grid-template-columns: auto minmax(0, 1fr) !important;
+        gap: 0.7rem !important;
+    }
+}
+
+/* --- Чат менеджера/админа: сворачиваемая раскладка -------------------- */
+@media (max-width: 900px) {
+    .catalog-chat-shell {
+        grid-template-columns: 1fr !important;
+        min-height: auto !important;
+    }
+
+    .catalog-chat-sidebar {
+        max-height: 50vh;
+        border-right: 0;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .catalog-chat-list {
+        max-height: 38vh !important;
+    }
+}
+
+/* --- Тач-цели: ≥44px (Apple/Material) ---------------------------------- */
+@media (hover: none) and (pointer: coarse) {
+    .catalog-product-card__cta,
+    .catalog-buy-button,
+    .catalog-inline-action,
+    .catalog-apply-button,
+    .catalog-reset-button,
+    .catalog-header-icon-link,
+    .catalog-mobile-nav__link {
+        min-height: 44px;
+    }
+
+    .catalog-product-card__stepper-btn,
+    .catalog-qty-control__button {
+        min-width: 38px;
+        min-height: 38px;
+    }
+
+    /* Убираем hover-эффекты на тач-устройствах — на мобиле это «залипания» */
+    .catalog-product-card:hover {
+        transform: none !important;
+    }
+}
+
+/* --- Запрет горизонтальной прокрутки на мобиле ------------------------ */
+@media (max-width: 767px) {
+    html,
+    body {
+        overflow-x: hidden;
+    }
+
+    .catalog-container {
+        max-width: 100%;
+    }
+}
+
+/* --- Изображения карточек: контейнер запреты раздутия ----------------- */
+@media (max-width: 767px) {
+    .catalog-product-card__image-wrap {
+        aspect-ratio: 1 / 0.82 !important;
+        min-height: 0 !important;
+        height: auto !important;
+    }
+}
+
+/* --- Иконка избранного на мобиле — уменьшить чтобы не перекрывала ----- */
+@media (max-width: 480px) {
+    .catalog-product-card__favorite {
+        top: 0.45rem !important;
+        right: 0.45rem !important;
+    }
+
+    .catalog-product-card__favorite button,
+    .catalog-product-card__favorite [type='submit'] {
+        width: 32px !important;
+        height: 32px !important;
+    }
+}
+
+/* --- Кнопка-стрелка галереи на карточке — спрятать на 2-колоночной ---- */
+@media (max-width: 480px) {
+    .catalog-product-card__gallery-arrow {
+        display: none !important;
+    }
+}
+
+/* --- Большие десктопы 1440+: расширим сетку до 4-5 колонок -------------- */
+@media (min-width: 1440px) {
+    .catalog-main .catalog-v2-feed-section .catalog-infinite-feed .catalog-grid,
+    .catalog-main [data-favorites-grid].catalog-grid--dense {
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)) !important;
+    }
+}
+
+@media (min-width: 1680px) {
+    .catalog-main .catalog-v2-feed-section .catalog-infinite-feed .catalog-grid,
+    .catalog-main [data-favorites-grid].catalog-grid--dense {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+    }
+}
+
+/* =====================================================================
+   PHASE 1: mobile-first touch targets, accessibility, responsive polish
+   (UI/UX Pro Max rules applied — appended at file end so cascade wins)
+   ===================================================================== */
+
+/* --- Card touch targets bumped to ≥44px on touch devices ---------------
+   Stepper buttons (− / +) and "В корзину" CTA were 32px and 42px which
+   violates Apple HIG and Material Design minimum tap-target.            */
+@media (max-width: 768px) {
+    .catalog-product-card__cta {
+        height: 44px !important;
+        min-height: 44px !important;
+        font-size: 0.85rem !important;
+    }
+
+    .catalog-product-card__stepper {
+        grid-template-columns: 44px minmax(32px, auto) 44px !important;
+        gap: 0.25rem !important;
+        padding: 0.3rem 0.4rem !important;
+    }
+
+    .catalog-product-card__stepper-btn {
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 1.4rem !important;
+    }
+
+    .catalog-product-card__stepper-value {
+        min-width: 2.5rem !important;
+        font-size: 1rem !important;
+    }
+
+    /* Favorite toggle was reduced to 32×32 — that's below tap target.
+       Restore to 44×44 and keep the visual size of the icon. */
+    .catalog-product-card__favorite button,
+    .catalog-product-card__favorite [type='submit'] {
+        width: 44px !important;
+        height: 44px !important;
+    }
+
+    /* Gallery arrows on cards — useful on mobile too if 1-column. */
+    .catalog-product-card__gallery-arrow {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+/* --- Mobile bottom-nav: 5 tabs need readable labels and ≥48px height -- */
+@media (max-width: 768px) {
+    .catalog-mobile-nav__link {
+        min-height: 48px;
+        padding-top: 0.45rem;
+        padding-bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px) * 0.5);
+    }
+
+    .catalog-mobile-nav__icon svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .catalog-mobile-nav__label {
+        font-size: 0.68rem;
+        line-height: 1.15;
+        letter-spacing: 0.005em;
+    }
+}
+
+/* --- Form fields: ≥48px height on mobile, no zoom-on-focus (font ≥ 16px) */
+@media (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="password"],
+    input[type="search"],
+    input[type="number"],
+    input[type="url"],
+    textarea,
+    select {
+        font-size: 16px !important;   /* iOS will NOT zoom on focus if ≥16 */
+        min-height: 48px;
+    }
+
+    textarea {
+        min-height: 96px;
+    }
+
+    label {
+        display: inline-block;
+        min-height: 24px;
+        font-size: 0.95rem;
+    }
+}
+
+/* --- Tables on mobile: become scrollable cards (no horizontal page scroll) */
+@media (max-width: 768px) {
+    .responsive-table-wrap,
+    .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
+        border-radius: 1rem;
+    }
+}
+
+/* --- Make sure container max-widths never overflow the viewport -------- */
+.catalog-container,
+.catalog-main,
+.catalog-shell {
+    max-width: 100%;
+    overflow-x: clip;             /* clip > hidden — doesn't kill sticky */
+}
+
+/* --- Sticky header should respect safe-area on notched devices --------- */
+.catalog-site-header {
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+}
+
+/* --- Buttons: ensure all .ghost-button, .action-button, .catalog-buy-button
+       have proper touch targets on mobile --------------------------------- */
+@media (max-width: 768px) {
+    .ghost-button,
+    .action-button,
+    .catalog-buy-button,
+    .catalog-clean-input + button,
+    button[type="submit"] {
+        min-height: 48px;
+        padding-inline: 1.1rem;
+    }
+}
+
+/* --- Headings: clamp to viewport (text-4xl was 36px which crowds 360px screens) */
+@media (max-width: 480px) {
+    h1, .h1, .text-4xl {
+        font-size: clamp(1.65rem, 6vw, 2.25rem) !important;
+        line-height: 1.15;
+    }
+
+    h2, .h2, .text-3xl {
+        font-size: clamp(1.4rem, 5vw, 1.875rem) !important;
+        line-height: 1.2;
+    }
+}
+
+/* --- Spacing rhythm on tiny phones: card outer padding 24px → 16px ----- */
+@media (max-width: 480px) {
+    .surface-card.p-12 {
+        padding: 1.5rem !important;
+    }
+    .surface-card.p-8,
+    .surface-card.p-6 {
+        padding: 1.25rem !important;
+    }
+}
+
+/* --- Stop accidental overflow from very long words (URLs, articles) ---- */
+.catalog-product-card__title,
+.catalog-product-card__description,
+.catalog-order-item__title,
+.catalog-cart-item__title {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* --- Skip-link for keyboard users (hidden until focused) -------------- */
+.catalog-skip-link {
+    position: absolute;
+    top: -100px;
+    left: 1rem;
+    z-index: 9999;
+    padding: 0.75rem 1.25rem;
+    background: #df0000;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.35);
+    transition: top 180ms ease-out;
+}
+.catalog-skip-link:focus-visible {
+    top: 1rem;
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+}
+
+/* --- Brand-consistent input focus state (red ring matches logo) -------- */
+.catalog-input-brand {
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.catalog-input-brand:hover {
+    border-color: #cbd2dd;
+}
+.catalog-input-brand:focus,
+.catalog-input-brand:focus-visible {
+    border-color: var(--catalog-clean-border, #d11117);
+    box-shadow: 0 0 0 4px rgba(223, 0, 0, 0.12), 0 0 0 1px #df0000 inset;
+    outline: none;
+}
+
+/* Honour invalid state visually on iOS/Android */
+.catalog-input-brand:invalid:not(:placeholder-shown) {
+    border-color: rgba(223, 0, 0, 0.55);
+}
+
+/* =====================================================================
+   PHASE 2: visual polish — hovers, motion, shadows, micro-interactions
+   ===================================================================== */
+
+/* --- Product card hover: subtle 2px lift + shadow grow + image zoom --- */
+@media (hover: hover) and (pointer: fine) {
+    .catalog-product-card {
+        transition:
+            transform var(--duration-base) var(--ease-out),
+            box-shadow var(--duration-base) var(--ease-out),
+            border-color var(--duration-base) var(--ease-out);
+        will-change: transform;
+    }
+
+    .catalog-product-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+        border-color: var(--line-strong);
+    }
+
+    .catalog-product-card__image {
+        transition: transform var(--duration-slow) var(--ease-out);
+    }
+
+    .catalog-product-card:hover .catalog-product-card__image {
+        transform: scale(1.025);
+    }
+}
+
+/* Tap feedback on mobile — subtle scale-down on press */
+.catalog-product-card:active,
+.catalog-buy-button:active,
+.action-button:active,
+.ghost-button:active,
+.catalog-product-card__cta:active,
+.catalog-mobile-nav__link:active {
+    transform: scale(0.98);
+    transition: transform var(--duration-fast) var(--ease-out);
+}
+
+/* --- Buttons: unified motion + active feedback ------------------------- */
+.action-button,
+.ghost-button,
+.catalog-buy-button,
+.catalog-product-card__cta {
+    transition:
+        transform var(--duration-fast) var(--ease-out),
+        background-color var(--duration-base) var(--ease-out),
+        box-shadow var(--duration-base) var(--ease-out),
+        color var(--duration-base) var(--ease-out);
+}
+
+/* --- Stepper button polish: tactile feedback -------------------------- */
+.catalog-product-card__stepper-btn {
+    transition:
+        background-color var(--duration-fast) var(--ease-out),
+        color var(--duration-fast) var(--ease-out),
+        transform var(--duration-fast) var(--ease-out);
+}
+.catalog-product-card__stepper-btn:hover {
+    background: #ffffff;
+    color: #0f172a;
+}
+.catalog-product-card__stepper-btn:active {
+    transform: scale(0.92);
+    background: var(--line-base);
+}
+
+/* --- Mobile nav active feedback --------------------------------------- */
+.catalog-mobile-nav__link {
+    transition:
+        background-color var(--duration-base) var(--ease-out),
+        color var(--duration-base) var(--ease-out),
+        transform var(--duration-fast) var(--ease-out);
+}
+
+/* --- Favorite toggle: heart pulse on activate ------------------------- */
+@keyframes catalog-fav-pop {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+}
+
+.catalog-product-card__favorite [data-favorite-toggle][aria-pressed="true"] svg,
+.catalog-product-card__favorite [data-favorite-active="true"] svg {
+    animation: catalog-fav-pop 320ms var(--ease-out);
+}
+
+/* --- Page entry reveal (already exists as .reveal-card; honour reduced motion) */
+@media (prefers-reduced-motion: reduce) {
+    .reveal-card,
+    .catalog-product-card,
+    .catalog-product-card__image,
+    .catalog-mobile-nav__link {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
+    }
+}
+
+/* =====================================================================
+   PHASE 2: skeletons for catalog loading
+   Apply by adding .skeleton-card to a div, optionally inside .catalog-skeleton-grid
+   ===================================================================== */
+@keyframes catalog-skeleton-shimmer {
+    0%   { background-position: -460px 0; }
+    100% { background-position: 460px 0; }
+}
+
+.catalog-skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.skeleton-card {
+    background: var(--surface);
+    border: 1px solid var(--line-soft);
+    border-radius: 1.55rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.skeleton-card__visual,
+.skeleton-card__line {
+    background-image:
+        linear-gradient(90deg,
+            transparent 0,
+            rgba(255, 255, 255, 0.7) 50%,
+            transparent 100%),
+        linear-gradient(90deg, var(--line-soft) 0%, var(--surface-muted) 100%);
+    background-size: 460px 100%, 100% 100%;
+    background-repeat: no-repeat, no-repeat;
+    background-position: -460px 0, 0 0;
+    animation: catalog-skeleton-shimmer 1.5s linear infinite;
+    border-radius: 0.65rem;
+}
+
+.skeleton-card__visual {
+    height: 188px;
+    border-radius: 1.25rem;
+    margin: 0.75rem 0.75rem 0;
+}
+
+.skeleton-card__body {
+    padding: 0.85rem 0.9rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.skeleton-card__line {
+    height: 12px;
+}
+.skeleton-card__line--short { width: 40%; }
+.skeleton-card__line--medium { width: 70%; }
+.skeleton-card__line--long { width: 92%; }
+.skeleton-card__line--cta {
+    height: 44px;
+    width: 100%;
+    margin-top: 0.6rem;
+    border-radius: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton-card__visual,
+    .skeleton-card__line {
+        animation: none;
+    }
+}
+
+/* =====================================================================
+   PHASE 2: empty states — icon + heading + CTA pattern
+   ===================================================================== */
+.catalog-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 3rem 1.5rem;
+    gap: 1rem;
+}
+
+.catalog-empty-state__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    color: #df0000;
+    box-shadow: var(--shadow-md);
+}
+
+.catalog-empty-state__icon svg {
+    width: 44px;
+    height: 44px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.catalog-empty-state__title {
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+    font-weight: 700;
+    color: var(--ink-strong);
+    margin: 0;
+}
+
+.catalog-empty-state__text {
+    max-width: 36rem;
+    color: var(--ink-soft);
+    line-height: 1.55;
+    font-size: 0.95rem;
+}
+
+.catalog-empty-state__cta {
+    margin-top: 0.75rem;
+}
+
+/* =====================================================================
+   PHASE 3: sticky cart bar (mobile) — floating CTA when cart > 0
+   ===================================================================== */
+.catalog-sticky-cart {
+    display: none;             /* hidden on desktop; mobile-nav-aware below */
+    position: fixed;
+    left: 0.75rem;
+    right: 0.75rem;
+    /* Above the mobile bottom-nav (~5rem nav + safe-area). Adjusted in media. */
+    bottom: max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 5.5rem));
+    z-index: 88;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 0.95rem 0.85rem 0.85rem;
+    background: linear-gradient(135deg, #df0000 0%, #b00000 100%);
+    color: #fff;
+    border-radius: 1.35rem;
+    text-decoration: none;
+    box-shadow: var(--shadow-xl), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    transform: translateY(0);
+    opacity: 1;
+    transition:
+        transform var(--duration-base) var(--ease-out),
+        opacity var(--duration-base) var(--ease-out),
+        box-shadow var(--duration-base) var(--ease-out);
+    will-change: transform;
+    animation: catalog-sticky-cart-in 380ms var(--ease-out) both;
+}
+
+@keyframes catalog-sticky-cart-in {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+.catalog-sticky-cart:active {
+    transform: scale(0.985);
+    box-shadow: var(--shadow-lg);
+}
+
+.catalog-sticky-cart__icon {
+    position: relative;
+    display: inline-flex;
+    width: 2.65rem;
+    height: 2.65rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.18);
+    flex-shrink: 0;
+}
+
+.catalog-sticky-cart__icon svg {
+    width: 1.4rem;
+    height: 1.4rem;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.catalog-sticky-cart__badge {
+    position: absolute;
+    top: -0.25rem;
+    right: -0.3rem;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.32rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.625rem;
+    background: #ffffff;
+    color: #df0000;
+    font-size: 0.72rem;
+    font-weight: 800;
+    box-shadow: 0 4px 10px -3px rgba(0, 0, 0, 0.45);
+}
+
+.catalog-sticky-cart__content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.catalog-sticky-cart__title {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.catalog-sticky-cart__meta {
+    font-size: 0.78rem;
+    line-height: 1.1;
+    color: rgba(255, 255, 255, 0.82);
+    letter-spacing: 0.01em;
+}
+
+.catalog-sticky-cart__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+    padding: 0.55rem 0.85rem;
+    border-radius: 0.85rem;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(8px);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.catalog-sticky-cart__cta svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Show only on mobile (where the bottom nav also appears) */
+@media (max-width: 900px) {
+    .catalog-sticky-cart {
+        display: flex;
+    }
+    /* Push the page bottom-padding up to account for both nav AND cart bar */
+    .catalog-body:has(.catalog-sticky-cart) {
+        padding-bottom: calc(10rem + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* Hide when virtual keyboard pushes layout (Android Chrome) */
+@media (max-width: 900px) and (max-height: 480px) {
+    .catalog-sticky-cart { display: none; }
+}
+
+/* =====================================================================
+   PHASE 3: top progress bar (YouTube/GitHub style) for page navigations
+   ===================================================================== */
+.catalog-pageload-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        #df0000 20%,
+        #ff3333 50%,
+        #df0000 80%,
+        transparent 100%);
+    background-size: 200% 100%;
+    transform-origin: 0 0;
+    transform: scaleX(0);
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.catalog-pageload-bar.is-active {
+    opacity: 1;
+    animation:
+        catalog-pageload-grow 8s cubic-bezier(0.16, 1, 0.3, 0.6) forwards,
+        catalog-pageload-shimmer 1.2s linear infinite;
+}
+
+.catalog-pageload-bar.is-done {
+    transform: scaleX(1) !important;
+    animation: none !important;
+    transition: opacity 220ms ease-out 80ms;
+    opacity: 0;
+}
+
+@keyframes catalog-pageload-grow {
+    0%   { transform: scaleX(0); }
+    20%  { transform: scaleX(0.35); }
+    50%  { transform: scaleX(0.65); }
+    85%  { transform: scaleX(0.9); }
+    100% { transform: scaleX(0.95); }
+}
+
+@keyframes catalog-pageload-shimmer {
+    from { background-position: 200% 0; }
+    to   { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .catalog-pageload-bar { display: none; }
+}
+
+/* =====================================================================
+   PHASE 3: micro-polish — chips, badges, stat boxes, toasts
+   ===================================================================== */
+
+/* Chips/tabs: subtle scale on tap, smooth color change */
+.catalog-category-v3__tab,
+.catalog-status-chip,
+.soft-badge,
+.chip {
+    transition:
+        background-color var(--duration-base) var(--ease-out),
+        color var(--duration-base) var(--ease-out),
+        border-color var(--duration-base) var(--ease-out),
+        transform var(--duration-fast) var(--ease-out),
+        box-shadow var(--duration-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .catalog-category-v3__tab:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+}
+
+.catalog-category-v3__tab:active {
+    transform: scale(0.97);
+}
+
+/* Stat boxes (cart hero, favorites hero): unified shadow */
+.catalog-stat-box {
+    transition: transform var(--duration-base) var(--ease-out),
+                box-shadow var(--duration-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .catalog-stat-box:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+}
+
+/* Toasts: smooth slide-in + fade */
+.catalog-toast {
+    animation: catalog-toast-in 280ms var(--ease-out) both;
+}
+
+@keyframes catalog-toast-in {
+    from { transform: translateY(-12px) scale(0.98); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.catalog-toast__close {
+    transition: background-color var(--duration-base) var(--ease-out),
+                color var(--duration-base) var(--ease-out),
+                transform var(--duration-fast) var(--ease-out);
+}
+.catalog-toast__close:active {
+    transform: scale(0.92);
+}
+
+/* Header icon links: gentle bounce on tap */
+.catalog-header-icon-link {
+    transition: background-color var(--duration-base) var(--ease-out),
+                color var(--duration-base) var(--ease-out),
+                transform var(--duration-fast) var(--ease-out);
+}
+.catalog-header-icon-link:active {
+    transform: scale(0.94);
+}
+
+/* Order collapsible: smooth chevron rotation, smooth body reveal */
+.catalog-order-collapsible__action {
+    transition: transform var(--duration-base) var(--ease-out);
+}
+.catalog-order-collapsible[open] .catalog-order-collapsible__action {
+    /* hint of motion when expanded */
+}
+
+/* =====================================================================
+   PHASE 3: scroll-reveal pattern (observed via IntersectionObserver)
+   Elements opt-in via [data-scroll-reveal] or .scroll-reveal
+   ===================================================================== */
+[data-scroll-reveal],
+.scroll-reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 520ms var(--ease-out), transform 520ms var(--ease-out);
+    will-change: opacity, transform;
+}
+
+[data-scroll-reveal].is-revealed,
+.scroll-reveal.is-revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-scroll-reveal],
+    .scroll-reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
+/* =====================================================================
+   PHASE 4: brand footer (desktop primary, graceful on mobile)
+   ===================================================================== */
+.catalog-footer {
+    margin: 4rem 0 0;
+    padding: 3rem 0 1.5rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f6f8fb 100%);
+    border-top: 1px solid var(--line-soft);
+    color: var(--ink-base);
+    font-family: var(--font-sans);
+}
+
+/* On mobile keep distance from sticky cart + bottom nav (handled by body padding) */
+@media (max-width: 900px) {
+    .catalog-footer {
+        margin-top: 2rem;
+        padding: 2.25rem 0 1.5rem;
+        padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+.catalog-footer__shell {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
+    gap: 2.5rem;
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 0 clamp(1.25rem, 3vw, 2.5rem);
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .catalog-footer__shell {
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .catalog-footer__shell {
+        grid-template-columns: 1fr;
+        gap: 1.75rem;
+    }
+}
+
+.catalog-footer__brand {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.catalog-footer__logo {
+    width: 9.5rem;
+    height: auto;
+}
+
+.catalog-footer__tagline {
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 22rem;
+    margin: 0;
+}
+
+.catalog-footer__heading {
+    font-family: var(--font-display);
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-strong);
+    margin: 0 0 1rem;
+}
+
+.catalog-footer__links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.catalog-footer__links a:not(.catalog-footer__contact) {
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    text-decoration: none;
+    transition: color var(--duration-base) var(--ease-out);
+}
+
+.catalog-footer__links a:not(.catalog-footer__contact):hover {
+    color: #df0000;
+}
+
+.catalog-footer__contact {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    text-decoration: none;
+    color: var(--ink-strong);
+    padding: 0.55rem 0;
+    transition: transform var(--duration-fast) var(--ease-out),
+                color var(--duration-base) var(--ease-out);
+}
+
+.catalog-footer__contact:hover {
+    color: #df0000;
+    transform: translateX(2px);
+}
+
+.catalog-footer__contact-icon {
+    display: inline-flex;
+    width: 2.4rem;
+    height: 2.4rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem;
+    background: rgba(223, 0, 0, 0.08);
+    color: #df0000;
+    flex-shrink: 0;
+}
+
+.catalog-footer__contact-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.catalog-footer__contact strong {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.98rem;
+    line-height: 1.15;
+}
+
+.catalog-footer__contact small {
+    display: block;
+    margin-top: 0.18rem;
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+    font-weight: 500;
+}
+
+.catalog-footer__bottom {
+    max-width: 1320px;
+    margin: 2.5rem auto 0;
+    padding: 1.5rem clamp(1.25rem, 3vw, 2.5rem) 0;
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+}
+
+.catalog-footer__copy {
+    margin: 0;
+    font-weight: 600;
+}
+
+.catalog-footer__legal {
+    margin: 0;
+    max-width: 36rem;
+    font-size: 0.78rem;
+    line-height: 1.55;
+}
+
+/* =====================================================================
+   PHASE 4: sticky header polish on desktop + smooth scroll shadow
+   ===================================================================== */
+@media (min-width: 901px) {
+    .catalog-site-header {
+        position: sticky;
+        top: 0;
+        z-index: 70;
+        padding-top: 1rem;
+        padding-bottom: 0.75rem;
+        background: rgba(255, 255, 255, 0);
+        transition:
+            background-color var(--duration-base) var(--ease-out),
+            backdrop-filter var(--duration-base) var(--ease-out),
+            padding var(--duration-base) var(--ease-out),
+            box-shadow var(--duration-base) var(--ease-out);
+    }
+
+    .catalog-site-header.is-scrolled {
+        padding-top: 0.6rem;
+        padding-bottom: 0.55rem;
+        background: rgba(255, 255, 255, 0.82);
+        backdrop-filter: blur(14px) saturate(1.15);
+        -webkit-backdrop-filter: blur(14px) saturate(1.15);
+        box-shadow: 0 12px 32px -28px rgba(15, 23, 42, 0.55);
+    }
+
+    /* On home page the header has its own glassy shell — preserve gradient,
+       just slightly tighten on scroll                                       */
+    .catalog-body.is-home .catalog-site-header.is-scrolled {
+        background: rgba(255, 255, 255, 0);
+        backdrop-filter: none;
+    }
+}
+
+/* =====================================================================
+   PHASE 4: wider container on big desktops (1440+), 5-col grid on 1680+
+   ===================================================================== */
+@media (min-width: 1280px) {
+    .catalog-container {
+        max-width: 1280px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+@media (min-width: 1440px) {
+    .catalog-container {
+        max-width: 1360px;
+    }
+}
+
+@media (min-width: 1680px) {
+    .catalog-container {
+        max-width: 1480px;
+    }
+
+    /* Catalog grid: 5 columns on extra-wide desktops for visual density */
+    .catalog-grid,
+    .catalog-main [data-favorites-grid].catalog-grid--dense,
+    .catalog-v2-feed-section .catalog-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (min-width: 1920px) {
+    .catalog-container {
+        max-width: 1560px;
+    }
+}
+
+/* =====================================================================
+   PHASE 4: catalog hero — brand statement above categories
+   ===================================================================== */
+.catalog-hero {
+    position: relative;
+    margin-bottom: 1.5rem;
+    padding: clamp(2rem, 4vw, 3.5rem) clamp(1.5rem, 3vw, 2.5rem);
+    border-radius: clamp(1.5rem, 3vw, 2rem);
+    background:
+        radial-gradient(60rem 20rem at 12% 0%, rgba(223, 0, 0, 0.10) 0%, rgba(223, 0, 0, 0) 70%),
+        radial-gradient(40rem 20rem at 100% 100%, rgba(180, 13, 18, 0.10) 0%, rgba(180, 13, 18, 0) 60%),
+        linear-gradient(135deg, #ffffff 0%, #fbfbfc 100%);
+    border: 1px solid var(--line-soft);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.catalog-hero__inner {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 2rem;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .catalog-hero__inner {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+}
+
+.catalog-hero__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.catalog-hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(223, 0, 0, 0.08);
+    color: #df0000;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.catalog-hero__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 4.5vw, 3rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+    color: var(--ink-strong);
+}
+
+.catalog-hero__title span {
+    background: linear-gradient(135deg, #df0000 0%, #b00000 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.catalog-hero__lead {
+    margin: 0;
+    max-width: 36rem;
+    font-size: clamp(0.95rem, 1.5vw, 1.05rem);
+    line-height: 1.6;
+    color: var(--ink-soft);
+}
+
+.catalog-hero__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.25rem;
+    margin-top: 0.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line-soft);
+}
+
+@media (max-width: 560px) {
+    .catalog-hero__stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.9rem;
+    }
+    .catalog-hero__stats > *:nth-child(3) {
+        grid-column: span 2;
+    }
+}
+
+.catalog-hero__stats > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.catalog-hero__stats strong {
+    font-family: var(--font-display);
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 800;
+    color: var(--ink-strong);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+}
+
+.catalog-hero__stats span {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    font-weight: 500;
+}
+
+.catalog-hero__visual {
+    position: relative;
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .catalog-hero__visual {
+        min-height: 120px;
+        order: -1;       /* visual above text on mobile */
+    }
+}
+
+.catalog-hero__orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0.85;
+    z-index: -1;
+}
+
+.catalog-hero__orb--a {
+    width: 280px;
+    height: 280px;
+    background: radial-gradient(circle at 30% 30%, #ff5757 0%, #df0000 50%, transparent 80%);
+    top: -40px;
+    right: 10%;
+    animation: catalog-hero-float 10s ease-in-out infinite alternate;
+}
+
+.catalog-hero__orb--b {
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle at 50% 50%, #ff5757 0%, #b00000 60%, transparent 80%);
+    bottom: -20px;
+    right: 30%;
+    animation: catalog-hero-float 12s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes catalog-hero-float {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(-20px, 20px) scale(1.08); }
+}
+
+.catalog-hero__mark {
+    position: relative;
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 7vw, 4rem);
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.95);
+    background: linear-gradient(135deg, #df0000 0%, #b80000 100%);
+    padding: 0.8rem 1.6rem;
+    border-radius: 1rem;
+    box-shadow: var(--shadow-brand);
+    transform: rotate(-3deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .catalog-hero__orb { animation: none; }
+}
+
+/* =====================================================================
+   PHASE 4: mobile drawer for catalog dropdown (≤ 900px)
+   ===================================================================== */
+@media (max-width: 900px) {
+    /* When details[open], dropdown becomes a slide-in drawer with backdrop */
+    .catalog-header-catalog-menu[open] {
+        position: static;
+    }
+
+    .catalog-header-catalog-menu[open]::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.5);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        z-index: 90;
+        animation: catalog-drawer-fade 220ms var(--ease-out) both;
+    }
+
+    @keyframes catalog-drawer-fade {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-dropdown {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(86vw, 360px);
+        max-width: 100vw;
+        height: 100dvh;
+        z-index: 91;
+        padding: max(1.25rem, env(safe-area-inset-top, 0px) + 0.5rem) 1.25rem 1.5rem;
+        margin: 0;
+        border-radius: 0 1.5rem 1.5rem 0;
+        background: #ffffff;
+        box-shadow: 28px 0 60px -20px rgba(15, 23, 42, 0.35);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        animation: catalog-drawer-in 320ms var(--ease-out) both;
+    }
+
+    @keyframes catalog-drawer-in {
+        from { transform: translateX(-100%); }
+        to   { transform: translateX(0); }
+    }
+
+    /* Drawer header: title + close button (using ::before on summary) */
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-dropdown::before {
+        content: "Каталог";
+        display: block;
+        font-family: var(--font-display);
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: var(--ink-strong);
+        margin-bottom: 1.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--line-soft);
+    }
+
+    /* Close button — render summary on top-right inside drawer */
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-trigger {
+        position: fixed;
+        top: max(1.1rem, env(safe-area-inset-top, 0px) + 0.5rem);
+        left: calc(min(86vw, 360px) - 3.4rem);
+        width: 2.95rem !important;
+        height: 2.95rem !important;
+        min-width: 2.95rem !important;
+        z-index: 92;
+        background: #f1f5f9 !important;
+        border: 1px solid var(--line-base) !important;
+        border-radius: 0.95rem !important;
+        color: var(--ink-strong) !important;
+    }
+
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-trigger svg {
+        display: none;
+    }
+
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-trigger::before {
+        content: "×";
+        font-size: 1.75rem;
+        font-weight: 400;
+        line-height: 1;
+        color: var(--ink-strong);
+    }
+
+    /* Inside drawer: "all" link gets brand styling */
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-dropdown__all {
+        display: block;
+        padding: 0.95rem 1.1rem;
+        margin-bottom: 1rem;
+        border-radius: 0.95rem;
+        background: linear-gradient(135deg, #df0000 0%, #b00000 100%);
+        color: #ffffff !important;
+        font-weight: 700;
+        font-size: 0.98rem;
+        text-decoration: none;
+        box-shadow: var(--shadow-brand);
+    }
+
+    /* Categories grid becomes a vertical list */
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-dropdown__grid {
+        display: flex !important;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-dropdown__link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.85rem 0.95rem;
+        border-radius: 0.9rem;
+        font-size: 0.98rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+        text-decoration: none;
+        transition: background-color var(--duration-base) var(--ease-out);
+    }
+
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-dropdown__link::before {
+        content: "›";
+        margin-left: auto;
+        color: var(--ink-soft);
+        font-size: 1.4rem;
+        line-height: 1;
+    }
+
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-dropdown__link:hover,
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-dropdown__link.is-active {
+        background: var(--surface-muted);
+    }
+
+    .catalog-header-catalog-menu[open] .catalog-header-catalog-dropdown__link.is-active {
+        background: rgba(223, 0, 0, 0.08);
+        color: #df0000;
+    }
+
+    /* Lock body scroll when drawer is open */
+    body:has(.catalog-header-catalog-menu[open]) {
+        overflow: hidden;
+    }
+}
+
+/* =====================================================================
+   PHASE 5: breadcrumbs — sticky semantic navigation
+   ===================================================================== */
+.catalog-breadcrumbs {
+    margin: 0 0 1.25rem;
+    padding: 0;
+    font-size: 0.86rem;
+    color: var(--ink-soft);
+}
+
+.catalog-breadcrumbs__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.catalog-breadcrumbs__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.catalog-breadcrumbs__sep {
+    color: var(--ink-muted);
+    font-weight: 500;
+    user-select: none;
+}
+
+.catalog-breadcrumbs__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.55rem;
+    border-radius: 0.55rem;
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-weight: 500;
+    transition:
+        background-color var(--duration-base) var(--ease-out),
+        color var(--duration-base) var(--ease-out),
+        transform var(--duration-fast) var(--ease-out);
+}
+
+.catalog-breadcrumbs__link:hover {
+    color: #df0000;
+    background: rgba(223, 0, 0, 0.06);
+}
+
+.catalog-breadcrumbs__link:active {
+    transform: scale(0.97);
+}
+
+.catalog-breadcrumbs__home {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.catalog-breadcrumbs__current {
+    color: var(--ink-strong);
+    font-weight: 600;
+    padding: 0.3rem 0;
+    /* Allow long titles to wrap on mobile */
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+    .catalog-breadcrumbs {
+        font-size: 0.78rem;
+    }
+    /* Hide the home text label on tiny screens, keep just icon */
+    .catalog-breadcrumbs__item:first-child .catalog-breadcrumbs__link span {
+        display: none;
+    }
+    /* Hide middle crumbs on very narrow screens — show only home › current */
+    .catalog-breadcrumbs__item:not(:first-child):not(.is-current) {
+        display: none;
+    }
+    .catalog-breadcrumbs__item.is-current .catalog-breadcrumbs__sep {
+        display: inline;
+    }
+}
+
+/* =====================================================================
+   PHASE 5: branded error screens (404 / 500 / 403)
+   ===================================================================== */
+.catalog-error-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: clamp(420px, 60vh, 640px);
+    padding: clamp(2rem, 5vw, 4rem) 1rem;
+}
+
+.catalog-error-screen__inner {
+    width: 100%;
+    max-width: 36rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.5rem;
+}
+
+.catalog-error-screen__mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-display);
+    font-size: clamp(6rem, 18vw, 10rem);
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    color: transparent;
+    background:
+        linear-gradient(135deg, #df0000 0%, #b00000 40%, #7d0f13 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    margin: 0;
+    user-select: none;
+}
+
+.catalog-error-screen__digit {
+    display: inline-block;
+    animation: catalog-error-digit-in 460ms var(--ease-out) both;
+}
+.catalog-error-screen__digit:nth-child(2) { animation-delay: 70ms; }
+.catalog-error-screen__digit:nth-child(3) { animation-delay: 140ms; }
+.catalog-error-screen__digit:nth-child(4) { animation-delay: 210ms; }
+
+@keyframes catalog-error-digit-in {
+    from { opacity: 0; transform: translateY(20px) scale(0.92); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.catalog-error-screen__orb {
+    display: inline-block;
+    width: clamp(4.5rem, 14vw, 7.5rem);
+    height: clamp(4.5rem, 14vw, 7.5rem);
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 35% 30%, #ff8a8a 0%, #df0000 45%, #7a0000 100%);
+    box-shadow:
+        var(--shadow-brand),
+        inset -8px -8px 24px rgba(0, 0, 0, 0.25),
+        inset 8px 8px 18px rgba(255, 255, 255, 0.25);
+    animation: catalog-error-orb-float 6s ease-in-out infinite alternate;
+}
+
+@keyframes catalog-error-orb-float {
+    from { transform: translateY(-4px) rotate(-6deg); }
+    to   { transform: translateY(4px) rotate(6deg); }
+}
+
+.catalog-error-screen__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 4vw, 2.25rem);
+    font-weight: 800;
+    color: var(--ink-strong);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+}
+
+.catalog-error-screen__text {
+    margin: 0;
+    font-size: clamp(0.95rem, 1.6vw, 1.05rem);
+    line-height: 1.65;
+    color: var(--ink-soft);
+    max-width: 32rem;
+}
+
+.catalog-error-screen__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .catalog-error-screen__digit,
+    .catalog-error-screen__orb { animation: none; }
+}
+
+/* =====================================================================
+   PHASE 5: premium auth panels — brand decoration on desktop
+   ===================================================================== */
+.catalog-auth-panel {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+/* Floating brand orb on desktop (right side decoration) */
+@media (min-width: 1024px) {
+    .catalog-auth-panel::before {
+        content: "";
+        position: absolute;
+        top: -15%;
+        right: -10%;
+        width: 38rem;
+        height: 38rem;
+        background:
+            radial-gradient(circle at 35% 35%, rgba(223, 0, 0, 0.10) 0%, rgba(223, 0, 0, 0) 60%),
+            radial-gradient(circle at 75% 75%, rgba(180, 13, 18, 0.08) 0%, rgba(180, 13, 18, 0) 60%);
+        border-radius: 50%;
+        filter: blur(20px);
+        z-index: -1;
+        pointer-events: none;
+        animation: catalog-auth-orb 14s ease-in-out infinite alternate;
+    }
+
+    .catalog-auth-panel::after {
+        content: "МАЖОР";
+        position: absolute;
+        bottom: -1.5rem;
+        right: -1rem;
+        font-family: var(--font-display);
+        font-size: clamp(7rem, 14vw, 11rem);
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        color: transparent;
+        -webkit-text-stroke: 1px rgba(15, 23, 42, 0.06);
+        text-stroke: 1px rgba(15, 23, 42, 0.06);
+        pointer-events: none;
+        z-index: -1;
+        line-height: 1;
+        user-select: none;
+        opacity: 0.7;
+    }
+}
+
+@keyframes catalog-auth-orb {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(-30px, 20px) scale(1.05); }
+}
+
+/* Eyebrow above the title — subtle brand chip */
+.catalog-auth-panel__inner::before {
+    content: "Личный кабинет МАЖОР";
+    display: inline-block;
+    align-self: center;
+    justify-self: center;
+    margin: 0 auto 1rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(223, 0, 0, 0.08);
+    color: #df0000;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+}
+
+/* Tighter label spacing under the title */
+.catalog-auth-panel__title + p {
+    text-align: center;
+}
+
+/* Buttons in auth panel: full-width on mobile, comfortable on desktop */
+.catalog-auth-panel__form .action-button {
+    min-height: 52px;
+    font-size: 1rem;
+    box-shadow: var(--shadow-brand);
+    letter-spacing: 0.01em;
+}
+
+/* Subtle scale on submit press */
+.catalog-auth-panel__form .action-button:active {
+    transform: scale(0.985);
+}
+
+/* On large screens — split the form area so brand mark stays visible */
+@media (min-width: 1280px) {
+    .catalog-auth-screen {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1.5rem 0 2rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .catalog-auth-panel::before { animation: none; }
+}
+
+/* =====================================================================
+   PHASE 5: product page premium touches
+   ===================================================================== */
+
+/* Better visual hierarchy for product description block */
+.catalog-product-copy__description {
+    margin-top: 1rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line-soft);
+    font-size: 0.98rem;
+    line-height: 1.65;
+    color: var(--ink-soft);
+    max-width: 42rem;
+}
+
+/* Sticky CTA panel on desktop — actions stay in view as user scrolls */
+@media (min-width: 1281px) {
+    .catalog-product-actions {
+        position: sticky;
+        top: calc(env(safe-area-inset-top, 0px) + 1rem);
+        padding: 1.5rem;
+        border-radius: 1.25rem;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 249, 252, 0.98) 100%);
+        border: 1px solid var(--line-soft);
+        box-shadow: var(--shadow-md);
+        transition: box-shadow var(--duration-base) var(--ease-out);
+    }
+
+    .catalog-product-actions:hover {
+        box-shadow: var(--shadow-lg);
+    }
+}
+
+/* Animated subtle scale of stage image on hover (desktop only) */
+@media (hover: hover) and (pointer: fine) {
+    .catalog-product-stage__image {
+        transition: transform var(--duration-slow) var(--ease-out);
+    }
+    .catalog-product-stage:hover .catalog-product-stage__image {
+        transform: scale(1.03);
+    }
+}
+
+/* Gallery thumbs: bigger hit area, smooth selection */
+.catalog-product-gallery__thumb {
+    transition: transform var(--duration-fast) var(--ease-out),
+                box-shadow var(--duration-base) var(--ease-out),
+                border-color var(--duration-base) var(--ease-out);
+}
+
+.catalog-product-gallery__thumb:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.catalog-product-gallery__thumb.is-active {
+    box-shadow: 0 0 0 2px #df0000;
+    border-color: transparent;
+}
+
+/* Product facts grid: cleaner separation */
+.catalog-product-facts__item {
+    transition: background-color var(--duration-base) var(--ease-out);
+    border-radius: 0.75rem;
+}
+
+@media (hover: hover) {
+    .catalog-product-facts__item:hover {
+        background: var(--surface-muted);
+    }
+}
+
+/* =====================================================================
+   PHASE 5: orders page polish — collapsible cards, hover, status chips
+   ===================================================================== */
+.catalog-order-collapsible {
+    transition: box-shadow var(--duration-base) var(--ease-out),
+                border-color var(--duration-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .catalog-order-collapsible:hover:not([open]) {
+        box-shadow: var(--shadow-md);
+        border-color: var(--line-strong);
+    }
+}
+
+.catalog-order-collapsible[open] {
+    box-shadow: var(--shadow-md);
+}
+
+/* Smooth body reveal when collapsible opens */
+.catalog-order-collapsible__body {
+    animation: catalog-order-body-in 320ms var(--ease-out) both;
+}
+
+@keyframes catalog-order-body-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.catalog-status-chip {
+    box-shadow: var(--shadow-xs);
+}
+
+/* =====================================================================
+   PHASE 5: account page polish — settings cards, role badge
+   ===================================================================== */
+.catalog-account-grid,
+.catalog-account-stack {
+    gap: 1rem;
+}
+
+/* Soft-badge: subtle elevation + tactile press */
+.soft-badge {
+    transition: transform var(--duration-fast) var(--ease-out),
+                box-shadow var(--duration-base) var(--ease-out);
+}
+
+.soft-badge[role="link"]:hover,
+a.soft-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* =====================================================================
+   PHASE 5: section heads — premium polish
+   ===================================================================== */
+.catalog-section-head--clean {
+    padding: 0 0 0.5rem;
+}
+
+.catalog-section-title {
+    background: linear-gradient(135deg, var(--ink-strong) 0%, #1a2236 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+}
+
+
+/* =====================================================================
+   PHASE 6: category showcase polish — chips, cards, hover, accent
+   ===================================================================== */
+
+/* --- Chip tabs: bolder typography, brand-accent active state ---------- */
+.catalog-category-v3__tab {
+    min-height: 2.6rem;
+    padding: 0.55rem 1rem;
+    font-size: 0.85rem;
+    transition:
+        transform var(--duration-fast) var(--ease-out),
+        background-color var(--duration-base) var(--ease-out),
+        border-color var(--duration-base) var(--ease-out),
+        box-shadow var(--duration-base) var(--ease-out),
+        color var(--duration-base) var(--ease-out);
+}
+
+.catalog-category-v3__tab:hover {
+    transform: translateY(-1px);
+    border-color: rgba(180, 13, 18, 0.45);
+    box-shadow: var(--shadow-md);
+}
+
+.catalog-category-v3__tab:active {
+    transform: scale(0.97);
+}
+
+.catalog-category-v3__tab.is-active {
+    background: linear-gradient(135deg, #df0000 0%, #b80000 100%);
+    border-color: transparent;
+    color: #ffffff;
+    box-shadow: var(--shadow-brand);
+}
+
+.catalog-category-v3__tab.is-active .catalog-category-v3__tab-mark {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    font-weight: 800;
+}
+
+.catalog-category-v3__tab.is-active .catalog-category-v3__tab-count {
+    background: rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+    font-weight: 800;
+}
+
+/* --- Category showcase cards: bigger images, brand-accent on hover ---- */
+.catalog-category-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.85rem !important;
+    border: 1px solid var(--line-soft) !important;
+    background:
+        radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--category-accent, #df0000) 8%, transparent), transparent 50%),
+        linear-gradient(180deg, #ffffff 0%, #f6f8fc 100%) !important;
+    box-shadow: var(--shadow-sm) !important;
+    transition:
+        transform var(--duration-base) var(--ease-out),
+        box-shadow var(--duration-base) var(--ease-out),
+        border-color var(--duration-base) var(--ease-out) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .catalog-category-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--category-accent, #df0000) !important;
+        box-shadow: 0 18px 36px -16px color-mix(in srgb, var(--category-accent, #df0000) 35%, rgba(15, 23, 42, 0.1)) !important;
+    }
+
+    .catalog-category-card:hover .catalog-category-card__image {
+        transform: translateY(-4px) scale(1.06);
+    }
+}
+
+/* Subtle accent stripe on top — visual ID for the category */
+.catalog-category-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--category-accent, #df0000) 0%, transparent 80%);
+    opacity: 0.7;
+    transition: opacity var(--duration-base) var(--ease-out);
+}
+.catalog-category-card:hover::before { opacity: 1; }
+
+/* Badge: brand-accent tint instead of neutral pill */
+.catalog-category-card__badge {
+    background: color-mix(in srgb, var(--category-accent, #df0000) 9%, #ffffff) !important;
+    border: 1px solid color-mix(in srgb, var(--category-accent, #df0000) 22%, transparent) !important;
+    color: var(--category-accent, #df0000) !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.08em !important;
+}
+
+/* Title: tighter, sharper */
+.catalog-category-card__title {
+    color: var(--ink-strong) !important;
+    letter-spacing: -0.025em !important;
+}
+
+/* Image gets more room: bigger max-width/height */
+.catalog-category-card__image {
+    max-width: 230px !important;
+    max-height: 175px !important;
+    transition: transform var(--duration-slow) var(--ease-out);
+}
+
+/* Placeholder letter-mark when no image: brand accent gradient */
+.catalog-category-card__mark {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--category-accent, #df0000) 8%, #ffffff) 0%, color-mix(in srgb, var(--category-accent, #df0000) 18%, #ffffff) 100%) !important;
+    color: var(--category-accent, #df0000) !important;
+    box-shadow:
+        var(--shadow-sm),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Section chips inside cards — give them more polish */
+.catalog-category-card__section {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border: 1px solid var(--line-soft) !important;
+    backdrop-filter: blur(4px);
+    transition: background-color var(--duration-base) var(--ease-out);
+}
+
+.catalog-category-card:hover .catalog-category-card__section {
+    background: #ffffff !important;
+    border-color: color-mix(in srgb, var(--category-accent, #df0000) 18%, var(--line-soft)) !important;
+}
+
+/* --- Section heading on home: lighter section-title gradient -------- */
+.catalog-category-v3__subtitle {
+    color: var(--ink-soft) !important;
+    font-size: 0.95rem !important;
+    line-height: 1.55;
+    max-width: 36rem;
+}
+
+.catalog-category-v3__summary {
+    display: inline-flex !important;
+    align-items: center;
+    align-self: flex-start;
+    margin-top: 0.6rem !important;
+    padding: 0.45rem 0.95rem !important;
+    border-radius: 999px !important;
+    background: color-mix(in srgb, #df0000 7%, var(--surface-soft)) !important;
+    color: var(--ink-strong) !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+}
+
+/* --- Showcase arrows polish ------------------------------------------- */
+.catalog-category-showcase__arrow {
+    width: 2.85rem !important;
+    height: 2.85rem !important;
+    border-radius: 999px !important;
+    background: #ffffff !important;
+    border: 1px solid var(--line-base) !important;
+    color: var(--ink-strong) !important;
+    box-shadow: var(--shadow-md) !important;
+    transition: transform var(--duration-fast) var(--ease-out),
+                box-shadow var(--duration-base) var(--ease-out),
+                background-color var(--duration-base) var(--ease-out) !important;
+}
+
+.catalog-category-showcase__arrow:hover {
+    transform: scale(1.06);
+    background: linear-gradient(135deg, #df0000 0%, #b80000 100%) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+    box-shadow: var(--shadow-brand) !important;
+}
+
+.catalog-category-showcase__arrow:active {
+    transform: scale(0.96);
+}
+
+

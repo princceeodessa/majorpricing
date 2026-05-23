@@ -8,6 +8,10 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
+use OpenSpout\Writer\XLSX\Writer;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrderController extends Controller
 {
@@ -78,6 +82,53 @@ class OrderController extends Controller
         return redirect()
             ->route('orders.index')
             ->with('status', 'Заказ добавлен в очередь выгрузки 1С.');
+    }
+
+    public function exportXlsx(Request $request, Order $order): StreamedResponse
+    {
+        $user = $request->user();
+
+        // Clients may only export their own orders; managers only their visible clients
+        if ($user->canManageClients()) {
+            if (! $user->isAdmin()) {
+                abort_unless((int) $order->user?->manager_id === (int) $user->id, 403);
+            }
+        } else {
+            abort_unless((int) $order->user_id === (int) $user->id, 403);
+        }
+
+        $order->loadMissing('items.product');
+
+        $orderNumber = $order->number ?? $order->id;
+        $filename    = 'Заказ-' . $orderNumber . '.xlsx';
+        $date        = ($order->placed_at ?? $order->created_at)->format('d.m.Y');
+
+        return response()->streamDownload(function () use ($order, $date): void {
+            $writer = new Writer();
+            $writer->openToFile('php://output');
+
+            // Bold header row
+            $headerStyle = new Style(fontBold: true);
+            $writer->addRow(Row::fromValuesWithStyle(
+                ['Наименование', 'Количество', 'Единица измерения', 'Цена', 'Дата'],
+                $headerStyle,
+            ));
+
+            foreach ($order->items as $item) {
+                $unit = $item->product?->publicUnitLabel() ?? 'шт';
+                $writer->addRow(Row::fromValues([
+                    $item->product_title,
+                    (int) $item->quantity,
+                    $unit,
+                    $item->unit_price !== null ? (float) $item->unit_price : '',
+                    $date,
+                ]));
+            }
+
+            $writer->close();
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 
     private function ensureManagerCanManageOrder(Request $request, Order $order): void

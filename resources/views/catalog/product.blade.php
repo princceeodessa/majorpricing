@@ -39,6 +39,18 @@
         ])->filter(fn (array $item) => filled($item['value']))->values();
     @endphp
 
+    @php
+        $breadcrumbItems = [];
+        if ($category?->parent) {
+            $breadcrumbItems[] = ['label' => $category->parent->name, 'url' => route('categories.show', $category->parent)];
+        }
+        if ($category) {
+            $breadcrumbItems[] = ['label' => $category->name, 'url' => route('categories.show', $category)];
+        }
+        $breadcrumbItems[] = ['label' => $product->publicTitle()];
+    @endphp
+    @include('partials.breadcrumbs', ['items' => $breadcrumbItems])
+
     <section class="surface-card reveal-card p-5 sm:p-8">
         <div class="catalog-product-layout">
             <div

@@ -1,7 +1,8 @@
 <?php
 
-use App\Http\Middleware\EnsureIntegrationToken;
+use App\Http\Middleware\AuthenticateMobileToken;
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureIntegrationToken;
 use App\Http\Middleware\EnsureManager;
 use App\Http\Middleware\NoIndexResponse;
 use Illuminate\Foundation\Application;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureAdmin::class,
             'integration.token' => EnsureIntegrationToken::class,
             'manager' => EnsureManager::class,
+            'mobile.auth' => AuthenticateMobileToken::class,
             'noindex' => NoIndexResponse::class,
         ]);
     })

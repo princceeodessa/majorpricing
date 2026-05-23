@@ -176,6 +176,7 @@ class OneCExchangeController extends Controller
         $expectedPassword = (string) config('integrations.one_c.password');
 
         if ($expectedUser === '' || $expectedPassword === '') {
+            Log::error('1C exchange: ONE_C_EXCHANGE_USERNAME or ONE_C_EXCHANGE_PASSWORD not set in .env');
             return false;
         }
 

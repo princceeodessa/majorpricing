@@ -242,7 +242,7 @@
                         </label>
 
                         <label class="flex items-center gap-3 rounded-[24px] border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-700">
-                            <input type="checkbox" name="is_active" value="1" class="h-4 w-4 accent-[#163459]" @checked(old('is_active', '1'))>
+                            <input type="checkbox" name="is_active" value="1" class="h-4 w-4 accent-[#d11117]" @checked(old('is_active', '1'))>
                             Активировать сразу после создания
                         </label>
                     </div>
@@ -520,6 +520,20 @@
                                 </div>
 
                                 <a href="{{ route('manager.chats.index', ['client' => $managedUser]) }}" class="ghost-button w-full justify-center">Открыть чат</a>
+
+                                @if ($isAdmin)
+                                    <form
+                                        action="{{ route('admin.users.destroy', $managedUser) }}"
+                                        method="POST"
+                                        onsubmit="return confirm('Удалить пользователя «{{ addslashes($managedUser->name) }}»?\n\nВсе данные, заказы и переписка будут удалены безвозвратно.')"
+                                    >
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="catalog-inline-action catalog-inline-action--danger w-full justify-center mt-1">
+                                            Удалить пользователя
+                                        </button>
+                                    </form>
+                                @endif
                             </aside>
                         </div>
                     </details>
@@ -763,7 +777,7 @@
                         </label>
 
                         <label class="flex items-center gap-3 rounded-[24px] border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-700 md:col-span-2">
-                            <input type="checkbox" name="is_default" value="1" class="h-4 w-4 accent-[#163459]" @checked(old('is_default'))>
+                            <input type="checkbox" name="is_default" value="1" class="h-4 w-4 accent-[#d11117]" @checked(old('is_default'))>
                             Использовать как адрес по умолчанию
                         </label>
                     </div>

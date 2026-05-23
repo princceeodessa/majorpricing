@@ -45,12 +45,17 @@
     </section>
 
     @if ($cartItems->isEmpty())
-        <div class="surface-card mt-6 p-12 text-center">
-            <h2 class="font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Корзина пока пуста</h2>
-            <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-                Добавьте товары из каталога, и здесь появится подборка для отправки менеджеру.
-            </p>
-            <a href="{{ route('catalog.index') }}" class="catalog-buy-button mx-auto mt-6 w-fit">Вернуться в каталог</a>
+        <div class="surface-card mt-6">
+            <div class="catalog-empty-state">
+                <span class="catalog-empty-state__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M4 7h15l-1.3 8.2a2 2 0 0 1-2 1.7H8.4a2 2 0 0 1-2-1.6L4.8 5.5H2.5"/><circle cx="9.2" cy="20" r="1.3"/><circle cx="16.4" cy="20" r="1.3"/></svg>
+                </span>
+                <h2 class="catalog-empty-state__title">Корзина пока пуста</h2>
+                <p class="catalog-empty-state__text">
+                    Добавьте товары из каталога, и здесь появится подборка для отправки менеджеру.
+                </p>
+                <a href="{{ route('catalog.index') }}" class="catalog-buy-button catalog-empty-state__cta">Вернуться в каталог</a>
+            </div>
         </div>
     @else
         <section class="catalog-cart-layout mt-6" data-cart-payment-scope>

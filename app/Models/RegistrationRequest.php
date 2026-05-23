@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'name',
     'company',
+    'city',
+    'price_profile_id',
     'contact_person',
     'contact_people',
     'phone',
@@ -33,6 +35,11 @@ class RegistrationRequest extends Model
     public const STATUS_APPROVED = 'approved';
 
     public const STATUS_REJECTED = 'rejected';
+
+    public function priceProfile(): BelongsTo
+    {
+        return $this->belongsTo(PriceProfile::class);
+    }
 
     public function approver(): BelongsTo
     {
@@ -65,6 +72,7 @@ class RegistrationRequest extends Model
             'contact_people' => 'array',
             'messengers' => 'array',
             'approved_at' => 'datetime',
+            'price_profile_id' => 'integer',
         ];
     }
 

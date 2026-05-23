@@ -18,7 +18,7 @@
     $unitLabel = $product->publicUnitLabel();
     $availabilityLabel = $product->availabilityLabel();
     $availabilityTone = $product->availabilityTone();
-    $productAccents = ['#163459', '#1f4f7a', '#255f91', '#2f6f9f', '#3c7fae', '#0f2947'];
+    $productAccents = ['#d11117', '#b40d12', '#c41419', '#a80e12', '#e53030', '#7d0f13'];
     $productAccent = $productAccents[($rootCategory?->id ?? $product->id ?? 0) % count($productAccents)];
     $cartQuantity = $isAuthenticatedCatalogUser ? (int) (($cartProductQuantities[$product->id] ?? 0)) : 0;
     $minCartQuantity = $product->cartQuantityMinimum();

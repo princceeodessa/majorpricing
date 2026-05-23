@@ -4,6 +4,16 @@
 
 @section('content')
     @php($showPrices = $showPrices ?? auth()->check())
+
+    @php
+        $catBreadcrumbItems = [];
+        if ($category->parent) {
+            $catBreadcrumbItems[] = ['label' => $category->parent->name, 'url' => route('categories.show', $category->parent)];
+        }
+        $catBreadcrumbItems[] = ['label' => $category->name];
+    @endphp
+    @include('partials.breadcrumbs', ['items' => $catBreadcrumbItems])
+
     @php($sectionTotal = $category->children->isNotEmpty() ? (int) $sectionCounts->sum() : $products->total())
     @php($activeFilters = collect([request('q'), $selectedSection?->id, $selectedSheet, $showPrices && $hasActivePriceFilter ? 'price' : null])->filter()->count())
     @php($rangeMin = $priceBounds['min'] !== null ? (float) floor($priceBounds['min']) : 0)
@@ -14,15 +24,7 @@
     <section class="surface-card reveal-card catalog-page-hero catalog-category-hero p-6 sm:p-8">
         <div class="catalog-list-header">
             <div class="max-w-4xl">
-                <div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                    <a href="{{ route('catalog.index') }}" class="transition hover:text-slate-900">Каталог</a>
-                    @if ($category->parent)
-                        <span>/</span>
-                        <a href="{{ route('categories.show', $category->parent) }}" class="transition hover:text-slate-900">{{ $category->parent->name }}</a>
-                    @endif
-                    <span>/</span>
-                    <span class="text-slate-900">{{ $category->name }}</span>
-                </div>
+                {{-- breadcrumbs moved above to partial --}}
 
                 <h1 class="mt-4 font-['IBM_Plex_Sans'] text-4xl font-semibold tracking-tight text-slate-950 sm:text-[3.2rem]">{{ $category->name }}</h1>
                 <p class="mt-4 max-w-3xl text-base leading-7 text-slate-600">

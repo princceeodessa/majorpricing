@@ -11,6 +11,22 @@ use Illuminate\Validation\ValidationException;
 
 class ManagerUserController extends Controller
 {
+    public function destroy(Request $request, User $user): RedirectResponse
+    {
+        $admin = $request->user();
+
+        abort_unless($admin->isAdmin(), 403);
+        abort_if($user->isAdmin(), 403, 'Нельзя удалить администратора.');
+        abort_if($user->id === $admin->id, 403, 'Нельзя удалить самого себя.');
+
+        $name = $user->name;
+        $user->delete();
+
+        return redirect()
+            ->route('account.show')
+            ->with('status', "Пользователь «{$name}» удалён.");
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $creator = $request->user();

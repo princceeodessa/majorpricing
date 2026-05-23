@@ -4,16 +4,21 @@
 
 @section('content')
     @if ($orders->isEmpty())
-        <div class="surface-card p-12 text-center">
-            <h2 class="font-['IBM_Plex_Sans'] text-3xl font-semibold text-slate-950">Заказов пока нет</h2>
-            <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-                @if ($isManager ?? false)
-                    Когда клиенты начнут отправлять корзины, здесь появится рабочая лента заказов.
-                @else
-                    Сформируйте первую корзину и отправьте ее менеджеру, чтобы история начала заполняться.
-                @endif
-            </p>
-            <a href="{{ route('catalog.index') }}" class="catalog-buy-button mx-auto mt-6 w-fit">Перейти в каталог</a>
+        <div class="surface-card">
+            <div class="catalog-empty-state">
+                <span class="catalog-empty-state__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="15" rx="2.3"/><path d="M8 9.5h8M8 13h8M8 16.5h5"/></svg>
+                </span>
+                <h2 class="catalog-empty-state__title">Заказов пока нет</h2>
+                <p class="catalog-empty-state__text">
+                    @if ($isManager ?? false)
+                        Когда клиенты начнут отправлять корзины, здесь появится рабочая лента заказов.
+                    @else
+                        Сформируйте первую корзину и отправьте ее менеджеру, чтобы история начала заполняться.
+                    @endif
+                </p>
+                <a href="{{ route('catalog.index') }}" class="catalog-buy-button catalog-empty-state__cta">Перейти в каталог</a>
+            </div>
         </div>
     @else
         <div class="space-y-4">
@@ -107,6 +112,15 @@
                                             </div>
                                         </div>
                                     @endforeach
+                                </div>
+
+                                <div class="mt-4">
+                                    <a href="{{ route('orders.export-xlsx', $order) }}" class="ghost-button">
+                                        <svg viewBox="0 0 24 24" style="width:16px;height:16px;flex-shrink:0" aria-hidden="true">
+                                            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 11l5 5 5-5M12 4v12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                        </svg>
+                                        Скачать Excel (.xlsx)
+                                    </a>
                                 </div>
                             </div>
 

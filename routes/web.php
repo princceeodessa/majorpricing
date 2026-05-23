@@ -108,6 +108,7 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
     Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}/export-xlsx', [OrderController::class, 'exportXlsx'])->name('orders.export-xlsx');
     Route::patch('/orders/{order}', [OrderController::class, 'update'])->middleware('manager')->name('orders.update');
     Route::post('/orders/{order}/export-1c', [OrderController::class, 'queueOneCExport'])->middleware('manager')->name('orders.export-1c');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');

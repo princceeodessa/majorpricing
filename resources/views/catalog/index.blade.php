@@ -16,7 +16,7 @@
                         'name' => $category->name,
                         'slug' => $category->slug,
                         'url' => route('categories.show', $category),
-                        'accentColor' => $category->accent_color ?? '#163459',
+                        'accentColor' => $category->accent_color ?? '#d11117',
                         'childrenCount' => $category->children->count(),
                         'productsCount' => (int) $category->catalog_products_count,
                         'previewImage' => $previewImage,
@@ -97,7 +97,7 @@
                                 <a
                                     href="{{ route('categories.show', $category) }}"
                                     class="catalog-category-card reveal-card"
-                                    style="animation-delay: {{ $index * 70 }}ms; --category-accent: {{ $category->accent_color ?? '#163459' }};"
+                                    style="animation-delay: {{ $index * 70 }}ms; --category-accent: {{ $category->accent_color ?? '#d11117' }};"
                                 >
                                     <div class="catalog-category-card__copy">
                                         <div class="catalog-category-card__head">

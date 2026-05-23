@@ -12,7 +12,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $metaTitle }}</title>
         <meta name="description" content="{{ $metaDescription }}">
-        <meta name="theme-color" content="#163459">
+        <meta name="theme-color" content="#df0000">
         @auth
             <meta name="notifications-poll" content="{{ route('notifications.poll') }}">
         @endauth
@@ -51,6 +51,8 @@
     @php($isCatalogSurface = request()->routeIs('catalog.*', 'categories.*', 'products.*'))
     @php($showCatalogHeader = auth()->check() || $isCatalogSurface)
     <body class="catalog-body {{ $isHome ? 'is-home' : 'is-inner' }}">
+        <a href="#catalog-main-content" class="catalog-skip-link">Перейти к содержимому</a>
+        <div class="catalog-pageload-bar" id="catalog-pageload-bar" aria-hidden="true"></div>
         <div class="catalog-backdrop"></div>
 
         <div class="catalog-shell">
@@ -216,7 +218,7 @@
                 </header>
             @endif
 
-            <main class="catalog-container catalog-main pb-16">
+            <main id="catalog-main-content" class="catalog-container catalog-main pb-16">
                 @if ($errors->any())
                     <div class="catalog-toast catalog-toast--error" data-toast>
                         <div class="catalog-toast__content">
@@ -238,6 +240,8 @@
                 @endif
                 @yield('content')
             </main>
+
+            @include('partials.footer')
 
             @if (auth()->check())
                 <nav class="catalog-mobile-nav" aria-label="Основная навигация">
@@ -328,7 +332,97 @@
             @endif
         </div>
 
+        @include('partials.sticky-cart-bar')
         @include('partials.support-widget')
+
+        {{-- Brand-coloured page-loading progress bar --}}
+        <script>
+            (function () {
+                var bar = document.getElementById('catalog-pageload-bar');
+                if (!bar) return;
+                var navigating = false;
+
+                function start() {
+                    if (navigating) return;
+                    navigating = true;
+                    bar.classList.remove('is-done');
+                    bar.classList.add('is-active');
+                }
+
+                function finish() {
+                    if (!navigating) return;
+                    navigating = false;
+                    bar.classList.remove('is-active');
+                    bar.classList.add('is-done');
+                    setTimeout(function () {
+                        bar.classList.remove('is-done');
+                    }, 400);
+                }
+
+                // Trigger on internal link clicks (same origin, not opening new tab, not anchor)
+                document.addEventListener('click', function (e) {
+                    var a = e.target.closest('a[href]');
+                    if (!a) return;
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                    if (a.target === '_blank' || a.hasAttribute('download')) return;
+                    if (a.getAttribute('href').startsWith('#')) return;
+                    try {
+                        var url = new URL(a.href, location.href);
+                        if (url.origin !== location.origin) return;
+                        if (url.pathname === location.pathname && url.search === location.search) return;
+                    } catch (_) { return; }
+                    start();
+                }, true);
+
+                // Trigger on form submissions
+                document.addEventListener('submit', function (e) {
+                    var form = e.target;
+                    if (!form || form.method === 'dialog') return;
+                    start();
+                }, true);
+
+                // Hide when page is shown (works for bfcache too)
+                window.addEventListener('pageshow', finish);
+                window.addEventListener('load', finish);
+            })();
+        </script>
+
+        {{-- Scroll-reveal: IntersectionObserver for opt-in elements --}}
+        <script>
+            (function () {
+                if (!('IntersectionObserver' in window)) {
+                    document.querySelectorAll('[data-scroll-reveal], .scroll-reveal')
+                        .forEach(function (el) { el.classList.add('is-revealed'); });
+                    return;
+                }
+
+                var observer = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('is-revealed');
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+
+                function observeAll(root) {
+                    (root || document).querySelectorAll('[data-scroll-reveal]:not(.is-revealed), .scroll-reveal:not(.is-revealed)')
+                        .forEach(function (el) { observer.observe(el); });
+                }
+
+                observeAll();
+
+                // Re-scan when new cards are added by infinite scroll
+                var mo = new MutationObserver(function (mutations) {
+                    mutations.forEach(function (m) {
+                        m.addedNodes.forEach(function (node) {
+                            if (node.nodeType === 1) observeAll(node);
+                        });
+                    });
+                });
+                mo.observe(document.body, { childList: true, subtree: true });
+            })();
+        </script>
     </body>
 </html>
 
