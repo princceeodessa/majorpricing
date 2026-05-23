@@ -521,7 +521,7 @@
 
                                 <a href="{{ route('manager.chats.index', ['client' => $managedUser]) }}" class="ghost-button w-full justify-center">Открыть чат</a>
 
-                                @if ($isAdmin)
+                                @if ($isAdmin && \Illuminate\Support\Facades\Route::has('admin.users.destroy'))
                                     <form
                                         action="{{ route('admin.users.destroy', $managedUser) }}"
                                         method="POST"

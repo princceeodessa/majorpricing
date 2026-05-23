@@ -348,7 +348,7 @@ button, [role="button"], a {
 .catalog-header-logo {
     min-width: clamp(228px, 19vw, 322px);
     min-height: 62px;
-    box-shadow: 0 22px 42px -30px rgba(32, 63, 104, 0.32);
+    box-shadow: 0 22px 42px -30px rgba(180, 13, 18, 0.28);
 }
 
 .catalog-product-card {
@@ -10632,14 +10632,14 @@ html {
 
 /* Catalog V2 (2026 visual pass) */
 :root {
-    --catalog-v2-surface: #f4f7fb;
-    --catalog-v2-card-surface: linear-gradient(165deg, #ffffff 0%, #f7f9fd 42%, #f3f7fc 100%);
-    --catalog-v2-card-border: rgba(208, 220, 236, 0.92);
+    --catalog-v2-surface: #f8f8f8;
+    --catalog-v2-card-surface: linear-gradient(165deg, #ffffff 0%, #fafafa 42%, #f8f8f8 100%);
+    --catalog-v2-card-border: rgba(220, 220, 220, 0.92);
     --catalog-v2-title: #0b1224;
     --catalog-v2-muted: #8b98ad;
-    --catalog-v2-primary: #163f72;
-    --catalog-v2-primary-strong: #0d3562;
-    --catalog-v2-shadow: 0 18px 38px -30px rgba(18, 34, 62, 0.36);
+    --catalog-v2-primary: #d11117;
+    --catalog-v2-primary-strong: #a30000;
+    --catalog-v2-shadow: 0 18px 38px -30px rgba(180, 13, 18, 0.28);
 }
 
 .catalog-v2-feed-section .catalog-section-head--with-filters {
@@ -10944,9 +10944,9 @@ html {
     width: 100% !important;
     min-height: 2.9rem !important;
     border-radius: 0.95rem !important;
-    border: 1px solid rgba(15, 51, 90, 0.05);
+    border: 1px solid rgba(209, 17, 23, 0.06);
     background: linear-gradient(180deg, var(--catalog-v2-primary) 0%, var(--catalog-v2-primary-strong) 100%) !important;
-    box-shadow: 0 16px 24px -20px rgba(22, 63, 114, 0.8);
+    box-shadow: 0 16px 24px -20px rgba(180, 13, 18, 0.45);
     font-size: 0.99rem !important;
     font-weight: 650;
 }
@@ -10958,7 +10958,7 @@ html {
     grid-template-columns: 2.35rem minmax(2.8rem, 1fr) 2.35rem !important;
     border-radius: 0.95rem !important;
     border: 1px solid rgba(210, 223, 237, 0.92) !important;
-    background: #f3f7fc !important;
+    background: #f8f8f8 !important;
 }
 
 .catalog-v2-feed-section .catalog-product-card__stepper-btn,
