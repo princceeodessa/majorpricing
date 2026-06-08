@@ -18,7 +18,6 @@
                             type="text"
                             name="login"
                             value="{{ old('login') }}"
-                            placeholder="manager или ваш email"
                             class="catalog-input-brand w-full rounded-[24px] border border-slate-200 bg-white px-5 py-[1.05rem] text-base text-slate-900 outline-none transition"
                         >
                         @error('login')

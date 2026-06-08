@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Product;
 use App\Models\User;
 use App\Services\CatalogImportService;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -62,6 +63,13 @@ class DatabaseSeeder extends Seeder
 
         if (is_file($catalogPath)) {
             app(CatalogImportService::class)->import($catalogPath);
+        }
+
+        // Демо-каталог для локальной разработки и дизайнерских правок.
+        // Запускаем только если в БД ещё нет товаров — на проде с реальной
+        // выгрузкой 1С не сработает, поэтому ничего не затрёт.
+        if (Product::query()->count() === 0) {
+            $this->call(DemoCatalogSeeder::class);
         }
     }
 }
