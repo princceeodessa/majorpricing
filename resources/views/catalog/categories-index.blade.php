@@ -18,18 +18,18 @@
 @endphp
 
 @section('content')
-<div class="categories-screen">
-    <header class="categories-header">
-        <h1 class="categories-title">Категории</h1>
-        <label class="categories-search">
-            <svg viewBox="0 0 24 24" class="categories-search__icon" aria-hidden="true">
+<div class="categories-page">
+    <header class="categories-page__head">
+        <h1 class="categories-page__title">Категории</h1>
+        <label class="categories-page__search">
+            <svg viewBox="0 0 24 24" class="categories-page__search-icon" aria-hidden="true">
                 <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/>
                 <path d="M16.5 16.5L21 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
             <input
                 type="search"
                 placeholder="Поиск по категориям"
-                class="categories-search__input"
+                class="categories-page__search-input"
                 autocomplete="off"
                 data-categories-search
                 aria-label="Поиск по категориям"
@@ -38,17 +38,17 @@
     </header>
 
     @auth
-        <a href="{{ route('orders.index') }}" class="categories-featured">
-            <span class="categories-featured__icon" aria-hidden="true">
+        <a href="{{ route('orders.index') }}" class="categories-page__featured">
+            <span class="categories-page__featured-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                     <path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </span>
-            <span class="categories-featured__body">
+            <span class="categories-page__featured-body">
                 <strong>Уже заказывали</strong>
                 <span>Быстро повторить покупки из прошлых заказов</span>
             </span>
-            <span class="categories-featured__arrow" aria-hidden="true">›</span>
+            <span class="categories-page__featured-arrow" aria-hidden="true">›</span>
         </a>
     @endauth
 

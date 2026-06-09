@@ -18476,3 +18476,127 @@ a.catalog-product-card__cta:hover,
     .category-tile__link { transition: none; }
     .category-tile__link:hover { transform: none; }
 }
+
+/* =============================================================
+   CATEGORIES PAGE v2 (без legacy .categories-screen)
+   ============================================================= */
+.categories-page {
+    background: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+.categories-page__head {
+    background: #ffffff;
+    padding: 1rem 1rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.categories-page__title {
+    font-family: var(--font-display, 'IBM Plex Sans'), ui-sans-serif, system-ui, sans-serif;
+    font-size: clamp(1.35rem, 1.1rem + 1vw, 1.6rem);
+    font-weight: 800;
+    color: #0b1220;
+    letter-spacing: -0.01em;
+    margin: 0;
+}
+
+.categories-page__search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f6f7fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 0 14px;
+    min-height: 44px;
+    transition: border-color .18s ease, background .18s ease;
+}
+.categories-page__search:focus-within {
+    border-color: var(--brand, #d60000);
+    background: #ffffff;
+}
+.categories-page__search-icon {
+    color: #64748b;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+.categories-page__search-input {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    font: 500 15px/1.2 var(--font-sans, system-ui), sans-serif;
+    color: #0b1220;
+    outline: none;
+    min-width: 0;
+}
+.categories-page__search-input::placeholder { color: #94a3b8; }
+
+.categories-page__featured {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 12px 1rem 0;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #ffffff 0%, var(--brand-soft, #ffe5e5) 100%);
+    border: 1px solid rgba(214, 0, 0, 0.18);
+    border-radius: 16px;
+    text-decoration: none;
+    color: #0b1220;
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+.categories-page__featured:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px -10px rgba(214, 0, 0, 0.32);
+}
+.categories-page__featured-icon {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--brand, #d60000);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.categories-page__featured-icon svg { width: 18px; height: 18px; }
+.categories-page__featured-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.categories-page__featured-body strong { font-size: 14px; font-weight: 700; }
+.categories-page__featured-body span { font-size: 12px; color: #64748b; line-height: 1.35; }
+.categories-page__featured-arrow { color: var(--brand, #d60000); font-size: 22px; line-height: 1; }
+
+/* Сетку .categories-grid и .category-tile* мы уже описали выше, ничего здесь не дублируем */
+
+/* Гасим legacy .categories-screen стили если они применились через layout */
+.categories-page .categories-grid {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    background: transparent;
+}
+.categories-page .category-tile {
+    width: 100%;
+    height: auto;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+}
+.categories-page .category-tile__link {
+    background: #ffffff;
+    border: 1px solid #eef0f3;
+}
