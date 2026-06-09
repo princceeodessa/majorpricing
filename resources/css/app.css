@@ -18251,3 +18251,228 @@ a.catalog-product-card__cta:hover,
         .catalog-mobile-nav { transition: none; }
     }
 }
+
+/* =============================================================
+   MOBILE SEARCH ROW: input + категории-кнопка справа (как у SDP Market)
+   ============================================================= */
+@media (max-width: 767px) {
+    .catalog-mobile-search-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: calc(0.75rem + env(safe-area-inset-top, 0px)) 1rem 0.5rem;
+        background: #ffffff;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        transition: transform 240ms cubic-bezier(.4, 0, .2, 1), box-shadow 220ms ease;
+        will-change: transform;
+    }
+    .catalog-mobile-search-row.is-hidden {
+        transform: translateY(-110%);
+        box-shadow: none;
+    }
+    .catalog-mobile-search-row:not(.is-hidden) {
+        box-shadow: 0 6px 14px -10px rgba(15, 23, 42, 0.15);
+    }
+    .catalog-mobile-search-row .catalog-mobile-search {
+        flex: 1 1 auto;
+        position: relative;
+        padding: 0;
+        background: transparent;
+        position: static;
+        box-shadow: none;
+        transition: none;
+        transform: none;
+        will-change: auto;
+    }
+    .catalog-mobile-search-row .catalog-mobile-search__input {
+        width: 100%;
+        height: 44px;
+        padding: 0 44px 0 18px;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: #f6f7fa;
+        font: 500 15px/1.2 var(--font-sans, system-ui), sans-serif;
+        color: #0b1220;
+        outline: none;
+        transition: border-color .18s ease, background .18s ease;
+    }
+    .catalog-mobile-search-row .catalog-mobile-search__input::placeholder {
+        color: #94a3b8;
+        font-weight: 500;
+    }
+    .catalog-mobile-search-row .catalog-mobile-search__input:focus {
+        border-color: var(--brand, #d60000);
+        background: #fff;
+    }
+    .catalog-mobile-search-row .catalog-mobile-search__submit {
+        position: absolute;
+        top: 50%;
+        right: 12px;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .catalog-mobile-search-row .catalog-mobile-search__submit:hover {
+        color: var(--brand, #d60000);
+    }
+
+    .catalog-mobile-categories-button {
+        flex: 0 0 auto;
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: var(--brand, #d60000);
+        color: #ffffff;
+        box-shadow: 0 6px 14px -8px rgba(214, 0, 0, 0.55), 0 2px 4px -2px rgba(15, 23, 42, 0.1);
+        transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+    }
+    .catalog-mobile-categories-button:hover {
+        filter: brightness(1.06);
+        transform: translateY(-1px);
+    }
+    .catalog-mobile-categories-button:active { transform: translateY(0); }
+    @media (prefers-reduced-motion: reduce) {
+        .catalog-mobile-search-row { transition: none; }
+        .catalog-mobile-categories-button { transition: none; }
+        .catalog-mobile-categories-button:hover { transform: none; }
+    }
+}
+
+/* =============================================================
+   CATEGORIES GRID (mobile): светлая сетка 3×N как у SDP Market
+   ============================================================= */
+.categories-grid {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+@media (max-width: 360px) {
+    .categories-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        padding: 0 12px;
+    }
+}
+
+@media (min-width: 540px) and (max-width: 1023px) {
+    .categories-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 0 1.25rem; }
+}
+
+@media (min-width: 1024px) {
+    .categories-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; padding: 0 1.5rem; max-width: 1280px; margin-left: auto; margin-right: auto; }
+}
+
+@media (min-width: 1440px) {
+    .categories-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+.category-tile { margin: 0; }
+.category-tile[hidden] { display: none; }
+
+.category-tile__link {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 14px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 14px -10px rgba(15, 23, 42, 0.12);
+    transition: transform .18s ease, box-shadow .18s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.category-tile__link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08), 0 14px 24px -12px rgba(15, 23, 42, 0.18);
+}
+.category-tile__link:active { transform: translateY(0); }
+
+.category-tile__thumb {
+    --accent: #e5e7eb;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #f6f7fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.category-tile__img {
+    width: 78%;
+    height: 78%;
+    object-fit: contain;
+    object-position: center;
+}
+.category-tile__initial {
+    font-family: var(--font-display, 'IBM Plex Sans'), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.4rem, 6vw, 2rem);
+    color: var(--accent, #e5e7eb);
+    letter-spacing: 0.02em;
+}
+
+.category-tile__body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 10px 10px;
+    min-height: 44px;
+}
+.category-tile__name {
+    flex: 1 1 auto;
+    font-family: var(--font-sans, system-ui), sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #0b1220;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.category-tile__arrow {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgba(214, 0, 0, 0.08);
+    color: var(--brand, #d60000);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.category-tile__accent-bar {
+    height: 3px;
+    background: var(--brand, #d60000);
+    opacity: 0.85;
+}
+
+@media (min-width: 1024px) {
+    .category-tile__name { font-size: 14px; }
+    .category-tile__body { padding: 10px 12px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .category-tile__link { transition: none; }
+    .category-tile__link:hover { transform: none; }
+}

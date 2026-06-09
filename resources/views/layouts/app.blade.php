@@ -255,23 +255,37 @@
                      Show ONLY on catalog/categories/products screens. Hidden in personal cabinet,
                      cart, favorites and other non-catalog flows. --}}
                 @if ($isCatalogSurface)
-                    <form action="{{ route('catalog.index') }}" method="GET" class="catalog-mobile-search" role="search">
-                        <span class="catalog-mobile-search__icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24">
-                                <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/>
-                                <path d="M16.5 16.5L21 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            </svg>
-                        </span>
-                        <input
-                            type="search"
-                            name="q"
-                            value="{{ request('q') }}"
-                            placeholder="Поиск товара"
-                            class="catalog-mobile-search__input"
-                            aria-label="Поиск товара"
+                    <div class="catalog-mobile-search-row">
+                        <form action="{{ route('catalog.index') }}" method="GET" class="catalog-mobile-search" role="search">
+                            <input
+                                type="search"
+                                name="q"
+                                value="{{ request('q') }}"
+                                placeholder="Поиск товара"
+                                class="catalog-mobile-search__input"
+                                aria-label="Поиск товара"
+                            >
+                            <button type="submit" class="catalog-mobile-search__submit" aria-label="Найти">
+                                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                    <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M16.5 16.5L21 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </form>
+                        <a
+                            href="{{ route('categories.index') }}"
+                            class="catalog-mobile-categories-button"
+                            aria-label="Все категории"
                         >
-                        <button type="submit" class="catalog-mobile-search__submit">Искать</button>
-                    </form>
+                            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                                <rect x="3.5" y="3.5" width="6" height="6" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                                <rect x="14.5" y="3.5" width="6" height="6" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                                <rect x="3.5" y="14.5" width="6" height="6" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                                <circle cx="17" cy="17" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                                <path d="M19.2 19.2L21 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                        </a>
+                    </div>
                 @endif
             @else
                 {{-- Auth / legal pages have no header — give the user a way back.

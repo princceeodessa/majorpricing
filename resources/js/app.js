@@ -3404,7 +3404,8 @@ const setupCatalogMenus = () => {
 
 const setupHeaderScrollState = () => {
     const header = document.querySelector('.catalog-site-header');
-    const mobileSearch = document.querySelector('.catalog-mobile-search');
+    const mobileSearch = document.querySelector('.catalog-mobile-search-row')
+        || document.querySelector('.catalog-mobile-search');
     const mobileNav = document.querySelector('.catalog-mobile-nav');
 
     if (!(header instanceof HTMLElement)
