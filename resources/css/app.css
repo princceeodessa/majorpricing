@@ -18054,8 +18054,8 @@ a.catalog-product-card__cta:hover,
 
 .brand-card {
     flex: 0 0 auto;
-    width: clamp(100px, 28vw, 140px);
-    aspect-ratio: 5 / 4;
+    width: clamp(124px, 34vw, 168px);
+    aspect-ratio: 3 / 2;
     border-radius: 16px;
     background: #ffffff;
     border: 1px solid #e5e7eb;
@@ -18096,16 +18096,16 @@ a.catalog-product-card__cta:hover,
 
 /* Узкие телефоны 320-360: ещё компактнее */
 @media (max-width: 360px) {
-    .brand-card { width: 96px; padding: 10px; border-radius: 14px; }
+    .brand-card { width: 116px; padding: 10px; border-radius: 14px; }
 }
 
 /* Десктоп: умеренно крупнее */
 @media (min-width: 1024px) {
-    .brand-card { width: 152px; border-radius: 18px; padding: 16px; }
+    .brand-card { width: 184px; border-radius: 18px; padding: 16px; }
 }
 
 @media (min-width: 1440px) {
-    .brand-card { width: 168px; }
+    .brand-card { width: 208px; }
 }
 
 /* Уважаем reduce-motion */
