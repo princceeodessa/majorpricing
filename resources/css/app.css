@@ -16430,7 +16430,23 @@ a.catalog-product-card__cta:hover,
         align-items: center;
         gap: 8px;
         padding: calc(0.75rem + env(safe-area-inset-top, 0px)) 1rem 0.5rem;
-        background: transparent;
+        background: #ffffff;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        transition: transform 240ms cubic-bezier(.4, 0, .2, 1), box-shadow 220ms ease;
+        will-change: transform;
+    }
+    .catalog-mobile-search.is-hidden {
+        transform: translateY(-110%);
+        box-shadow: none;
+    }
+    /* Лёгкая тень когда скроллим вниз — отделяет от контента под ним */
+    .catalog-mobile-search:not(.is-hidden) {
+        box-shadow: 0 6px 14px -10px rgba(15, 23, 42, 0.15);
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .catalog-mobile-search { transition: none; }
     }
     .catalog-mobile-search__icon {
         position: absolute;

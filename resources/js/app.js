@@ -469,23 +469,28 @@ const setupPriceFilters = () => {
     });
 };
 
-const readIntWithFallback = (candidate, fallback) => {
-    const parsed = Number.parseInt(`${candidate ?? ''}`, 10);
-
+// Locale-aware float parse: '25,6' or '25.6' → 25.6, anything else → fallback.
+const parseDecimal = (value, fallback = null) => {
+    const parsed = Number.parseFloat(`${value ?? ''}`.replace(',', '.'));
     return Number.isNaN(parsed) ? fallback : parsed;
 };
 
-const resolveQuantityConstraints = ({ min = 1, step = 1, max = 999 } = {}) => {
-    const resolvedMin = clamp(readIntWithFallback(min, 1), 1, 999);
-    const resolvedStep = Math.max(1, readIntWithFallback(step, resolvedMin));
-    const resolvedMaxBase = clamp(readIntWithFallback(max, 999), resolvedMin, 999);
+// Round a quantity to 3 decimals to kill floating-point dust (25.6 × 2 = 51.20000000000001).
+const round3 = (n) => Math.round(n * 1000) / 1000;
+
+const readIntWithFallback = (candidate, fallback) => parseDecimal(candidate, fallback);
+
+const resolveQuantityConstraints = ({ min = 1, step = 1, max = 99999 } = {}) => {
+    const resolvedMin = clamp(parseDecimal(min, 1), 0.001, 99999);
+    const resolvedStep = Math.max(0.001, parseDecimal(step, resolvedMin));
+    const resolvedMaxBase = clamp(parseDecimal(max, 99999), resolvedMin, 99999);
     const stepsToMax = Math.max(0, Math.floor((resolvedMaxBase - resolvedMin) / resolvedStep));
-    const resolvedMax = resolvedMin + (stepsToMax * resolvedStep);
+    const resolvedMax = Math.max(resolvedMin, resolvedMin + (stepsToMax * resolvedStep));
 
     return {
-        min: resolvedMin,
-        step: resolvedStep,
-        max: Math.max(resolvedMin, resolvedMax),
+        min: round3(resolvedMin),
+        step: round3(resolvedStep),
+        max: round3(resolvedMax),
     };
 };
 
@@ -510,18 +515,17 @@ const readInputQuantityConstraints = (input) => {
 const readCartControlQuantityConstraints = (control) => resolveQuantityConstraints({
     min: control instanceof HTMLElement ? control.dataset.minQuantity : 1,
     step: control instanceof HTMLElement ? control.dataset.stepQuantity : 1,
-    max: 999,
+    max: control instanceof HTMLElement ? (control.dataset.maxQuantity ?? 99999) : 99999,
 });
 
 const normalizeQuantityByConstraints = (value, fallback, constraints) => {
-    const parsed = Number.parseInt(`${value}`, 10);
-    const fallbackValue = Number.isFinite(fallback) ? Math.trunc(fallback) : constraints.min;
-    const baseValue = Number.isNaN(parsed) ? fallbackValue : parsed;
+    const fallbackValue = Number.isFinite(fallback) ? fallback : constraints.min;
+    const baseValue = parseDecimal(value, fallbackValue);
     const bounded = clamp(baseValue, constraints.min, constraints.max);
-    const stepsFromMin = Math.max(0, Math.ceil((bounded - constraints.min) / constraints.step));
+    const stepsFromMin = Math.max(0, Math.round((bounded - constraints.min) / constraints.step));
     const normalized = constraints.min + (stepsFromMin * constraints.step);
 
-    return Math.max(constraints.min, Math.min(constraints.max, normalized));
+    return round3(clamp(normalized, constraints.min, constraints.max));
 };
 
 const normalizeQty = (input, nextValue = input?.value ?? 1) => {
@@ -2705,7 +2709,7 @@ const mountVueCartLines = (scope = document) => {
                         }
 
                         const payload = await response.json();
-                        const payloadQuantity = Number.parseInt(`${payload?.quantity ?? ''}`, 10);
+                        const payloadQuantity = parseDecimal(payload?.quantity);
                         this.quantity = Number.isFinite(payloadQuantity)
                             ? this.normalize(payloadQuantity, this.minQuantity)
                             : resolvedQuantity;
@@ -3400,14 +3404,42 @@ const setupCatalogMenus = () => {
 
 const setupHeaderScrollState = () => {
     const header = document.querySelector('.catalog-site-header');
+    const mobileSearch = document.querySelector('.catalog-mobile-search');
 
-    if (!(header instanceof HTMLElement)) {
+    if (!(header instanceof HTMLElement) && !(mobileSearch instanceof HTMLElement)) {
         return;
     }
 
     let ticking = false;
+    let lastY = window.scrollY;
+    // Suppress micro-jitter (sub-pixel scrolls, momentum bounces).
+    const DELTA_THRESHOLD = 6;
+    // Always show the search bar when near the top.
+    const TOP_BAND = 50;
+    // Start hiding only after the user clearly engaged with the page below the fold.
+    const HIDE_AFTER = 90;
+
     const sync = () => {
-        header.classList.toggle('is-scrolled', window.scrollY > 18);
+        const currentY = window.scrollY;
+        const delta = currentY - lastY;
+
+        if (header instanceof HTMLElement) {
+            header.classList.toggle('is-scrolled', currentY > 18);
+        }
+
+        if (mobileSearch instanceof HTMLElement && Math.abs(delta) >= DELTA_THRESHOLD) {
+            if (currentY < TOP_BAND) {
+                mobileSearch.classList.remove('is-hidden');
+            } else if (delta > 0 && currentY > HIDE_AFTER) {
+                mobileSearch.classList.add('is-hidden');
+            } else if (delta < 0) {
+                mobileSearch.classList.remove('is-hidden');
+            }
+            lastY = currentY;
+        } else if (Math.abs(delta) >= DELTA_THRESHOLD) {
+            lastY = currentY;
+        }
+
         ticking = false;
     };
 
@@ -3442,8 +3474,15 @@ const setupResponsiveUiMetrics = () => {
         const navHeight = mobileNavVisible
             ? Math.ceil(mobileNav.getBoundingClientRect().height)
             : 0;
+        const header = document.querySelector('.catalog-site-header');
+        const headerVisible = header instanceof HTMLElement
+            && window.getComputedStyle(header).display !== 'none';
+        const headerHeight = headerVisible
+            ? Math.ceil(header.getBoundingClientRect().height)
+            : 0;
 
         root.style.setProperty('--catalog-mobile-nav-height', `${Math.max(0, navHeight)}px`);
+        root.style.setProperty('--catalog-header-height', `${Math.max(0, headerHeight)}px`);
     };
 
     const scheduleApply = () => window.requestAnimationFrame(apply);
@@ -3684,6 +3723,53 @@ const setupInfiniteFeeds = () => {
     });
 };
 
+const normalizeNotificationCount = (value) => {
+    const count = Number.parseInt(`${value ?? 0}`, 10);
+
+    return Number.isFinite(count) && count > 0 ? count : 0;
+};
+
+const formatNotificationCount = (count) => {
+    const safeCount = normalizeNotificationCount(count);
+
+    return safeCount > 99 ? '99+' : `${safeCount}`;
+};
+
+const updateNotificationBadge = (selector, count) => {
+    const safeCount = normalizeNotificationCount(count);
+
+    document.querySelectorAll(selector).forEach((node) => {
+        node.textContent = formatNotificationCount(safeCount);
+        node.classList.toggle('hidden', safeCount < 1);
+        node.toggleAttribute('aria-hidden', safeCount < 1);
+    });
+};
+
+const updateNotificationBadges = (data) => {
+    if (!data || typeof data !== 'object') {
+        return;
+    }
+
+    if (data.is_manager) {
+        const unreadMessages = normalizeNotificationCount(data.unread_client_messages_count);
+        const pendingRequests = normalizeNotificationCount(data.pending_requests_count);
+        const newOrders = normalizeNotificationCount(data.new_orders_count);
+
+        updateNotificationBadge('[data-manager-unread-messages-count]', unreadMessages);
+        updateNotificationBadge('[data-order-notifications-count]', newOrders);
+        updateNotificationBadge('[data-account-notifications-count]', unreadMessages + pendingRequests + newOrders);
+
+        return;
+    }
+
+    const unreadMessages = normalizeNotificationCount(data.unread_messages_count);
+    const activeOrders = normalizeNotificationCount(data.active_orders_count);
+
+    updateNotificationBadge('[data-client-unread-messages-count]', unreadMessages);
+    updateNotificationBadge('[data-account-notifications-count]', unreadMessages);
+    updateNotificationBadge('[data-order-notifications-count]', activeOrders);
+};
+
 const setupSupportWidget = () => {
     const widget = document.querySelector('[data-support-widget]');
 
@@ -3752,7 +3838,7 @@ const setupSupportWidget = () => {
         isMarkingRead = true;
 
         try {
-            await fetch(readUrl, {
+            const response = await fetch(readUrl, {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',
@@ -3761,6 +3847,11 @@ const setupSupportWidget = () => {
                 },
                 credentials: 'same-origin',
             });
+
+            if (response.ok) {
+                updateNotificationBadge('[data-client-unread-messages-count]', 0);
+                updateNotificationBadge('[data-account-notifications-count]', 0);
+            }
         } catch (error) {
             // Ignore receipt transport failures.
         } finally {
@@ -4310,6 +4401,285 @@ const pushToast = (title, body) => {
     }, 6500);
 };
 
+let notificationAudioContext = null;
+let notificationSoundUnlocked = false;
+let notificationTitleTimer = null;
+const notificationBaseTitle = document.title;
+
+const notificationsPermissionAskedKey = 'major:browser-notifications:permission-asked';
+
+const requestBrowserNotificationPermission = () => {
+    if (!('Notification' in window) || window.Notification.permission !== 'default') {
+        return;
+    }
+
+    if (window.localStorage.getItem(notificationsPermissionAskedKey) === '1') {
+        return;
+    }
+
+    window.localStorage.setItem(notificationsPermissionAskedKey, '1');
+    void window.Notification.requestPermission();
+};
+
+const unlockNotificationSound = () => {
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextCtor) {
+        return;
+    }
+
+    if (!notificationAudioContext) {
+        notificationAudioContext = new AudioContextCtor();
+    }
+
+    if (notificationAudioContext.state === 'suspended') {
+        void notificationAudioContext.resume();
+    }
+
+    notificationSoundUnlocked = true;
+};
+
+const setupNotificationAttention = () => {
+    if (!document.querySelector('meta[name="notifications-poll"]')) {
+        return;
+    }
+
+    const enableAttention = () => {
+        unlockNotificationSound();
+    };
+
+    window.addEventListener('pointerdown', enableAttention, { once: true, capture: true });
+    window.addEventListener('keydown', enableAttention, { once: true, capture: true });
+
+    const restoreTitle = () => {
+        if (notificationTitleTimer) {
+            window.clearInterval(notificationTitleTimer);
+            notificationTitleTimer = null;
+        }
+
+        document.title = notificationBaseTitle;
+    };
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            restoreTitle();
+        }
+    });
+    window.addEventListener('focus', restoreTitle);
+};
+
+const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding)
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; i += 1) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+
+    return outputArray;
+};
+
+const csrfToken = () => {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+
+    return meta instanceof HTMLMetaElement ? meta.content : '';
+};
+
+const postBrowserPushSubscription = async (subscription, contentEncoding = 'aes128gcm') => {
+    const endpoint = document.querySelector('meta[name="web-push-subscribe"]');
+    const token = csrfToken();
+
+    if (!(endpoint instanceof HTMLMetaElement) || !endpoint.content || !token) {
+        return;
+    }
+
+    const payload = subscription.toJSON();
+    payload.contentEncoding = contentEncoding;
+
+    await fetch(endpoint.content, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': token,
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(payload),
+    });
+};
+
+const setupWebPushSubscriptions = () => {
+    const keyEndpoint = document.querySelector('meta[name="web-push-public-key"]');
+
+    if (
+        !(keyEndpoint instanceof HTMLMetaElement)
+        || !keyEndpoint.content
+        || !('serviceWorker' in navigator)
+        || !('PushManager' in window)
+        || !('Notification' in window)
+    ) {
+        return;
+    }
+
+    let isSubscribing = false;
+
+    const subscribe = async () => {
+        if (isSubscribing) {
+            return;
+        }
+
+        isSubscribing = true;
+
+        try {
+            if (window.Notification.permission === 'default') {
+                window.localStorage.setItem(notificationsPermissionAskedKey, '1');
+                const permission = await window.Notification.requestPermission();
+                if (permission !== 'granted') {
+                    return;
+                }
+            }
+
+            if (window.Notification.permission !== 'granted') {
+                return;
+            }
+
+            const keyResponse = await fetch(keyEndpoint.content, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!keyResponse.ok) {
+                return;
+            }
+
+            const keyPayload = await keyResponse.json();
+            if (!keyPayload.enabled || !keyPayload.publicKey) {
+                return;
+            }
+
+            const registration = await navigator.serviceWorker.register('/major-sw.js');
+            await navigator.serviceWorker.ready;
+
+            const supportedEncodings = PushManager.supportedContentEncodings
+                ? Array.from(PushManager.supportedContentEncodings)
+                : [];
+            const contentEncoding = supportedEncodings.includes('aes128gcm') ? 'aes128gcm' : 'aesgcm';
+
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(keyPayload.publicKey),
+                });
+            }
+
+            await postBrowserPushSubscription(subscription, contentEncoding);
+        } catch (error) {
+            // Browser push is best-effort: keep site experience intact.
+        } finally {
+            isSubscribing = false;
+        }
+    };
+
+    if (window.Notification.permission === 'granted') {
+        void subscribe();
+        return;
+    }
+
+    if (window.Notification.permission === 'default') {
+        const subscribeAfterGesture = () => {
+            void subscribe();
+        };
+
+        window.addEventListener('pointerdown', subscribeAfterGesture, { once: true, capture: true });
+        window.addEventListener('keydown', subscribeAfterGesture, { once: true, capture: true });
+    }
+};
+
+const playNotificationSound = () => {
+    if (!notificationSoundUnlocked || !notificationAudioContext) {
+        return;
+    }
+
+    const context = notificationAudioContext;
+    const now = context.currentTime;
+    const gain = context.createGain();
+    gain.connect(context.destination);
+    gain.gain.setValueAtTime(0.0001, now);
+
+    [
+        [0, 880],
+        [0.14, 1174],
+    ].forEach(([offset, frequency]) => {
+        const oscillator = context.createOscillator();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, now + offset);
+        oscillator.connect(gain);
+        gain.gain.exponentialRampToValueAtTime(0.18, now + offset + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.13);
+        oscillator.start(now + offset);
+        oscillator.stop(now + offset + 0.14);
+    });
+};
+
+const flashNotificationTitle = (title) => {
+    if (!document.hidden && document.hasFocus()) {
+        return;
+    }
+
+    if (notificationTitleTimer) {
+        window.clearInterval(notificationTitleTimer);
+    }
+
+    let visible = false;
+    document.title = `• ${title}`;
+    notificationTitleTimer = window.setInterval(() => {
+        visible = !visible;
+        document.title = visible ? `• ${title}` : notificationBaseTitle;
+    }, 1200);
+};
+
+const pushSystemNotification = (title, body, targetUrl = '') => {
+    if (!('Notification' in window) || window.Notification.permission !== 'granted') {
+        return;
+    }
+
+    if (!document.hidden && document.hasFocus()) {
+        return;
+    }
+
+    const notification = new window.Notification(title, {
+        body,
+        icon: '/brand/major-favicon.png',
+        badge: '/brand/major-favicon.png',
+        tag: `major-${title}`,
+        renotify: true,
+    });
+
+    notification.onclick = () => {
+        window.focus();
+        if (targetUrl) {
+            window.location.href = targetUrl;
+        }
+        notification.close();
+    };
+};
+
+const signalNotificationAttention = (title, body, targetPath = '') => {
+    const targetUrl = targetPath ? new URL(targetPath, window.location.origin).href : '';
+
+    playNotificationSound();
+    flashNotificationTitle(title);
+    pushSystemNotification(title, body, targetUrl);
+};
+
 const setupNotificationsPoller = () => {
     const meta = document.querySelector('meta[name="notifications-poll"]');
     if (!(meta instanceof HTMLMetaElement) || !meta.content) {
@@ -4370,6 +4740,149 @@ const setupNotificationsPoller = () => {
                 }
                 lastOrderAt = data.order.updated_at;
                 window.localStorage.setItem(orderKey, lastOrderAt);
+            }
+        } catch (error) {
+            // silent
+        }
+    };
+
+    poll(true);
+    window.setInterval(() => poll(false), 20000);
+};
+
+const setupNotificationsPollerV2 = () => {
+    const meta = document.querySelector('meta[name="notifications-poll"]');
+    if (!(meta instanceof HTMLMetaElement) || !meta.content) {
+        return;
+    }
+
+    const userMeta = document.querySelector('meta[name="notifications-user"]');
+    const userSuffix = userMeta instanceof HTMLMetaElement && userMeta.content
+        ? userMeta.content
+        : 'current';
+    const url = meta.content;
+    const storagePrefix = `major:notifications:${userSuffix}`;
+    const clientMessageKey = `${storagePrefix}:client:lastMessageAt`;
+    const clientOrderKey = `${storagePrefix}:client:lastOrderAt`;
+    const managerMessageKey = `${storagePrefix}:manager:lastClientMessageAt`;
+    const managerRequestKey = `${storagePrefix}:manager:lastRequestAt`;
+    const managerOrderKey = `${storagePrefix}:manager:lastOrderAt`;
+
+    let lastClientMessageAt = window.localStorage.getItem(clientMessageKey);
+    let lastClientOrderAt = window.localStorage.getItem(clientOrderKey);
+    let lastManagerMessageAt = window.localStorage.getItem(managerMessageKey);
+    let lastManagerRequestAt = window.localStorage.getItem(managerRequestKey);
+    let lastManagerOrderAt = window.localStorage.getItem(managerOrderKey);
+
+    const poll = async (initial = false) => {
+        const params = new URLSearchParams();
+        if (lastClientMessageAt) {
+            params.set('since_message', lastClientMessageAt);
+        }
+        if (lastClientOrderAt || lastManagerOrderAt) {
+            params.set('since_order', lastClientOrderAt || lastManagerOrderAt);
+        }
+        if (lastManagerMessageAt) {
+            params.set('since_client_message', lastManagerMessageAt);
+        }
+        if (lastManagerRequestAt) {
+            params.set('since_request', lastManagerRequestAt);
+        }
+
+        try {
+            const response = await fetch(`${url}?${params.toString()}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            updateNotificationBadges(data);
+
+            if (data.is_manager) {
+                if (!lastManagerMessageAt && data.latest_client_message_at) {
+                    lastManagerMessageAt = data.latest_client_message_at;
+                    window.localStorage.setItem(managerMessageKey, lastManagerMessageAt);
+                } else if (data.client_message && data.client_message.created_at) {
+                    if (!initial) {
+                        const countLabel = data.new_client_messages_count > 1 ? ` (${data.new_client_messages_count})` : '';
+                        const title = 'Новое сообщение от клиента' + countLabel;
+                        const body = data.client_message.preview || 'Откройте чаты клиентов.';
+                        pushToast(title, body);
+                        signalNotificationAttention(title, body, '/manager/chats');
+                    }
+                    lastManagerMessageAt = data.client_message.created_at;
+                    window.localStorage.setItem(managerMessageKey, lastManagerMessageAt);
+                }
+
+                if (!lastManagerRequestAt && data.latest_request_at) {
+                    lastManagerRequestAt = data.latest_request_at;
+                    window.localStorage.setItem(managerRequestKey, lastManagerRequestAt);
+                } else if (data.pending_request && data.pending_request.created_at) {
+                    if (!initial) {
+                        const countLabel = data.new_requests_count > 1 ? ` (${data.new_requests_count})` : '';
+                        const name = data.pending_request.company || data.pending_request.name || 'новый клиент';
+                        const title = 'Новая заявка' + countLabel;
+                        pushToast(title, name);
+                        signalNotificationAttention(title, name, '/account');
+                    }
+                    lastManagerRequestAt = data.pending_request.created_at;
+                    window.localStorage.setItem(managerRequestKey, lastManagerRequestAt);
+                }
+
+                if (!lastManagerOrderAt && data.latest_order_at) {
+                    lastManagerOrderAt = data.latest_order_at;
+                    window.localStorage.setItem(managerOrderKey, lastManagerOrderAt);
+                } else if (data.order && data.order.created_at) {
+                    if (!initial) {
+                        const number = data.order.number ? ` ${data.order.number}` : '';
+                        const title = 'Новый заказ' + number;
+                        const body = 'Откройте заказы клиентов для обработки.';
+                        pushToast(title, body);
+                        signalNotificationAttention(title, body, '/orders');
+                    }
+                    lastManagerOrderAt = data.order.created_at;
+                    window.localStorage.setItem(managerOrderKey, lastManagerOrderAt);
+                }
+
+                return;
+            }
+
+            if (!lastClientMessageAt && data.latest_message_at) {
+                lastClientMessageAt = data.latest_message_at;
+                window.localStorage.setItem(clientMessageKey, lastClientMessageAt);
+            } else if (data.message && data.message.created_at) {
+                if (!initial) {
+                    const countLabel = data.new_messages_count > 1 ? ` (${data.new_messages_count})` : '';
+                    const title = 'Новое сообщение' + countLabel;
+                    const body = data.message.preview || 'Откройте чат с менеджером.';
+                    pushToast(title, body);
+                    signalNotificationAttention(title, body, '/account');
+                }
+                lastClientMessageAt = data.message.created_at;
+                window.localStorage.setItem(clientMessageKey, lastClientMessageAt);
+            }
+
+            if (!lastClientOrderAt && data.latest_order_at) {
+                lastClientOrderAt = data.latest_order_at;
+                window.localStorage.setItem(clientOrderKey, lastClientOrderAt);
+            } else if (data.order && data.order.updated_at) {
+                if (!initial) {
+                    const number = data.order.number ? ` ${data.order.number}` : '';
+                    const status = data.order.status_label || data.order.status || '';
+                    const title = 'Статус заказа' + number;
+                    const body = status ? `Новый статус: ${status}` : 'Статус заказа обновлен.';
+                    pushToast(title, body);
+                    signalNotificationAttention(title, body, '/orders');
+                }
+                lastClientOrderAt = data.order.updated_at;
+                window.localStorage.setItem(clientOrderKey, lastClientOrderAt);
             }
         } catch (error) {
             // silent
@@ -4470,6 +4983,109 @@ const setupAccountRoleForms = () => {
     });
 };
 
+const setupRelatedProductStrips = () => {
+    document.querySelectorAll('[data-related-products]').forEach((section) => {
+        const track = section.querySelector('[data-related-products-track]');
+        const previous = section.querySelector('[data-related-products-prev]');
+        const next = section.querySelector('[data-related-products-next]');
+
+        if (!(track instanceof HTMLElement)) {
+            return;
+        }
+
+        const update = () => {
+            const maxScrollLeft = Math.max(0, track.scrollWidth - track.clientWidth);
+            const canScroll = maxScrollLeft > 4;
+
+            if (previous instanceof HTMLButtonElement) {
+                previous.hidden = !canScroll;
+                previous.disabled = track.scrollLeft <= 4;
+            }
+
+            if (next instanceof HTMLButtonElement) {
+                next.hidden = !canScroll;
+                next.disabled = track.scrollLeft >= maxScrollLeft - 4;
+            }
+        };
+
+        const scroll = (direction) => {
+            track.scrollBy({
+                left: direction * Math.max(240, Math.round(track.clientWidth * 0.78)),
+                behavior: 'smooth',
+            });
+        };
+
+        previous?.addEventListener('click', () => scroll(-1));
+        next?.addEventListener('click', () => scroll(1));
+        track.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        update();
+    });
+};
+
+const setupAdminRelatedOrderLists = () => {
+    document.querySelectorAll('[data-admin-related-order-list]').forEach((list) => {
+        const rows = () => Array.from(list.querySelectorAll('[data-admin-related-row]'))
+            .filter((row) => row instanceof HTMLElement);
+
+        const sync = () => {
+            const currentRows = rows();
+
+            currentRows.forEach((row, index) => {
+                const position = row.querySelector('[data-admin-related-position]');
+
+                if (position instanceof HTMLElement) {
+                    position.textContent = `${index + 1}`;
+                }
+
+                row.querySelectorAll('[data-admin-related-move]').forEach((button) => {
+                    if (!(button instanceof HTMLButtonElement)) {
+                        return;
+                    }
+
+                    const direction = Number(button.dataset.adminRelatedMove ?? 0);
+
+                    button.disabled = (direction < 0 && index === 0)
+                        || (direction > 0 && index === currentRows.length - 1);
+                });
+            });
+        };
+
+        list.addEventListener('click', (event) => {
+            const target = event.target;
+
+            if (!(target instanceof Element)) {
+                return;
+            }
+
+            const button = target.closest('[data-admin-related-move]');
+
+            if (!(button instanceof HTMLButtonElement)) {
+                return;
+            }
+
+            const row = button.closest('[data-admin-related-row]');
+            const direction = Number(button.dataset.adminRelatedMove ?? 0);
+
+            if (!(row instanceof HTMLElement) || direction === 0) {
+                return;
+            }
+
+            if (direction < 0 && row.previousElementSibling instanceof HTMLElement) {
+                list.insertBefore(row, row.previousElementSibling);
+            }
+
+            if (direction > 0 && row.nextElementSibling instanceof HTMLElement) {
+                list.insertBefore(row.nextElementSibling, row);
+            }
+
+            sync();
+        });
+
+        sync();
+    });
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     setupFavoriteToggles();
     setupPriceFilters();
@@ -4485,6 +5101,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCategoryRails();
     setupRepeatables();
     setupAccountRoleForms();
+    setupRelatedProductStrips();
+    setupAdminRelatedOrderLists();
     mountVueCartLines();
     mountVueCartCheckout();
     setupCartPaymentModes();
@@ -4493,16 +5111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     mountVueCatalogFeedSwitchers();
     setupSupportWidget();
     setupToasts();
-    setupNotificationsPoller();
+    setupNotificationAttention();
+    setupWebPushSubscriptions();
+    setupNotificationsPollerV2();
 });
-
-
-
-
-
-
-
-
-
-
-
