@@ -12,12 +12,21 @@
 @section('content')
 <style>
     /* Полностью изолированные стили для страницы категорий v3 — никаких legacy зависимостей. */
+    .mj-cats, .mj-cats *, .mj-cats *::before, .mj-cats *::after { box-sizing: border-box; }
     .mj-cats {
         display: block;
         margin: 0;
-        padding: 1rem 1rem 2rem;
+        padding: 14px 14px 24px;
         background: #ffffff;
         min-height: 0;
+        overflow-x: hidden;
+        max-width: 100%;
+    }
+    @media (max-width: 360px) {
+        .mj-cats { padding: 12px 12px 24px; }
+    }
+    @media (min-width: 1024px) {
+        .mj-cats { padding: 20px 24px 32px; }
     }
     .mj-cats__head {
         display: block;
@@ -26,7 +35,7 @@
     .mj-cats__title {
         margin: 0 0 12px;
         font-family: 'IBM Plex Sans', system-ui, sans-serif;
-        font-size: 22px;
+        font-size: clamp(18px, 5vw, 22px);
         font-weight: 800;
         color: #0b1220;
         letter-spacing: -0.01em;
@@ -94,27 +103,40 @@
 
     .mj-cats__grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         grid-auto-rows: auto;
         align-content: start;
         align-items: start;
-        gap: 12px;
+        gap: 10px;
         margin: 0;
         padding: 0;
         list-style: none;
+        width: 100%;
     }
 
+    /* Узкие телефоны (320-360px): 2 колонки */
     @media (max-width: 360px) {
-        .mj-cats__grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .mj-cats__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     }
-    @media (min-width: 540px) and (max-width: 1023px) {
-        .mj-cats__grid { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    /* Стандартный мобайл (361-539): 3 колонки */
+    @media (min-width: 361px) and (max-width: 539px) {
+        .mj-cats__grid { gap: 10px; }
     }
+    /* Большой мобайл / маленький планшет (540-767): 3 колонки покрупнее */
+    @media (min-width: 540px) and (max-width: 767px) {
+        .mj-cats__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    }
+    /* Планшет (768-1023): 4 колонки */
+    @media (min-width: 768px) and (max-width: 1023px) {
+        .mj-cats__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    }
+    /* Десктоп (1024-1439): 5 колонок, ограничение ширины */
     @media (min-width: 1024px) {
-        .mj-cats__grid { grid-template-columns: repeat(5, 1fr); gap: 18px; max-width: 1280px; margin-left: auto; margin-right: auto; }
+        .mj-cats__grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; max-width: 1280px; margin-left: auto; margin-right: auto; }
     }
+    /* Большой десктоп (1440+): 6 колонок */
     @media (min-width: 1440px) {
-        .mj-cats__grid { grid-template-columns: repeat(6, 1fr); }
+        .mj-cats__grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     }
 
     .mj-cats__tile {
@@ -167,24 +189,41 @@
         align-items: center;
         justify-content: space-between;
         gap: 6px;
-        padding: 8px 10px 10px;
+        padding: 7px 8px 9px;
+        min-width: 0;
     }
     .mj-cats__tile-name {
-        flex: 1;
-        font: 700 13px/1.25 system-ui, sans-serif;
+        flex: 1 1 auto;
+        min-width: 0;
+        font-family: system-ui, sans-serif;
+        font-weight: 700;
+        font-size: clamp(11px, 2.8vw, 13px);
+        line-height: 1.2;
         color: #0b1220;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
+        word-break: break-word;
     }
     .mj-cats__tile-arrow {
         flex: 0 0 auto;
-        width: 22px; height: 22px;
+        width: 20px; height: 20px;
         border-radius: 999px;
         background: rgba(214, 0, 0, 0.08);
         color: #d60000;
         display: inline-flex; align-items: center; justify-content: center;
+    }
+    /* На узких экранах — стрелка ещё меньше / прячется чтоб имя влезло */
+    @media (max-width: 360px) {
+        .mj-cats__tile-body { padding: 6px 8px 8px; }
+        .mj-cats__tile-arrow { width: 16px; height: 16px; }
+        .mj-cats__tile-arrow svg { width: 11px; height: 11px; }
+    }
+    @media (min-width: 1024px) {
+        .mj-cats__tile-body { padding: 10px 12px 12px; }
+        .mj-cats__tile-name { font-size: 14px; }
+        .mj-cats__tile-arrow { width: 24px; height: 24px; }
     }
     .mj-cats__tile-accent {
         display: block;
