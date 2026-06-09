@@ -12,9 +12,14 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $metaTitle }}</title>
         <meta name="description" content="{{ $metaDescription }}">
-        <meta name="theme-color" content="#df0000">
+        <meta name="theme-color" content="#d60000">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
         @auth
             <meta name="notifications-poll" content="{{ route('notifications.poll') }}">
+            <meta name="notifications-user" content="{{ auth()->id() }}">
+            <meta name="web-push-public-key" content="{{ route('web-push.public-key') }}">
+            <meta name="web-push-subscribe" content="{{ route('web-push.subscriptions.store') }}">
+            <meta name="web-push-unsubscribe" content="{{ route('web-push.subscriptions.destroy') }}">
         @endauth
 
         <link rel="canonical" href="{{ $metaUrl }}">
@@ -22,6 +27,12 @@
         <link rel="icon" type="image/svg+xml" href="{{ asset('brand/major-favicon.svg') }}">
         <link rel="apple-touch-icon" href="{{ asset('brand/major-favicon.png') }}">
         <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+
+        {{-- PWA: iOS standalone hints --}}
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
+        <meta name="apple-mobile-web-app-title" content="МАЖОР">
 
         <meta property="og:type" content="website">
         <meta property="og:locale" content="ru_RU">
@@ -67,7 +78,25 @@
                                     <img src="{{ asset('brand/major-logo-wide.svg') }}" alt="МАЖОР" class="catalog-header-logo__image">
                                 </a>
 
-                                <details class="catalog-header-catalog-menu">
+                                {{-- Mobile: direct link to /categories (Ozon-style grid page).
+                                     Hidden on PC via media query in <style> below. --}}
+                                <a
+                                    href="{{ route('categories.index') }}"
+                                    data-catalog-trigger="mobile"
+                                    class="catalog-header-catalog-trigger {{ request()->routeIs('catalog.*', 'categories.*', 'products.*') ? 'is-active' : '' }}"
+                                >
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <rect x="4" y="4" width="6" height="6" rx="1.5" />
+                                        <rect x="14" y="4" width="6" height="6" rx="1.5" />
+                                        <rect x="4" y="14" width="6" height="6" rx="1.5" />
+                                        <rect x="14" y="14" width="6" height="6" rx="1.5" />
+                                    </svg>
+                                    <span>Каталог</span>
+                                </a>
+
+                                {{-- Desktop: dropdown with categories preview.
+                                     Hidden on mobile via media query in <style> below. --}}
+                                <details data-catalog-trigger="desktop" class="catalog-header-catalog-menu">
                                     <summary class="catalog-header-catalog-trigger {{ request()->routeIs('catalog.*', 'categories.*', 'products.*') ? 'is-active' : '' }}">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
                                             <rect x="4" y="4" width="6" height="6" rx="1.5" />
@@ -121,12 +150,16 @@
 
                             <div class="catalog-header-actions catalog-header-actions--figma">
                                 @auth
+                                    @php($accountNotifications = (int) ($headerAccountNotificationsCount ?? 0))
+                                    @php($managerUnreadMessages = (int) ($headerUnreadMessagesCount ?? 0))
+                                    @php($ordersNotificationCount = (int) ($headerOrdersNotificationCount ?? 0))
                                     <a href="{{ route('account.show') }}" class="catalog-header-icon-link {{ request()->routeIs('account.*') ? 'is-active' : '' }}">
                                         <span class="catalog-header-icon-link__icon">
                                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                                 <circle cx="12" cy="8" r="3.5" />
                                                 <path d="M5.5 19.5c1.9-3.3 4.2-4.9 6.5-4.9s4.6 1.6 6.5 4.9" />
                                             </svg>
+                                            <strong class="catalog-header-icon-link__badge {{ $accountNotifications < 1 ? 'hidden' : '' }}" data-account-notifications-count data-notification-badge>{{ $accountNotifications }}</strong>
                                         </span>
                                         <span class="catalog-header-icon-link__label">Кабинет</span>
                                     </a>
@@ -137,6 +170,7 @@
                                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                                     <path d="M5 6.5A3.5 3.5 0 0 1 8.5 3h7A3.5 3.5 0 0 1 19 6.5v5A3.5 3.5 0 0 1 15.5 15H11l-4.8 4v-4.4A3.5 3.5 0 0 1 5 11.9Z" />
                                                 </svg>
+                                                <strong class="catalog-header-icon-link__badge {{ $managerUnreadMessages < 1 ? 'hidden' : '' }}" data-manager-unread-messages-count data-notification-badge>{{ $managerUnreadMessages }}</strong>
                                             </span>
                                             <span class="catalog-header-icon-link__label">Чаты</span>
                                         </a>
@@ -169,7 +203,7 @@
                                                 <rect x="5" y="4.5" width="14" height="15" rx="2.3" />
                                                 <path d="M8 9.5h8M8 13h8M8 16.5h5" />
                                             </svg>
-                                            <strong class="catalog-header-icon-link__badge">{{ $headerOrdersCount ?? 0 }}</strong>
+                                            <strong class="catalog-header-icon-link__badge {{ $ordersNotificationCount < 1 ? 'hidden' : '' }}" data-order-notifications-count data-notification-badge>{{ $ordersNotificationCount }}</strong>
                                         </span>
                                         <span class="catalog-header-icon-link__label">Заказы</span>
                                     </a>
@@ -216,6 +250,56 @@
                         </div>
                     </div>
                 </header>
+
+                {{-- Mobile-only compact search bar — replaces the desktop header on phones.
+                     Show ONLY on catalog/categories/products screens. Hidden in personal cabinet,
+                     cart, favorites and other non-catalog flows. --}}
+                @if ($isCatalogSurface)
+                    <form action="{{ route('catalog.index') }}" method="GET" class="catalog-mobile-search" role="search">
+                        <span class="catalog-mobile-search__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
+                                <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/>
+                                <path d="M16.5 16.5L21 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <input
+                            type="search"
+                            name="q"
+                            value="{{ request('q') }}"
+                            placeholder="Поиск товара"
+                            class="catalog-mobile-search__input"
+                            aria-label="Поиск товара"
+                        >
+                        <button type="submit" class="catalog-mobile-search__submit">Искать</button>
+                    </form>
+                @endif
+            @else
+                {{-- Auth / legal pages have no header — give the user a way back.
+                     JS prefers history.back(); fallback to the catalog index. --}}
+                <a
+                    href="{{ url()->previous() && url()->previous() !== url()->current() ? url()->previous() : route('catalog.index') }}"
+                    class="catalog-back-link"
+                    data-back-link
+                    aria-label="Назад"
+                >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Назад</span>
+                </a>
+                <script>
+                    (function () {
+                        var link = document.querySelector('[data-back-link]');
+                        if (! link) return;
+                        link.addEventListener('click', function (e) {
+                            if (window.history.length > 1) {
+                                e.preventDefault();
+                                window.history.back();
+                            }
+                            // else: follow the href (catalog index) as fallback
+                        });
+                    })();
+                </script>
             @endif
 
             <main id="catalog-main-content" class="catalog-container catalog-main pb-16">
@@ -245,13 +329,25 @@
 
             @if (auth()->check())
                 <nav class="catalog-mobile-nav" aria-label="Основная навигация">
-                    <a href="{{ route('catalog.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('catalog.index', 'categories.*', 'products.*') ? 'is-active' : '' }}">
+                    <a href="{{ route('catalog.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('catalog.index', 'catalog.shop', 'products.*', 'home') ? 'is-active' : '' }}">
                         <span class="catalog-mobile-nav__icon">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M4 10.5 12 4l8 6.5v8.2a1.3 1.3 0 0 1-1.3 1.3h-3.9v-6.1H9.2V20H5.3A1.3 1.3 0 0 1 4 18.7Z" />
                             </svg>
                         </span>
-                        <span class="catalog-mobile-nav__label">Главная</span>
+                        <span class="catalog-mobile-nav__label">Каталог</span>
+                    </a>
+
+                    <a href="{{ route('categories.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('categories.*') ? 'is-active' : '' }}">
+                        <span class="catalog-mobile-nav__icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <rect x="4" y="4" width="6" height="6" rx="1.5" />
+                                <rect x="14" y="4" width="6" height="6" rx="1.5" />
+                                <rect x="4" y="14" width="6" height="6" rx="1.5" />
+                                <rect x="14" y="14" width="6" height="6" rx="1.5" />
+                            </svg>
+                        </span>
+                        <span class="catalog-mobile-nav__label">Категории</span>
                     </a>
 
                     <a href="{{ route('favorites.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}">
@@ -262,17 +358,6 @@
                             <strong class="catalog-mobile-nav__badge" data-favorites-count>{{ $headerFavoritesCount ?? 0 }}</strong>
                         </span>
                         <span class="catalog-mobile-nav__label">Избранное</span>
-                    </a>
-
-                    <a href="{{ route('orders.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('orders.*') ? 'is-active' : '' }}">
-                        <span class="catalog-mobile-nav__icon">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <rect x="5" y="4.5" width="14" height="15" rx="2.3" />
-                                <path d="M8 9.5h8M8 13h8M8 16.5h5" />
-                            </svg>
-                            <strong class="catalog-mobile-nav__badge">{{ $headerOrdersCount ?? 0 }}</strong>
-                        </span>
-                        <span class="catalog-mobile-nav__label">Заказы</span>
                     </a>
 
                     <a href="{{ route('cart.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('cart.*') ? 'is-active' : '' }}">
@@ -287,19 +372,20 @@
                         <span class="catalog-mobile-nav__label">Корзина</span>
                     </a>
 
-                    <a href="{{ route('account.show') }}" class="catalog-mobile-nav__link {{ request()->routeIs('account.*') ? 'is-active' : '' }}">
+                    <a href="{{ route('account.show') }}" class="catalog-mobile-nav__link {{ request()->routeIs('account.*', 'orders.*', 'manager.*') ? 'is-active' : '' }}">
                         <span class="catalog-mobile-nav__icon">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <circle cx="12" cy="8" r="3.5" />
                                 <path d="M5.5 19.5c1.9-3.3 4.2-4.9 6.5-4.9s4.6 1.6 6.5 4.9" />
                             </svg>
+                            <strong class="catalog-mobile-nav__badge {{ ((int) ($headerAccountNotificationsCount ?? 0)) < 1 ? 'hidden' : '' }}" data-account-notifications-count data-notification-badge>{{ (int) ($headerAccountNotificationsCount ?? 0) }}</strong>
                         </span>
                         <span class="catalog-mobile-nav__label">Кабинет</span>
                     </a>
                 </nav>
             @elseif ($isCatalogSurface)
                 <nav class="catalog-mobile-nav" aria-label="Основная навигация">
-                    <a href="{{ route('catalog.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('catalog.index', 'categories.*', 'products.*') ? 'is-active' : '' }}">
+                    <a href="{{ route('catalog.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('catalog.index', 'catalog.shop', 'products.*', 'home') ? 'is-active' : '' }}">
                         <span class="catalog-mobile-nav__icon">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M4 10.5 12 4l8 6.5v8.2a1.3 1.3 0 0 1-1.3 1.3h-3.9v-6.1H9.2V20H5.3A1.3 1.3 0 0 1 4 18.7Z" />
@@ -308,7 +394,19 @@
                         <span class="catalog-mobile-nav__label">Каталог</span>
                     </a>
 
-                    <a href="{{ route('registration-requests.create') }}" class="catalog-mobile-nav__link">
+                    <a href="{{ route('categories.index') }}" class="catalog-mobile-nav__link {{ request()->routeIs('categories.*') ? 'is-active' : '' }}">
+                        <span class="catalog-mobile-nav__icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <rect x="4" y="4" width="6" height="6" rx="1.5" />
+                                <rect x="14" y="4" width="6" height="6" rx="1.5" />
+                                <rect x="4" y="14" width="6" height="6" rx="1.5" />
+                                <rect x="14" y="14" width="6" height="6" rx="1.5" />
+                            </svg>
+                        </span>
+                        <span class="catalog-mobile-nav__label">Категории</span>
+                    </a>
+
+                    <a href="{{ route('registration-requests.create') }}" class="catalog-mobile-nav__link {{ request()->routeIs('registration-requests.*') ? 'is-active' : '' }}">
                         <span class="catalog-mobile-nav__icon">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <circle cx="9" cy="8" r="3.2" />
@@ -319,7 +417,7 @@
                         <span class="catalog-mobile-nav__label">Партнер</span>
                     </a>
 
-                    <a href="{{ route('login') }}" class="catalog-mobile-nav__link">
+                    <a href="{{ route('login') }}" class="catalog-mobile-nav__link {{ request()->routeIs('login') ? 'is-active' : '' }}">
                         <span class="catalog-mobile-nav__icon">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <circle cx="12" cy="8" r="3.5" />
@@ -423,8 +521,99 @@
                 mo.observe(document.body, { childList: true, subtree: true });
             })();
         </script>
+
+        {{-- --catalog-vh, --catalog-mobile-nav-height, --catalog-header-height
+             are written by setupResponsiveUiMetrics() in resources/js/app.js. --}}
+
+        {{-- PWA: register service worker + install prompt --}}
+        <button type="button" id="pwa-install-btn" hidden aria-label="Установить приложение МАЖОР">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3v12"/>
+                <path d="m7 10 5 5 5-5"/>
+                <path d="M5 21h14"/>
+            </svg>
+            <span>Установить приложение</span>
+        </button>
+        <style>
+            #pwa-install-btn {
+                position: fixed;
+                left: 50%;
+                bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+                transform: translateX(-50%);
+                z-index: 60;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 18px;
+                border: 0;
+                border-radius: 999px;
+                background: var(--brand, #d60000);
+                color: #fff;
+                font: 700 14px/1.2 var(--font-sans, system-ui), sans-serif;
+                box-shadow: 0 12px 28px -10px rgba(214, 0, 0, 0.55), 0 4px 10px -4px rgba(15, 23, 42, 0.18);
+                cursor: pointer;
+                transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+            }
+            #pwa-install-btn[hidden] { display: none !important; }
+            #pwa-install-btn:hover { transform: translateX(-50%) translateY(-2px); }
+            #pwa-install-btn:active { transform: translateX(-50%) translateY(0); }
+            @media (min-width: 768px) {
+                #pwa-install-btn { bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); right: 24px; left: auto; transform: none; }
+                #pwa-install-btn:hover { transform: translateY(-2px); }
+                #pwa-install-btn:active { transform: translateY(0); }
+            }
+        </style>
+        <script>
+            (function () {
+                if ('serviceWorker' in navigator && location.protocol === 'https:') {
+                    window.addEventListener('load', function () {
+                        navigator.serviceWorker.register('{{ asset('major-sw.js') }}', { scope: '/' })
+                            .catch(function (error) {
+                                if (window.console) console.warn('[pwa] sw registration failed', error);
+                            });
+                    });
+                }
+
+                var btn = document.getElementById('pwa-install-btn');
+                var deferredPrompt = null;
+                var DISMISS_KEY = 'pwa-install-dismissed-at';
+
+                function shouldShow() {
+                    if (!btn) return false;
+                    if (window.matchMedia('(display-mode: standalone)').matches) return false;
+                    if (window.navigator.standalone === true) return false;
+                    try {
+                        var last = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
+                        if (last && (Date.now() - last) < 7 * 24 * 3600 * 1000) return false;
+                    } catch (e) {}
+                    return true;
+                }
+
+                window.addEventListener('beforeinstallprompt', function (event) {
+                    event.preventDefault();
+                    deferredPrompt = event;
+                    if (shouldShow()) btn.hidden = false;
+                });
+
+                if (btn) {
+                    btn.addEventListener('click', function () {
+                        if (!deferredPrompt) { btn.hidden = true; return; }
+                        deferredPrompt.prompt();
+                        deferredPrompt.userChoice.then(function (choice) {
+                            if (choice && choice.outcome === 'dismissed') {
+                                try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch (e) {}
+                            }
+                            deferredPrompt = null;
+                            btn.hidden = true;
+                        });
+                    });
+                }
+
+                window.addEventListener('appinstalled', function () {
+                    if (btn) btn.hidden = true;
+                    deferredPrompt = null;
+                });
+            })();
+        </script>
     </body>
 </html>
-
-
-
