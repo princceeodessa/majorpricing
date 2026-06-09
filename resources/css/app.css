@@ -18584,6 +18584,8 @@ a.catalog-product-card__cta:hover,
     padding: 0 1rem;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: max-content;
+    align-items: start;
     gap: 12px;
     background: transparent;
 }
@@ -18595,8 +18597,20 @@ a.catalog-product-card__cta:hover,
     box-shadow: none;
     padding: 0;
     margin: 0;
+    align-self: start;
 }
 .categories-page .category-tile__link {
     background: #ffffff;
     border: 1px solid #eef0f3;
+    height: auto;
+    min-height: 0;
+}
+.categories-page .category-tile__body {
+    padding: 8px 10px 10px;
+    min-height: 0;
+}
+.categories-page .category-tile__name {
+    font-size: 13px;
+    line-height: 1.25;
+    -webkit-line-clamp: 2;
 }
