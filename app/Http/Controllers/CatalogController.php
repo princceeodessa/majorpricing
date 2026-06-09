@@ -75,6 +75,7 @@ class CatalogController extends Controller
                 ->catalogRepresentatives()
                 ->whereNotNull('brand_name')
                 ->where('brand_name', '!=', '')
+                ->whereRaw('LOWER(brand_name) NOT IN (?, ?, ?)', ['без бренда', 'no brand', 'нет бренда'])
                 ->selectRaw('brand_name, COUNT(*) as aggregate')
                 ->groupBy('brand_name')
                 ->orderByDesc('aggregate')
