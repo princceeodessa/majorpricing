@@ -18338,6 +18338,11 @@ a.catalog-product-card__cta:hover,
         color: #ffffff;
         box-shadow: 0 6px 14px -8px rgba(214, 0, 0, 0.55), 0 2px 4px -2px rgba(15, 23, 42, 0.1);
         transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+        position: relative;
+        z-index: 5;
+        pointer-events: auto;
+        text-decoration: none;
+        cursor: pointer;
     }
     .catalog-mobile-categories-button:hover {
         filter: brightness(1.06);
@@ -18580,40 +18585,101 @@ a.catalog-product-card__cta:hover,
 /* Гасим legacy .categories-screen стили если они применились через layout */
 .categories-page .categories-grid {
     list-style: none;
-    margin: 1rem 0 0;
-    padding: 0 1rem;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-auto-rows: max-content;
-    align-items: start;
+    margin: 1rem 0 0 !important;
+    padding: 0 1rem !important;
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: flex-start;
     gap: 12px;
     background: transparent;
 }
 .categories-page .category-tile {
-    width: 100%;
+    flex: 0 0 calc((100% - 24px) / 3) !important;
+    max-width: calc((100% - 24px) / 3) !important;
+    width: auto;
     height: auto !important;
-    background: transparent;
-    border: 0;
-    box-shadow: none;
-    padding: 0;
-    margin: 0;
-    align-self: start !important;
-    display: block;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    align-self: flex-start !important;
 }
 .categories-page .category-tile__link {
-    background: #ffffff;
-    border: 1px solid #eef0f3;
-    height: max-content !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: #ffffff !important;
+    border: 1px solid #eef0f3 !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    height: auto !important;
     min-height: 0 !important;
-    max-height: none;
-    aspect-ratio: auto;
+    max-height: none !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 14px -10px rgba(15, 23, 42, 0.12);
+}
+.categories-page .category-tile__thumb {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    background: #f6f7fa !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
 }
 .categories-page .category-tile__body {
-    padding: 8px 10px 10px;
-    min-height: 0;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 10px 10px !important;
+    min-height: 0 !important;
+    height: auto !important;
 }
 .categories-page .category-tile__name {
-    font-size: 13px;
-    line-height: 1.25;
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+    font-weight: 700;
     -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.categories-page .category-tile__accent-bar {
+    height: 3px;
+    background: var(--brand, #d60000);
+    opacity: 0.85;
+    width: 100%;
+}
+
+/* Узкие телефоны 320-360: 2 колонки */
+@media (max-width: 360px) {
+    .categories-page .category-tile {
+        flex: 0 0 calc((100% - 10px) / 2) !important;
+        max-width: calc((100% - 10px) / 2) !important;
+    }
+}
+
+/* Планшет: 4 колонки */
+@media (min-width: 540px) and (max-width: 1023px) {
+    .categories-page .category-tile {
+        flex: 0 0 calc((100% - 42px) / 4) !important;
+        max-width: calc((100% - 42px) / 4) !important;
+    }
+}
+
+/* Десктоп: 5 колонок */
+@media (min-width: 1024px) {
+    .categories-page .category-tile {
+        flex: 0 0 calc((100% - 72px) / 5) !important;
+        max-width: calc((100% - 72px) / 5) !important;
+    }
+}
+
+/* Большой десктоп: 6 колонок */
+@media (min-width: 1440px) {
+    .categories-page .category-tile {
+        flex: 0 0 calc((100% - 90px) / 6) !important;
+        max-width: calc((100% - 90px) / 6) !important;
+    }
 }
