@@ -525,44 +525,9 @@
         {{-- --catalog-vh, --catalog-mobile-nav-height, --catalog-header-height
              are written by setupResponsiveUiMetrics() in resources/js/app.js. --}}
 
-        {{-- PWA: register service worker + install prompt --}}
-        <button type="button" id="pwa-install-btn" hidden aria-label="Установить приложение МАЖОР">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 3v12"/>
-                <path d="m7 10 5 5 5-5"/>
-                <path d="M5 21h14"/>
-            </svg>
-            <span>Установить приложение</span>
-        </button>
-        <style>
-            #pwa-install-btn {
-                position: fixed;
-                left: 50%;
-                bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
-                transform: translateX(-50%);
-                z-index: 60;
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                padding: 10px 18px;
-                border: 0;
-                border-radius: 999px;
-                background: var(--brand, #d60000);
-                color: #fff;
-                font: 700 14px/1.2 var(--font-sans, system-ui), sans-serif;
-                box-shadow: 0 12px 28px -10px rgba(214, 0, 0, 0.55), 0 4px 10px -4px rgba(15, 23, 42, 0.18);
-                cursor: pointer;
-                transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
-            }
-            #pwa-install-btn[hidden] { display: none !important; }
-            #pwa-install-btn:hover { transform: translateX(-50%) translateY(-2px); }
-            #pwa-install-btn:active { transform: translateX(-50%) translateY(0); }
-            @media (min-width: 768px) {
-                #pwa-install-btn { bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); right: 24px; left: auto; transform: none; }
-                #pwa-install-btn:hover { transform: translateY(-2px); }
-                #pwa-install-btn:active { transform: translateY(0); }
-            }
-        </style>
+        {{-- PWA: глобально регистрируем service worker и ловим beforeinstallprompt
+             в window.__pwa.prompt, чтобы личный кабинет мог вызвать установку
+             без плавающей плашки на каждой странице. --}}
         <script>
             (function () {
                 if ('serviceWorker' in navigator && location.protocol === 'https:') {
@@ -574,44 +539,18 @@
                     });
                 }
 
-                var btn = document.getElementById('pwa-install-btn');
-                var deferredPrompt = null;
-                var DISMISS_KEY = 'pwa-install-dismissed-at';
-
-                function shouldShow() {
-                    if (!btn) return false;
-                    if (window.matchMedia('(display-mode: standalone)').matches) return false;
-                    if (window.navigator.standalone === true) return false;
-                    try {
-                        var last = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
-                        if (last && (Date.now() - last) < 7 * 24 * 3600 * 1000) return false;
-                    } catch (e) {}
-                    return true;
-                }
+                window.__pwa = window.__pwa || { prompt: null, installed: false };
 
                 window.addEventListener('beforeinstallprompt', function (event) {
                     event.preventDefault();
-                    deferredPrompt = event;
-                    if (shouldShow()) btn.hidden = false;
+                    window.__pwa.prompt = event;
+                    document.dispatchEvent(new CustomEvent('pwa:ready'));
                 });
 
-                if (btn) {
-                    btn.addEventListener('click', function () {
-                        if (!deferredPrompt) { btn.hidden = true; return; }
-                        deferredPrompt.prompt();
-                        deferredPrompt.userChoice.then(function (choice) {
-                            if (choice && choice.outcome === 'dismissed') {
-                                try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch (e) {}
-                            }
-                            deferredPrompt = null;
-                            btn.hidden = true;
-                        });
-                    });
-                }
-
                 window.addEventListener('appinstalled', function () {
-                    if (btn) btn.hidden = true;
-                    deferredPrompt = null;
+                    window.__pwa.installed = true;
+                    window.__pwa.prompt = null;
+                    document.dispatchEvent(new CustomEvent('pwa:installed'));
                 });
             })();
         </script>

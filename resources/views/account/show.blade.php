@@ -1,18 +1,116 @@
 @extends('layouts.app')
 
-@php($currentUser = auth()->user())
-@php($canManageClients = $currentUser?->canManageClients() ?? false)
-@php($isAdmin = $currentUser?->isAdmin() ?? false)
+@php
+    $currentUser = auth()->user();
+    $canManageClients = $currentUser?->canManageClients() ?? false;
+    $isAdmin = $currentUser?->isAdmin() ?? false;
+@endphp
 
 @section('title', ($canManageClients ? ($isAdmin ? 'Панель администратора' : 'Клиенты и заявки') : 'Личный кабинет').' - МАЖОР')
 
 @section('content')
+    {{-- Карточка установки PWA. Показывается всем (клиентам, менеджерам, админам).
+         JS включает её только если браузер поддерживает install и приложение ещё не установлено. --}}
+    <article
+        id="pwa-install-card"
+        class="surface-card reveal-card pwa-install-card"
+        hidden
+    >
+        <div class="pwa-install-card__icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="3"/>
+                <path d="M12 18h.01"/>
+            </svg>
+        </div>
+        <div class="pwa-install-card__body">
+            <h2 class="pwa-install-card__title">Установить приложение МАЖОР</h2>
+            <p class="pwa-install-card__text">
+                Добавьте каталог на главный экран телефона: запуск в один тап, push-уведомления о статусах заявок и быстрый доступ к корзине без браузера.
+            </p>
+            <div class="pwa-install-card__actions">
+                <button type="button" id="pwa-install-trigger" class="pwa-install-card__cta">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 3v12"/>
+                        <path d="m7 10 5 5 5-5"/>
+                        <path d="M5 21h14"/>
+                    </svg>
+                    <span>Установить</span>
+                </button>
+                <span class="pwa-install-card__ios-hint" hidden>
+                    На iPhone: <b>Поделиться</b> → <b>На экран «Домой»</b>.
+                </span>
+            </div>
+        </div>
+    </article>
+
+    <script>
+        (function () {
+            var card = document.getElementById('pwa-install-card');
+            var btn = document.getElementById('pwa-install-trigger');
+            var iosHint = card ? card.querySelector('.pwa-install-card__ios-hint') : null;
+            if (!card || !btn) return;
+
+            function isStandalone() {
+                return window.matchMedia('(display-mode: standalone)').matches
+                    || window.navigator.standalone === true;
+            }
+
+            function isiOS() {
+                return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            }
+
+            function show() {
+                card.hidden = false;
+            }
+
+            function hide() {
+                card.hidden = true;
+            }
+
+            // Уже стоит как PWA — не показываем
+            if (isStandalone() || (window.__pwa && window.__pwa.installed)) {
+                hide();
+                return;
+            }
+
+            // Android Chrome: показываем кнопку, когда событие готово
+            if (window.__pwa && window.__pwa.prompt) {
+                show();
+            }
+            document.addEventListener('pwa:ready', show);
+
+            // iOS Safari не даёт programmatic install — даём текстовую подсказку
+            if (isiOS() && iosHint) {
+                iosHint.hidden = false;
+                btn.hidden = true;
+                show();
+            }
+
+            btn.addEventListener('click', function () {
+                var deferred = window.__pwa && window.__pwa.prompt;
+                if (!deferred) {
+                    hide();
+                    return;
+                }
+                deferred.prompt();
+                deferred.userChoice.then(function (choice) {
+                    window.__pwa.prompt = null;
+                    hide();
+                });
+            });
+
+            document.addEventListener('pwa:installed', hide);
+        })();
+    </script>
+
     @if ($canManageClients)
-        @php($selectedAccountType = old('account_type', 'client'))
-        @php($createContactPeople = old('contact_people'))
-        @php($createMessengers = old('messengers'))
-        @php($createContactPeople = is_array($createContactPeople) && count(array_filter($createContactPeople, fn ($item) => filled($item))) > 0 ? array_values($createContactPeople) : [''])
-        @php($createMessengers = is_array($createMessengers) && count(array_filter($createMessengers, fn ($item) => filled($item))) > 0 ? array_values($createMessengers) : [''])
+        @php
+            $selectedAccountType = old('account_type', 'client');
+            $createContactPeople = old('contact_people');
+            $createMessengers = old('messengers');
+            $createContactPeople = is_array($createContactPeople) && count(array_filter($createContactPeople, fn ($item) => filled($item))) > 0 ? array_values($createContactPeople) : [''];
+            $createMessengers = is_array($createMessengers) && count(array_filter($createMessengers, fn ($item) => filled($item))) > 0 ? array_values($createMessengers) : [''];
+        @endphp
 
         <section class="catalog-account-grid">
             <article class="surface-card reveal-card catalog-account-hero">
@@ -54,6 +152,8 @@
                         <a href="{{ route('admin.onec.show') }}" class="ghost-button">Диагностика 1С</a>
                         <a href="{{ route('admin.catalog.visibility.index') }}" class="ghost-button">Видимость каталога</a>
                         <a href="{{ route('admin.products.images.index') }}" class="ghost-button">Фото товаров</a>
+                        <a href="{{ route('admin.products.variants.index') }}" class="ghost-button">Варианты товаров</a>
+                        <a href="{{ route('admin.products.related.index') }}" class="ghost-button">Сопутствующие товары</a>
                     @endif
 
                     <a href="{{ route('orders.index') }}" class="ghost-button">Заказы клиентов</a>
@@ -96,7 +196,10 @@
                                     <div class="flex items-start justify-between gap-3">
                                         <div class="min-w-0">
                                             <h3 class="text-base font-semibold text-slate-950">{{ $manager->name }}</h3>
-                                            <p class="mt-1 break-all text-sm text-slate-500">{{ $manager->email }}</p>
+                                            @if ($manager->city)
+                                                <p class="mt-1 text-sm font-semibold text-slate-700">Город: {{ $manager->city }}</p>
+                                            @endif
+                                            <p class="mt-1 break-all text-sm text-slate-500">{{ $manager->email ?: 'Email не указан' }}</p>
                                             @if ($manager->phone)
                                                 <p class="mt-2 text-sm font-medium text-slate-700">{{ $manager->phone }}</p>
                                             @endif
@@ -205,6 +308,22 @@
                         <input type="hidden" name="account_type" value="client">
                     @endif
 
+                    @if ($isAdmin)
+                        <div class="access-user-create__grid mt-4" data-account-role-section="manager">
+                            <label class="access-field access-field--full">
+                                <span>Город менеджера</span>
+                                <select name="price_profile_id">
+                                    <option value="">Выберите город</option>
+                                    @foreach ($priceProfiles as $profile)
+                                        <option value="{{ $profile->id }}" @selected((string) old('price_profile_id') === (string) $profile->id)>
+                                            {{ $profile->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        </div>
+                    @endif
+
                     <div class="access-user-create__grid">
                         <label class="access-field">
                             <span>Имя</span>
@@ -227,7 +346,7 @@
                         </label>
 
                         <label class="access-field">
-                            <span>Email</span>
+                            <span>Email <small data-account-role-section="manager">не обязателен для менеджера</small></span>
                             <input type="email" name="email" value="{{ old('email') }}" placeholder="client@example.com">
                         </label>
 
@@ -242,7 +361,7 @@
                         </label>
 
                         <label class="flex items-center gap-3 rounded-[24px] border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-700">
-                            <input type="checkbox" name="is_active" value="1" class="h-4 w-4 accent-[#d11117]" @checked(old('is_active', '1'))>
+                            <input type="checkbox" name="is_active" value="1" class="h-4 w-4 accent-[var(--brand)]" @checked(old('is_active', '1'))>
                             Активировать сразу после создания
                         </label>
                     </div>
@@ -255,7 +374,7 @@
                                     <option value="">Выберите менеджера</option>
                                     @foreach ($availableManagers as $managerOption)
                                         <option value="{{ $managerOption->id }}" @selected((string) old('manager_id') === (string) $managerOption->id)>
-                                            {{ $managerOption->name }} — {{ $managerOption->email }}
+                                            {{ $managerOption->name }}@if ($managerOption->city) — {{ $managerOption->city }}@elseif ($managerOption->email) — {{ $managerOption->email }}@endif
                                         </option>
                                     @endforeach
                                 </select>
@@ -354,8 +473,9 @@
 
                                     <div class="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
                                         <p><strong class="text-slate-900">Компания:</strong> {{ $registrationRequest->company ?: 'Не указана' }}</p>
+                                        <p><strong class="text-slate-900">Город:</strong> {{ $registrationRequest->city ?: '—' }}</p>
                                         <p><strong class="text-slate-900">Логин:</strong> {{ $registrationRequest->login }}</p>
-                                        <p><strong class="text-slate-900">Email:</strong> {{ $registrationRequest->email }}</p>
+                                        <p><strong class="text-slate-900">Email:</strong> {{ $registrationRequest->email ?: 'Не указан' }}</p>
                                         <p><strong class="text-slate-900">Телефон:</strong> {{ $registrationRequest->phone ?: 'Не указан' }}</p>
                                     </div>
 
@@ -393,12 +513,31 @@
                                                     <option value="">Выберите менеджера</option>
                                                     @foreach ($availableManagers as $managerOption)
                                                         <option value="{{ $managerOption->id }}" @selected((string) old('manager_id') === (string) $managerOption->id)>
-                                                            {{ $managerOption->name }}
+                                                            {{ $managerOption->name }}@if ($managerOption->city) — {{ $managerOption->city }}@endif
                                                         </option>
                                                     @endforeach
                                                 </select>
                                             </label>
                                         @endif
+
+                                        <label class="access-field">
+                                            <span>Город клиента <span class="text-xs font-normal text-amber-700">(прайс-зона)</span></span>
+                                            <select name="price_profile_id" required>
+                                                <option value="">— Выбери город из списка —</option>
+                                                @foreach ($priceProfiles as $profile)
+                                                    @php
+                                                        $isHinted = $registrationRequest->city
+                                                            && mb_strtolower($registrationRequest->city) === mb_strtolower($profile->name);
+                                                    @endphp
+                                                    <option value="{{ $profile->id }}" @selected($isHinted)>
+                                                        {{ $profile->name }}@if ($isHinted) — клиент указал{{ ' этот город' }}@endif
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                            @if ($registrationRequest->city)
+                                                <small class="text-xs text-slate-500 mt-1">Клиент написал: «{{ $registrationRequest->city }}»</small>
+                                            @endif
+                                        </label>
 
                                         <button type="submit" class="action-button w-full justify-center">Подтвердить регистрацию</button>
                                     </form>
@@ -464,7 +603,7 @@
                                     </div>
                                     <div class="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3">
                                         <span class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Email</span>
-                                        <p class="mt-2 break-all text-sm font-semibold text-slate-900">{{ $managedUser->email }}</p>
+                                        <p class="mt-2 break-all text-sm font-semibold text-slate-900">{{ $managedUser->email ?: 'Не указан' }}</p>
                                     </div>
                                     <div class="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3">
                                         <span class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Телефон</span>
@@ -545,10 +684,12 @@
             </div>
         </section>
     @else
-        @php($profileContactPeople = old('contact_people'))
-        @php($profileMessengers = old('messengers'))
-        @php($profileContactPeople = is_array($profileContactPeople) && count(array_filter($profileContactPeople, fn ($item) => filled($item))) > 0 ? array_values($profileContactPeople) : (($currentUser->contactPeopleList() !== []) ? $currentUser->contactPeopleList() : ['']))
-        @php($profileMessengers = is_array($profileMessengers) && count(array_filter($profileMessengers, fn ($item) => filled($item))) > 0 ? array_values($profileMessengers) : (($currentUser->messengersList() !== []) ? $currentUser->messengersList() : ['']))
+        @php
+            $profileContactPeople = old('contact_people');
+            $profileMessengers = old('messengers');
+            $profileContactPeople = is_array($profileContactPeople) && count(array_filter($profileContactPeople, fn ($item) => filled($item))) > 0 ? array_values($profileContactPeople) : (($currentUser->contactPeopleList() !== []) ? $currentUser->contactPeopleList() : ['']);
+            $profileMessengers = is_array($profileMessengers) && count(array_filter($profileMessengers, fn ($item) => filled($item))) > 0 ? array_values($profileMessengers) : (($currentUser->messengersList() !== []) ? $currentUser->messengersList() : ['']);
+        @endphp
 
         <section class="catalog-account-grid">
             <article class="surface-card reveal-card catalog-account-hero">
@@ -574,7 +715,7 @@
                         </div>
                         <div class="catalog-account-meta-card">
                             <span>Email</span>
-                            <strong>{{ $currentUser->email }}</strong>
+                            <strong>{{ $currentUser->email ?: 'Не указан' }}</strong>
                         </div>
                     </div>
                 </div>
@@ -612,7 +753,7 @@
                             </div>
                             <div class="rounded-[22px] border border-slate-200 bg-white/90 px-4 py-3">
                                 <span class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Email</span>
-                                <p class="mt-2 break-all text-sm font-semibold text-slate-900">{{ $assignedManager->email }}</p>
+                                <p class="mt-2 break-all text-sm font-semibold text-slate-900">{{ $assignedManager->email ?: 'Не указан' }}</p>
                             </div>
                             @if ($assignedManager->messengersList() !== [])
                                 <div class="flex flex-wrap gap-2">
@@ -712,79 +853,8 @@
                 </form>
             </article>
 
-            <article class="surface-card reveal-card catalog-account-panel">
-                <div class="catalog-page-head">
-                    <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">Доставка</p>
-                        <h2 class="mt-2 font-['IBM_Plex_Sans'] text-3xl font-semibold tracking-tight text-slate-950">Адреса</h2>
-                        <p class="mt-3 text-sm leading-6 text-slate-600">
-                            Добавьте несколько адресов. В корзине будет достаточно выбрать один из сохраненных.
-                        </p>
-                    </div>
-                    <span class="soft-badge soft-badge--dark">{{ $userAddresses->count() }}</span>
-                </div>
-
-                <div class="mt-6 space-y-3">
-                    @forelse ($userAddresses as $address)
-                        <article class="rounded-[24px] border border-slate-200 bg-white/92 p-4 shadow-[0_18px_35px_-30px_rgba(15,23,42,0.16)]">
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                <div class="space-y-2">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <h3 class="text-base font-semibold text-slate-950">{{ $address->title }}</h3>
-                                        @if ($address->is_default)
-                                            <span class="inline-flex min-h-8 items-center rounded-full bg-emerald-50 px-3 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">Основной</span>
-                                        @endif
-                                    </div>
-                                    <p class="text-sm leading-6 text-slate-600">{{ $address->address }}</p>
-                                </div>
-
-                                <div class="catalog-account-address-card__actions">
-                                    @unless ($address->is_default)
-                                        <form action="{{ route('account.addresses.default', $address) }}" method="POST">
-                                            @csrf
-                                            @method('PATCH')
-                                            <button type="submit" class="ghost-button">Сделать основным</button>
-                                        </form>
-                                    @endunless
-
-                                    <form action="{{ route('account.addresses.destroy', $address) }}" method="POST">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="catalog-inline-action">Удалить</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </article>
-                    @empty
-                        <div class="catalog-account-empty">
-                            Адреса пока не добавлены.
-                        </div>
-                    @endforelse
-                </div>
-
-                <form action="{{ route('account.addresses.store') }}" method="POST" class="access-user-create__form mt-6">
-                    @csrf
-
-                    <div class="access-user-create__grid">
-                        <label class="access-field">
-                            <span>Название адреса</span>
-                            <input type="text" name="title" value="{{ old('title') }}" placeholder="Основной склад">
-                        </label>
-
-                        <label class="access-field access-field--full">
-                            <span>Адрес</span>
-                            <input type="text" name="address" value="{{ old('address') }}" placeholder="Город, улица, объект, комментарий по доставке">
-                        </label>
-
-                        <label class="flex items-center gap-3 rounded-[24px] border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-700 md:col-span-2">
-                            <input type="checkbox" name="is_default" value="1" class="h-4 w-4 accent-[#d11117]" @checked(old('is_default'))>
-                            Использовать как адрес по умолчанию
-                        </label>
-                    </div>
-
-                    <button type="submit" class="action-button access-user-create__submit mt-6">Добавить адрес</button>
-                </form>
-            </article>
+            {{-- Адреса доставки убраны из ЛК — теперь вводятся прямо в корзине
+                 при оформлении заказа (с опцией «сохранить адрес»). --}}
         </section>
     @endif
 @endsection

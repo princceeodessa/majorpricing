@@ -18110,3 +18110,109 @@ a.catalog-product-card__cta:hover,
     .brand-card:hover { transform: none; }
     .brands-carousel-track { scroll-behavior: auto; }
 }
+
+/* =============================================================
+   PWA INSTALL CARD — карточка в личном кабинете
+   ============================================================= */
+
+.pwa-install-card {
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+    padding: 22px 24px;
+    margin-bottom: 1.5rem;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #fff 0%, var(--brand-soft, #ffe5e5) 100%);
+    border: 1px solid rgba(214, 0, 0, 0.18);
+}
+
+.pwa-install-card[hidden] { display: none !important; }
+
+.pwa-install-card__icon {
+    flex: 0 0 auto;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--brand, #d60000);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 14px -6px rgba(214, 0, 0, 0.5);
+}
+
+.pwa-install-card__body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.pwa-install-card__title {
+    margin: 0 0 6px;
+    font-family: var(--font-display, 'IBM Plex Sans'), ui-sans-serif, system-ui, sans-serif;
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1.25;
+    color: #0b1220;
+    letter-spacing: -0.01em;
+}
+
+.pwa-install-card__text {
+    margin: 0 0 14px;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: #475569;
+}
+
+.pwa-install-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.pwa-install-card__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--brand, #d60000);
+    color: #fff;
+    font: 700 14px/1.2 var(--font-sans, system-ui), sans-serif;
+    cursor: pointer;
+    box-shadow: 0 8px 18px -8px rgba(214, 0, 0, 0.55), 0 2px 4px -2px rgba(15, 23, 42, 0.15);
+    transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+.pwa-install-card__cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -8px rgba(214, 0, 0, 0.6), 0 4px 8px -4px rgba(15, 23, 42, 0.2);
+    filter: brightness(1.04);
+}
+.pwa-install-card__cta:active { transform: translateY(0); }
+.pwa-install-card__cta[hidden] { display: none !important; }
+
+.pwa-install-card__ios-hint {
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: #475569;
+}
+.pwa-install-card__ios-hint b { color: var(--brand, #d60000); font-weight: 700; }
+.pwa-install-card__ios-hint[hidden] { display: none !important; }
+
+/* Мобила: стек */
+@media (max-width: 540px) {
+    .pwa-install-card {
+        flex-direction: column;
+        padding: 18px 18px 20px;
+        gap: 14px;
+    }
+    .pwa-install-card__icon { width: 48px; height: 48px; border-radius: 14px; }
+    .pwa-install-card__title { font-size: 1.05rem; }
+    .pwa-install-card__text { font-size: 0.88rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pwa-install-card__cta { transition: none; }
+    .pwa-install-card__cta:hover { transform: none; }
+}
