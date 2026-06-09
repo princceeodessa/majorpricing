@@ -20,6 +20,7 @@ class CatalogController extends Controller
         $feed = $request->string('feed')->toString();
         $feed = in_array($feed, ['new', 'hit', 'in_stock'], true) ? $feed : 'new';
         $isAuthenticated = $request->user() !== null;
+        $selectedBrand = trim($request->string('brand')->toString()) ?: null;
 
         if ($request->filled('category')) {
             $selectedCategory = Category::query()
@@ -30,12 +31,14 @@ class CatalogController extends Controller
 
         $productsQuery = Product::query()
             ->visibleToCatalogVisitor($isAuthenticated)
-            ->with(['category.parent', 'prices', 'productImages'])
+            ->catalogRepresentatives()
+            ->with(['category.parent', 'prices', 'productImages', 'variantChildren.prices'])
             ->when(
                 $selectedCategory,
-                fn ($query) => $query->whereIn('category_id', $this->categoryTreeIds($selectedCategory, $isAuthenticated)),
+                fn ($query) => $query->inCatalogCategoryIds($this->categoryTreeIds($selectedCategory, $isAuthenticated)),
             )
-            ->search($searchQuery);
+            ->when($selectedBrand, fn ($query) => $query->where('brand_name', $selectedBrand))
+            ->searchCatalogRepresentatives($searchQuery);
 
         match ($feed) {
             'hit' => $productsQuery
@@ -65,6 +68,26 @@ class CatalogController extends Controller
             ]);
         }
 
+        $brands = collect();
+        if (! $hasSearch) {
+            $brands = Product::query()
+                ->visibleToCatalogVisitor($isAuthenticated)
+                ->catalogRepresentatives()
+                ->whereNotNull('brand_name')
+                ->where('brand_name', '!=', '')
+                ->selectRaw('brand_name, COUNT(*) as aggregate')
+                ->groupBy('brand_name')
+                ->orderByDesc('aggregate')
+                ->orderBy('brand_name')
+                ->limit(60)
+                ->get()
+                ->map(fn ($row) => [
+                    'name' => (string) $row->brand_name,
+                    'count' => (int) $row->aggregate,
+                    'url' => route('catalog.index', ['brand' => $row->brand_name]),
+                ]);
+        }
+
         $rootCategories = collect();
         if (! $hasSearch) {
             $rootCategories = Category::query()
@@ -80,6 +103,7 @@ class CatalogController extends Controller
 
             $productCounts = Product::query()
                 ->visibleToCatalogVisitor($isAuthenticated)
+                ->catalogRepresentatives()
                 ->selectRaw('category_id, COUNT(*) as aggregate')
                 ->whereIn('category_id', $catalogCategoryIds)
                 ->groupBy('category_id')
@@ -87,6 +111,7 @@ class CatalogController extends Controller
 
             $categoryPreviewProducts = Product::query()
                 ->visibleToCatalogVisitor($isAuthenticated)
+                ->catalogRepresentatives()
                 ->select(['category_id', 'title', 'image_path', 'sort_order'])
                 ->whereIn('category_id', $catalogCategoryIds)
                 ->orderByRaw('image_path is null')
@@ -120,9 +145,11 @@ class CatalogController extends Controller
             'hasSearch' => $hasSearch,
             'products' => $products,
             'rootCategories' => $rootCategories,
+            'brands' => $brands,
+            'selectedBrand' => $selectedBrand,
             'searchQuery' => $searchQuery,
             'selectedCategory' => $selectedCategory,
-            'totalProducts' => Product::query()->visibleToCatalogVisitor($isAuthenticated)->count(),
+            'totalProducts' => Product::query()->visibleToCatalogVisitor($isAuthenticated)->catalogRepresentatives()->count(),
             'totalSections' => Category::query()->visibleToCatalogVisitor($isAuthenticated)->count(),
         ]);
     }
