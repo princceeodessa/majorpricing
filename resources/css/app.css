@@ -18280,7 +18280,6 @@ a.catalog-product-card__cta:hover,
         position: relative;
         padding: 0;
         background: transparent;
-        position: static;
         box-shadow: none;
         transition: none;
         transform: none;
@@ -18682,4 +18681,16 @@ a.catalog-product-card__cta:hover,
         flex: 0 0 calc((100% - 90px) / 6) !important;
         max-width: calc((100% - 90px) / 6) !important;
     }
+}
+
+/* =============================================================
+   Категории — скрываем пустые состояния когда не нужны
+   ============================================================= */
+.categories-page .categories-empty[hidden],
+.categories-page [data-categories-empty][hidden] {
+    display: none !important;
+}
+.categories-page .categories-empty {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
 }
