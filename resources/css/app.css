@@ -18054,9 +18054,9 @@ a.catalog-product-card__cta:hover,
 
 .brand-card {
     flex: 0 0 auto;
-    width: clamp(144px, 40vw, 196px);
+    width: clamp(116px, 32vw, 156px);
     aspect-ratio: 2 / 1;
-    border-radius: 14px;
+    border-radius: 12px;
     background: #ffffff;
     border: 1px solid #e5e7eb;
     color: #0b1220;
@@ -18064,7 +18064,7 @@ a.catalog-product-card__cta:hover,
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 12px;
+    padding: 8px 12px;
     text-align: center;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
@@ -18096,16 +18096,16 @@ a.catalog-product-card__cta:hover,
 
 /* Узкие телефоны 320-360: ещё компактнее */
 @media (max-width: 360px) {
-    .brand-card { width: 132px; padding: 8px 12px; border-radius: 12px; }
+    .brand-card { width: 108px; padding: 6px 10px; border-radius: 10px; }
 }
 
 /* Десктоп: умеренно крупнее */
 @media (min-width: 1024px) {
-    .brand-card { width: 216px; border-radius: 16px; padding: 14px 18px; }
+    .brand-card { width: 172px; border-radius: 14px; padding: 10px 14px; }
 }
 
 @media (min-width: 1440px) {
-    .brand-card { width: 244px; }
+    .brand-card { width: 196px; }
 }
 
 /* Уважаем reduce-motion */
