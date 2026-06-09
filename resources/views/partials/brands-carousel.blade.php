@@ -22,8 +22,22 @@
             @foreach ($brands as $brand)
                 @php
                     $isActive = $selectedBrand === $brand['name'];
-                    $logoPath = 'brand/logos/'.\Illuminate\Support\Str::slug($brand['name']).'.svg';
-                    $logoExists = file_exists(public_path($logoPath));
+                    $brandSlug = \Illuminate\Support\Str::slug($brand['name']);
+                    $logoCandidates = [
+                        "brand/logos/{$brandSlug}.svg",
+                        "brand/logos/{$brandSlug}.png",
+                        "brand/logos/{$brandSlug}.webp",
+                    ];
+                    $logoPath = null;
+                    foreach ($logoCandidates as $candidate) {
+                        if (file_exists(public_path($candidate))) {
+                            $logoPath = $candidate;
+                            break;
+                        }
+                    }
+                    // Fallback на логотип МАЖОР (как у SDP Market — везде их собственное лого
+                    // пока не загружены реальные бренды).
+                    $logoPath = $logoPath ?? 'brand/major-logo-wide.svg';
                 @endphp
                 <a
                     href="{{ $brand['url'] }}"
@@ -31,17 +45,13 @@
                     aria-label="{{ $brand['name'] }} — {{ $brand['count'] }} товаров"
                     data-brand="{{ $brand['name'] }}"
                 >
-                    @if ($logoExists)
-                        <img
-                            src="{{ asset($logoPath) }}"
-                            alt="{{ $brand['name'] }}"
-                            class="brand-card__logo"
-                            loading="lazy"
-                            decoding="async"
-                        >
-                    @else
-                        <span class="brand-card__placeholder">{{ $brand['name'] }}</span>
-                    @endif
+                    <img
+                        src="{{ asset($logoPath) }}"
+                        alt="{{ $brand['name'] }}"
+                        class="brand-card__logo"
+                        loading="lazy"
+                        decoding="async"
+                    >
                 </a>
             @endforeach
         </div>
