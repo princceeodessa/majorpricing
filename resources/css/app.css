@@ -18587,10 +18587,13 @@ a.catalog-product-card__cta:hover,
     margin: 1rem 0 0 !important;
     padding: 0 1rem !important;
     display: flex !important;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 12px;
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    align-content: flex-start !important;
+    gap: 12px !important;
     background: transparent;
+    min-height: 0 !important;
+    height: auto !important;
 }
 .categories-page .category-tile {
     flex: 0 0 calc((100% - 24px) / 3) !important;
