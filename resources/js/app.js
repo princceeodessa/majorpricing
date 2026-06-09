@@ -3405,8 +3405,11 @@ const setupCatalogMenus = () => {
 const setupHeaderScrollState = () => {
     const header = document.querySelector('.catalog-site-header');
     const mobileSearch = document.querySelector('.catalog-mobile-search');
+    const mobileNav = document.querySelector('.catalog-mobile-nav');
 
-    if (!(header instanceof HTMLElement) && !(mobileSearch instanceof HTMLElement)) {
+    if (!(header instanceof HTMLElement)
+        && !(mobileSearch instanceof HTMLElement)
+        && !(mobileNav instanceof HTMLElement)) {
         return;
     }
 
@@ -3414,7 +3417,7 @@ const setupHeaderScrollState = () => {
     let lastY = window.scrollY;
     // Suppress micro-jitter (sub-pixel scrolls, momentum bounces).
     const DELTA_THRESHOLD = 6;
-    // Always show the search bar when near the top.
+    // Always show bars when near the top.
     const TOP_BAND = 50;
     // Start hiding only after the user clearly engaged with the page below the fold.
     const HIDE_AFTER = 90;
@@ -3427,13 +3430,15 @@ const setupHeaderScrollState = () => {
             header.classList.toggle('is-scrolled', currentY > 18);
         }
 
-        if (mobileSearch instanceof HTMLElement && Math.abs(delta) >= DELTA_THRESHOLD) {
+        const targets = [mobileSearch, mobileNav].filter((el) => el instanceof HTMLElement);
+
+        if (targets.length && Math.abs(delta) >= DELTA_THRESHOLD) {
             if (currentY < TOP_BAND) {
-                mobileSearch.classList.remove('is-hidden');
+                targets.forEach((el) => el.classList.remove('is-hidden'));
             } else if (delta > 0 && currentY > HIDE_AFTER) {
-                mobileSearch.classList.add('is-hidden');
+                targets.forEach((el) => el.classList.add('is-hidden'));
             } else if (delta < 0) {
-                mobileSearch.classList.remove('is-hidden');
+                targets.forEach((el) => el.classList.remove('is-hidden'));
             }
             lastY = currentY;
         } else if (Math.abs(delta) >= DELTA_THRESHOLD) {
