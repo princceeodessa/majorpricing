@@ -3,12 +3,13 @@
 @section('title', 'Каталог МАЖОР')
 
 @section('content')
-    @unless ($hasSearch ?? false)
+    {{-- Карусель брендов: только на главной каталога, без выбранной категории и без поиска --}}
+    @if (! ($hasSearch ?? false) && empty($selectedCategory))
         @include('partials.brands-carousel', [
             'brands' => $brands ?? collect(),
             'selectedBrand' => $selectedBrand ?? null,
         ])
-    @endunless
+    @endif
 
     <section class="catalog-v2-feed-section">
         <div class="catalog-section-head catalog-section-head--clean catalog-section-head--with-filters">
