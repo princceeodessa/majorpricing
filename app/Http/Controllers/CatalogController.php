@@ -69,6 +69,7 @@ class CatalogController extends Controller
         }
 
         $brands = collect();
+        $pendingBrands = collect();
         if (! $hasSearch) {
             $brands = Product::query()
                 ->visibleToCatalogVisitor($isAuthenticated)
@@ -87,6 +88,17 @@ class CatalogController extends Controller
                     'count' => (int) $row->aggregate,
                     'url' => route('catalog.index', ['brand' => $row->brand_name]),
                 ]);
+
+            // Pending-бренды — лого есть, но в БД нет (ждут выгрузки 1С).
+            // Фильтруем те, чей slug совпадает с существующим брендом — чтобы не дублировать.
+            $existingSlugs = $brands->map(fn ($b) => \Illuminate\Support\Str::slug($b['name']))->all();
+            $pendingBrands = collect(config('brand_logos.pending', []))
+                ->reject(fn ($name, $slug) => in_array($slug, $existingSlugs, true))
+                ->map(fn ($name, $slug) => [
+                    'name' => (string) $name,
+                    'slug' => (string) $slug,
+                ])
+                ->values();
         }
 
         $rootCategories = collect();
@@ -147,6 +159,7 @@ class CatalogController extends Controller
             'products' => $products,
             'rootCategories' => $rootCategories,
             'brands' => $brands,
+            'pendingBrands' => $pendingBrands,
             'selectedBrand' => $selectedBrand,
             'searchQuery' => $searchQuery,
             'selectedCategory' => $selectedCategory,

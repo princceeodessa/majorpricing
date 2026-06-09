@@ -7,6 +7,7 @@
     @if (! ($hasSearch ?? false) && empty($selectedCategory))
         @include('partials.brands-carousel', [
             'brands' => $brands ?? collect(),
+            'pendingBrands' => $pendingBrands ?? collect(),
             'selectedBrand' => $selectedBrand ?? null,
         ])
     @endif
