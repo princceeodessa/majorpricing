@@ -18038,18 +18038,18 @@ a.catalog-product-card__cta:hover,
 
 .brand-card {
     flex: 0 0 auto;
-    width: clamp(108px, 30vw, 156px);
+    width: clamp(76px, 22vw, 108px);
     aspect-ratio: 1 / 1;
-    border-radius: 18px;
+    border-radius: 14px;
     background: linear-gradient(135deg, var(--brand, #d60000) 0%, var(--brand-strong, #b40d12) 100%);
     color: #fff;
     text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 14px;
+    padding: 10px;
     text-align: center;
-    box-shadow: 0 8px 18px -10px rgba(214, 0, 0, 0.55), 0 2px 6px -3px rgba(15, 23, 42, 0.18);
+    box-shadow: 0 6px 14px -8px rgba(214, 0, 0, 0.5), 0 2px 4px -2px rgba(15, 23, 42, 0.15);
     transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
     scroll-snap-align: start;
     user-select: none;
@@ -18080,7 +18080,7 @@ a.catalog-product-card__cta:hover,
 .brand-card__placeholder {
     font-family: var(--font-display, 'IBM Plex Sans'), ui-sans-serif, system-ui, sans-serif;
     font-weight: 800;
-    font-size: clamp(0.85rem, 0.7rem + 0.6vw, 1.05rem);
+    font-size: clamp(0.7rem, 0.58rem + 0.5vw, 0.92rem);
     line-height: 1.15;
     letter-spacing: 0.02em;
     text-transform: uppercase;
@@ -18088,20 +18088,20 @@ a.catalog-product-card__cta:hover,
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
-/* Узкие телефоны 320-360: чуть меньше карточки */
+/* Узкие телефоны 320-360: ещё компактнее */
 @media (max-width: 360px) {
-    .brand-card { width: 96px; }
-    .brand-card__placeholder { font-size: 0.78rem; }
+    .brand-card { width: 72px; padding: 8px; border-radius: 12px; }
+    .brand-card__placeholder { font-size: 0.66rem; }
 }
 
-/* Десктоп: чуть крупнее */
+/* Десктоп: умеренно крупнее */
 @media (min-width: 1024px) {
-    .brand-card { width: 160px; border-radius: 20px; padding: 18px; }
-    .brand-card__placeholder { font-size: 1.1rem; }
+    .brand-card { width: 116px; border-radius: 16px; padding: 14px; }
+    .brand-card__placeholder { font-size: 0.95rem; }
 }
 
 @media (min-width: 1440px) {
-    .brand-card { width: 176px; }
+    .brand-card { width: 128px; }
 }
 
 /* Уважаем reduce-motion */
