@@ -18591,19 +18591,22 @@ a.catalog-product-card__cta:hover,
 }
 .categories-page .category-tile {
     width: 100%;
-    height: auto;
+    height: auto !important;
     background: transparent;
     border: 0;
     box-shadow: none;
     padding: 0;
     margin: 0;
-    align-self: start;
+    align-self: start !important;
+    display: block;
 }
 .categories-page .category-tile__link {
     background: #ffffff;
     border: 1px solid #eef0f3;
-    height: auto;
-    min-height: 0;
+    height: max-content !important;
+    min-height: 0 !important;
+    max-height: none;
+    aspect-ratio: auto;
 }
 .categories-page .category-tile__body {
     padding: 8px 10px 10px;
