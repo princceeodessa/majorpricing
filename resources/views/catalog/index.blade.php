@@ -3,6 +3,13 @@
 @section('title', 'Каталог МАЖОР')
 
 @section('content')
+    {{-- Hero-карусель баннеров (только на чистой главной /catalog) --}}
+    @if (! ($hasSearch ?? false) && empty($selectedCategory))
+        @include('partials.banners-carousel', [
+            'banners' => $banners ?? collect(),
+        ])
+    @endif
+
     {{-- Карусель брендов: только на главной каталога, без выбранной категории и без поиска --}}
     @if (! ($hasSearch ?? false) && empty($selectedCategory))
         @include('partials.brands-carousel', [

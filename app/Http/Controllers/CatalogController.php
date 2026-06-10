@@ -68,6 +68,11 @@ class CatalogController extends Controller
             ]);
         }
 
+        $banners = collect();
+        if (! $hasSearch) {
+            $banners = \App\Models\Banner::visible()->get();
+        }
+
         $brands = collect();
         $pendingBrands = collect();
         if (! $hasSearch) {
@@ -160,6 +165,7 @@ class CatalogController extends Controller
             'rootCategories' => $rootCategories,
             'brands' => $brands,
             'pendingBrands' => $pendingBrands,
+            'banners' => $banners,
             'selectedBrand' => $selectedBrand,
             'searchQuery' => $searchQuery,
             'selectedCategory' => $selectedCategory,

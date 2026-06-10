@@ -1,9 +1,13 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AdminAutoImagesController;
 use App\Http\Controllers\AdminCategoryVisibilityController;
 use App\Http\Controllers\AdminProductImageController;
+use App\Http\Controllers\AdminProductRelatedController;
+use App\Http\Controllers\AdminProductVariantController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\BrowserPushSubscriptionController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CategoryController;
@@ -24,6 +28,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [HomeController::class, 'show'])->name('home');
 Route::get('/sitemap.xml', [HomeController::class, 'sitemap'])->name('sitemap');
 Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
+Route::get('/shop', [CatalogController::class, 'index'])->name('catalog.shop'); // Cache-bypass alias
+Route::view('/privacy', 'legal.privacy')->name('legal.privacy');
+Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
 Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
 Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
 
@@ -60,6 +67,11 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/manager/support/messages', [SupportMessageController::class, 'storeForManager'])
         ->middleware('manager')
         ->name('manager.support.messages.store');
+    Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::resource('banners', \App\Http\Controllers\Admin\BannerController::class)
+            ->except(['show']);
+    });
+
     Route::get('/admin/1c', [OneCDiagnosticsController::class, 'show'])
         ->middleware('admin')
         ->name('admin.onec.show');
@@ -84,6 +96,36 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/admin/products/images', [AdminProductImageController::class, 'index'])
         ->middleware('admin')
         ->name('admin.products.images.index');
+    Route::get('/admin/products/variants', [AdminProductVariantController::class, 'index'])
+        ->middleware('admin')
+        ->name('admin.products.variants.index');
+    Route::post('/admin/products/variants', [AdminProductVariantController::class, 'store'])
+        ->middleware('admin')
+        ->name('admin.products.variants.store');
+    Route::patch('/admin/products/{product}/variants', [AdminProductVariantController::class, 'update'])
+        ->middleware('admin')
+        ->name('admin.products.variants.update');
+    Route::delete('/admin/products/{product}/variants', [AdminProductVariantController::class, 'destroy'])
+        ->middleware('admin')
+        ->name('admin.products.variants.destroy');
+    Route::get('/admin/products/related', [AdminProductRelatedController::class, 'index'])
+        ->middleware('admin')
+        ->name('admin.products.related.index');
+    Route::post('/admin/products/{product}/related', [AdminProductRelatedController::class, 'store'])
+        ->middleware('admin')
+        ->name('admin.products.related.store');
+    Route::patch('/admin/products/{product}/related', [AdminProductRelatedController::class, 'reorder'])
+        ->middleware('admin')
+        ->name('admin.products.related.reorder');
+    Route::patch('/admin/products/{product}/related/{relatedProduct}', [AdminProductRelatedController::class, 'update'])
+        ->middleware('admin')
+        ->name('admin.products.related.update');
+    Route::delete('/admin/products/{product}/related/{relatedProduct}', [AdminProductRelatedController::class, 'destroy'])
+        ->middleware('admin')
+        ->name('admin.products.related.destroy');
+    Route::delete('/admin/products/{product}/related', [AdminProductRelatedController::class, 'destroyAll'])
+        ->middleware('admin')
+        ->name('admin.products.related.destroy-all');
     Route::get('/admin/products/{product}/images', [AdminProductImageController::class, 'edit'])
         ->middleware('admin')
         ->name('admin.products.images.edit');
@@ -96,6 +138,27 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('/admin/products/{product}/images/{productImage}', [AdminProductImageController::class, 'destroy'])
         ->middleware('admin')
         ->name('admin.products.images.destroy');
+    Route::delete('/admin/products/{product}/cover-image', [AdminProductImageController::class, 'destroyCover'])
+        ->middleware('admin')
+        ->name('admin.products.cover.destroy');
+    Route::patch('/admin/products/{product}/toggle-hidden', [AdminProductImageController::class, 'toggleHidden'])
+        ->middleware('admin')
+        ->name('admin.products.toggle-hidden');
+    Route::get('/admin/auto-images', [AdminAutoImagesController::class, 'index'])
+        ->middleware('admin')
+        ->name('admin.auto-images.index');
+    Route::delete('/admin/auto-images', [AdminAutoImagesController::class, 'destroyAll'])
+        ->middleware('admin')
+        ->name('admin.auto-images.destroy-all');
+    Route::post('/admin/auto-images/approve-all', [AdminAutoImagesController::class, 'approveAll'])
+        ->middleware('admin')
+        ->name('admin.auto-images.approve-all');
+    Route::post('/admin/auto-images/{product}/keep', [AdminAutoImagesController::class, 'keep'])
+        ->middleware('admin')
+        ->name('admin.auto-images.keep');
+    Route::delete('/admin/auto-images/{product}', [AdminAutoImagesController::class, 'destroy'])
+        ->middleware('admin')
+        ->name('admin.auto-images.destroy');
     Route::post('/products/{product:slug}/cart', [CartController::class, 'store'])->name('cart.store');
     Route::patch('/products/{product:slug}/cart', [CartController::class, 'updateProduct'])->name('cart.product.update');
     Route::delete('/products/{product:slug}/cart', [CartController::class, 'destroyProduct'])->name('cart.product.destroy');
@@ -103,6 +166,9 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('/products/{product:slug}/favorite', [FavoriteController::class, 'destroy'])->name('favorites.destroy');
     Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
     Route::get('/notifications/poll', [NotificationsController::class, 'poll'])->name('notifications.poll');
+    Route::get('/web-push/public-key', [BrowserPushSubscriptionController::class, 'publicKey'])->name('web-push.public-key');
+    Route::post('/web-push/subscriptions', [BrowserPushSubscriptionController::class, 'store'])->name('web-push.subscriptions.store');
+    Route::delete('/web-push/subscriptions', [BrowserPushSubscriptionController::class, 'destroy'])->name('web-push.subscriptions.destroy');
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
     Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');

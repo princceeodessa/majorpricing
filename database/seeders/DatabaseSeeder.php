@@ -71,5 +71,11 @@ class DatabaseSeeder extends Seeder
         if (Product::query()->count() === 0) {
             $this->call(DemoCatalogSeeder::class);
         }
+
+        // Баннеры-заглушки (если таблица banners пуста).
+        if (\Illuminate\Support\Facades\Schema::hasTable('banners')
+            && \App\Models\Banner::query()->count() === 0) {
+            $this->call(BannerSeeder::class);
+        }
     }
 }
